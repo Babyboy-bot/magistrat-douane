@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, ArrowRight, Loader2, CheckCircle, ChevronDown, ChevronUp, TrendingUp } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, CheckCircle, ChevronDown, ChevronUp, TrendingUp, Shield, Heart, Clock, FileText, CreditCard, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
@@ -83,6 +83,7 @@ export default function SouscrirePage() {
   const [loading, setLoading] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
   const [showEncadre, setShowEncadre] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
 
   /* ── État Épargne ── */
   const [id, setId] = useState<IdentiteState>(emptyId());
@@ -150,6 +151,7 @@ export default function SouscrirePage() {
         if (d.antecedents) setAntecedents(d.antecedents);
         if (d.step !== undefined) setStep(d.step);
         setHasDraft(true);
+        setShowIntro(false);
         toast.info("Brouillon restauré — vous pouvez reprendre votre saisie.");
         return;
       } catch { /* brouillon corrompu */ }
@@ -265,6 +267,140 @@ export default function SouscrirePage() {
       default: return null;
     }
   };
+
+  /* ── Écran d'introduction ── */
+  if (showIntro) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-5 pb-10">
+        {/* En-tête */}
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <Shield className="h-5 w-5 text-amber-600" />
+              MAGIST&apos;ASSUR
+            </h1>
+            <p className="text-xs text-gray-500">Assurance vie des magistrats — NSIA Vie Assurances</p>
+          </div>
+        </div>
+
+        {/* Bannière personnalisée */}
+        <div className="bg-gradient-to-br from-amber-600 to-amber-800 rounded-2xl p-5 text-white">
+          <p className="text-sm opacity-80">Bienvenue,</p>
+          <p className="text-xl font-bold mt-0.5">{user?.nom} {user?.prenoms}</p>
+          <p className="text-sm opacity-75 mt-2">Après avoir rendu justice, assurez votre avenir et protégez votre famille.</p>
+          <div className="flex items-center gap-2 mt-3 text-xs opacity-70">
+            <Clock className="h-3.5 w-3.5" />
+            <span>Durée estimée : 15 à 20 minutes</span>
+          </div>
+        </div>
+
+        {/* Explication du parcours */}
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+          <p className="font-semibold mb-1">Comment ça fonctionne ?</p>
+          <p>Ce formulaire couvre jusqu&apos;à <strong>3 produits</strong> en une seule souscription. L&apos;Épargne est <strong>obligatoire</strong>. Les garanties Prévoyance sont <strong>optionnelles</strong> et vous seront proposées après l&apos;Épargne.</p>
+        </div>
+
+        {/* Les 3 produits */}
+        <p className="text-sm font-semibold text-gray-700 px-1">Les produits inclus dans ce formulaire</p>
+
+        <div className="space-y-3">
+          {/* Épargne */}
+          <div className="rounded-xl border-2 border-purple-200 bg-white p-4">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
+                <TrendingUp className="h-5 w-5 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-gray-900">ÉPARGNE Retraite</span>
+                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">Obligatoire</span>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">Constituez un capital retraite complémentaire. Transmis à vos bénéficiaires en cas de décès avant le terme.</p>
+                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
+                  <span>✓ Prime libre ≥ 25 000 FCFA / période</span>
+                  <span>✓ Taux garanti 3,5%/an + participations</span>
+                  <span>✓ Rachat possible dès 15% des cotisations</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Prévoyance Décès */}
+          <div className="rounded-xl border-2 border-amber-100 bg-white p-4">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                <Shield className="h-5 w-5 text-amber-500" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-gray-900">PRÉVOYANCE Décès</span>
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-semibold">Optionnel</span>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">Capital versé à vos bénéficiaires en cas de décès toutes causes.</p>
+                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
+                  <span>✓ 45 000 FCFA/an</span>
+                  <span>✓ Capital : 10 000 000 FCFA</span>
+                  <span>✓ Questionnaire médical requis</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Frais Funéraires */}
+          <div className="rounded-xl border-2 border-amber-100 bg-white p-4">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                <Heart className="h-5 w-5 text-amber-500" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-gray-900">FRAIS Funéraires</span>
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-semibold">Optionnel</span>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">Indemnité forfaitaire pour couvrir les obsèques du magistrat et de sa famille.</p>
+                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
+                  <span>✓ 58 000 FCFA/an</span>
+                  <span>✓ Magistrat 1M · Conjoint 1M · Enfants 500K</span>
+                  <span>✓ Ascendants 750K</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Ce qu'il faut préparer */}
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+          <p className="text-sm font-semibold text-gray-700 mb-3">📎 Ce qu&apos;il vous faut préparer</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <FileText className="h-4 w-4 text-amber-500 shrink-0" />
+              <span>CNI ou Passeport en cours de validité</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <CreditCard className="h-4 w-4 text-amber-500 shrink-0" />
+              <span>RIB (si prélèvement bancaire)</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Users className="h-4 w-4 text-amber-500 shrink-0" />
+              <span>Infos bénéficiaires (nom, contact)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <Button
+          onClick={() => setShowIntro(false)}
+          className="w-full bg-amber-600 hover:bg-amber-700 text-white h-12 text-base font-semibold rounded-xl">
+          Commencer ma souscription
+          <ArrowRight className="h-5 w-5 ml-2" />
+        </Button>
+        <p className="text-xs text-center text-gray-400">Votre saisie est sauvegardée automatiquement. Vous pouvez reprendre à tout moment.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-8">
