@@ -85,6 +85,29 @@ const extractErrorMessage = (data: unknown): string | undefined => {
   return undefined;
 };
 
+// ── Shared refresh promise (prevents race conditions on simultaneous 401s) ──
+let _refreshPromise: Promise<boolean> | null = null;
+
+const _doRefresh = async (): Promise<boolean> => {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/token/refresh/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    _refreshPromise = null;
+  }
+};
+
+const refreshOnce = (): Promise<boolean> => {
+  if (!_refreshPromise) _refreshPromise = _doRefresh();
+  return _refreshPromise;
+};
+
 // ── Core API fetch function with automatic token refresh ──
 
 export const apiFetch = async <T = unknown>(
@@ -107,36 +130,20 @@ export const apiFetch = async <T = unknown>(
     credentials: "include",
   });
 
-  const buildApiUrl = (path: string) => `${API_BASE}${path}`;
+  const buildApiUrl = (p: string) => `${API_BASE}${p}`;
 
   // First attempt
   let response = await fetch(buildApiUrl(path), buildRequestInit());
 
   // If 401, try to refresh token once (unless skipped)
   if (!skipAuthHandling && response.status === 401 && !path.includes('/token/refresh/')) {
-    console.warn('Token expired, attempting refresh...');
-    
-    try {
-      const refreshResponse = await fetch(`${API_BASE}/api/auth/token/refresh/`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (refreshResponse.ok) {
-        response = await fetch(`${API_BASE}${path}`, buildRequestInit());
-      } else {
-        localStorage.removeItem('auth-storage');
-        window.location.href = '/login';
-        throw new Error('Session expired');
-      }
-    } catch (refreshError) {
-      console.error('Token refresh failed:', refreshError);
+    const refreshed = await refreshOnce();
+    if (refreshed) {
+      response = await fetch(buildApiUrl(path), buildRequestInit());
+    } else {
       localStorage.removeItem('auth-storage');
       window.location.href = '/login';
-      throw new Error('Session expired');
+      throw new Error('Session expirée');
     }
   }
 
@@ -254,7 +261,7 @@ export const authApi = {
   },
 
   async me(): Promise<User> {
-    const raw = await apiFetch<Record<string, unknown>>("/api/auth/me/", { skipAuthHandling: true });
+    const raw = await apiFetch<Record<string, unknown>>("/api/auth/me/");
     return mapUser(raw);
   },
 
