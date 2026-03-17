@@ -1,41 +1,76 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ─────────────────────────────────────────────
+#  MAGISTRAT-DOUANE — .gitignore
+# ─────────────────────────────────────────────
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# ── Variables d'environnement (NE JAMAIS committer) ──
+.env
+.env.local
+.env.*.local
 
-# testing
-/coverage
+# ── Python / Django ──
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+venv/
+.venv/
+backend/.venv/
+backend/staticfiles/
+backend/media/
+backend/htmlcov/
+backend/.coverage
+*.sqlite3
+db.sqlite3
 
-# next.js
-/.next/
-/out/
+# ── Frontend Next.js ──
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.pnpm-debug.log*
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
 
-# production
-/build
+# ── Scripts de debug / test temporaires (racine) ──
+debug_*.py
+test_*.py
+check_*.py
+start_*.py
+capture_*.py
+etat_*.py
+get_*.py
+investigation_*.py
+nettoyer_*.py
+restart_*.py
+verifier_*.py
+vider_*.py
+corriger_*.py
 
-# misc
+# ── Fichiers de diagnostic Markdown temporaires ──
+DIAGNOSTIC_*.md
+FIX_*.md
+MANUEL_*.md
+README_STRUCTURE.md
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ──
 .DS_Store
+Thumbs.db
 *.pem
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+# ── Docker volumes locaux ──
+postgres_data/
+redis_data/
 
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# ── Logs ──
+*.log
+logs/

@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Magistrat-Douane — Plateforme ACS
 
-## Getting Started
+Application de souscription aux contrats d'assurance **MAGIST'ASSUR** (Épargne & Prévoyance) développée pour l'Association des Cadres Supérieurs de la Douane de Côte d'Ivoire, en partenariat avec NSIA Vie Assurances.
 
-First, run the development server:
+## Stack technique
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+| Couche | Techno |
+|---|---|
+| Frontend | Next.js 14 (App Router) + TypeScript + TailwindCSS + shadcn/ui |
+| Backend | Django 5 + Django REST Framework + Django Channels |
+| Auth | JWT httpOnly cookies (SimpleJWT) |
+| Temps réel | WebSocket via Daphne (ASGI) + Redis Channel Layer |
+| Base de données | PostgreSQL 16 |
+| Cache / Broker | Redis 7 |
+| Conteneurs | Docker + Docker Compose |
+
+## Structure du projet
+
+```
+magistrat-douane/
+├── backend/          # Django — API REST + WebSocket
+│   ├── accounts/     # Authentification, utilisateurs, rôles
+│   ├── core/         # Émissions, paiements, requêtes clients
+│   ├── magistassur/  # Contrats Épargne & Prévoyance
+│   ├── notifications/# Consumers WebSocket
+│   └── config/       # Settings, ASGI, URLs
+├── frontend/         # Next.js — interface client + agent + admin
+│   └── src/
+│       ├── app/      # Pages (client/, agent/, admin/)
+│       ├── components/
+│       ├── hooks/
+│       ├── lib/      # API client
+│       └── stores/   # Zustand (auth)
+├── shared/           # Types partagés front/back
+├── docker-compose.yml        # Production
+├── docker-compose.dev.yml    # Développement local
+└── env.example               # Variables d'environnement à copier en .env
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Démarrage rapide (dev)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# 1. Copier les variables d'environnement
+cp env.example .env
+# Éditer .env : DB_PASSWORD, SECRET_KEY, etc.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# 2. Lancer tous les services
+docker compose -f docker-compose.dev.yml up --build
+```
 
-## Learn More
+- Frontend : http://localhost:3000
+- Backend API : http://localhost:8000
+- Admin Django : http://localhost:8000/admin
 
-To learn more about Next.js, take a look at the following resources:
+## Branches Git
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Branche | Rôle |
+|---|---|
+| `main` | Production stable — merge uniquement via PR validée |
+| `develop` | Intégration — base pour toutes les features |
+| `backend/<nom>` | Features backend (ex: `backend/cinetpay`) |
+| `frontend/<nom>` | Features frontend (ex: `frontend/dashboard-v2`) |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Workflow collaboratif
 
-## Deploy on Vercel
+```bash
+# Démarrer une nouvelle feature
+git checkout develop
+git pull origin develop
+git checkout -b backend/ma-feature   # ou frontend/ma-feature
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Committer et pousser
+git add .
+git commit -m "feat(backend): description courte"
+git push origin backend/ma-feature
+# → Ouvrir une Pull Request vers develop sur GitHub
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Variables d'environnement
+
+Copier `env.example` → `.env` et remplir :
+
+| Variable | Description |
+|---|---|
+| `SECRET_KEY` | Clé Django (générer avec `python -c "import secrets; print(secrets.token_hex(50))"`) |
+| `DB_PASSWORD` | Mot de passe PostgreSQL |
+| `NEXT_PUBLIC_API_BASE` | URL backend (ex: `https://api.mon-domaine.ci`) |
+| `NEXT_PUBLIC_WS_URL` | URL WebSocket prod (ex: `wss://api.mon-domaine.ci`) |
+
+## Équipe
+
+| Rôle | Périmètre |
+|---|---|
+| Backend | Django, DRF, Channels, migrations, sécurité |
+| Frontend | Next.js, composants, formulaires, UI/UX |
