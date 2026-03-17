@@ -955,6 +955,9 @@ function mapContratEpargne(r: Record<string, unknown>): ContratEpargne {
     revenuMensuel: r.revenu_mensuel ? Number(r.revenu_mensuel) : undefined,
     origineRevenu: (r.origine_revenu as string) || undefined,
     whatsapp: (r.whatsapp as string) || undefined,
+    telephone: (r.telephone as string) || undefined,
+    emailPersonnel: (r.email_personnel as string) || undefined,
+    adressePostale: (r.adresse_postale as string) || undefined,
   };
 }
 
@@ -1010,6 +1013,9 @@ function mapContratPrevoyance(r: Record<string, unknown>): ContratPrevoyance {
     nni: (r.nni as string) || undefined,
     professionDetail: (r.profession_detail as string) || undefined,
     whatsapp: (r.whatsapp as string) || undefined,
+    telephone: (r.telephone as string) || undefined,
+    emailPersonnel: (r.email_personnel as string) || undefined,
+    adressePostale: (r.adresse_postale as string) || undefined,
   };
 }
 
@@ -1067,6 +1073,22 @@ export const magistassurApi = {
       method: "POST",
       body: JSON.stringify(data),
     });
+  },
+
+  async assignPoliceEpargne(id: string, numPolice: string, codeInspection?: string): Promise<ContratEpargne> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/epargne/${id}/assign-police/`, {
+      method: "POST",
+      body: JSON.stringify({ num_police: numPolice, code_inspection: codeInspection || "" }),
+    });
+    return mapContratEpargne(raw);
+  },
+
+  async assignPolicePrevoyance(id: string, numPolice: string, codeInspection?: string): Promise<ContratPrevoyance> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/prevoyance/${id}/assign-police/`, {
+      method: "POST",
+      body: JSON.stringify({ num_police: numPolice, code_inspection: codeInspection || "" }),
+    });
+    return mapContratPrevoyance(raw);
   },
 };
 

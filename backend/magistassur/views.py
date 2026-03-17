@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, BasePermission
 from rest_framework.response import Response
 from django.db.models import Q
+from django.utils import timezone
 
 
 from .models import (
@@ -14,6 +15,26 @@ from .serializers import (
     ContratPrevoyanceSerializer, ContratPrevoyanceCreateSerializer,
     CotisationEpargneSerializer, QuestionnaireMedicalSerializer,
 )
+
+
+def _traiter_requete_magist(client_id, agent):
+    """Marque comme traitée la dernière requête souscription_magist en attente du client."""
+    try:
+        from core.models import ClientRequest
+        req = (
+            ClientRequest.objects
+            .filter(client_id=client_id, type="souscription_magist")
+            .exclude(status=ClientRequest.Status.TRAITE)
+            .order_by("-created_at")
+            .first()
+        )
+        if req:
+            req.status = ClientRequest.Status.TRAITE
+            req.agent = agent
+            req.treated_at = timezone.now()
+            req.save(update_fields=["status", "agent", "treated_at"])
+    except Exception:
+        pass
 
 
 class IsAgentOrAdmin(BasePermission):
@@ -62,6 +83,24 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         else:
             # Forcer client=user, ignorer toute valeur client envoyée dans le body
             serializer.save(client=user)
+
+    @action(detail=True, methods=["post"], url_path="assign-police",
+            permission_classes=[IsAuthenticated])
+    def assign_police(self, request, pk=None):
+        """Assigne un numéro de police et active le contrat. Réserve aux agents/admins."""
+        if request.user.role not in ("agent", "admin"):
+            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
+        num_police = (request.data.get("num_police") or "").strip()
+        if not num_police:
+            return Response({"detail": "Le numéro de police est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
+        contrat = self.get_object()
+        contrat.num_police = num_police
+        contrat.code_inspection = (request.data.get("code_inspection") or "").strip()
+        contrat.statut = ContratEpargne.Statut.EN_COURS
+        contrat.agent = request.user
+        contrat.save(update_fields=["num_police", "code_inspection", "statut", "agent"])
+        _traiter_requete_magist(contrat.client_id, request.user)
+        return Response(ContratEpargneSerializer(contrat).data)
 
     @action(detail=True, methods=["post"], url_path="cotisation")
     def ajouter_cotisation(self, request, pk=None):
@@ -113,6 +152,24 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         else:
             # Forcer client=user, ignorer toute valeur client envoyée dans le body
             serializer.save(client=user)
+
+    @action(detail=True, methods=["post"], url_path="assign-police",
+            permission_classes=[IsAuthenticated])
+    def assign_police(self, request, pk=None):
+        """Assigne un numéro de police et active le contrat. Réserve aux agents/admins."""
+        if request.user.role not in ("agent", "admin"):
+            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
+        num_police = (request.data.get("num_police") or "").strip()
+        if not num_police:
+            return Response({"detail": "Le numéro de police est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
+        contrat = self.get_object()
+        contrat.num_police = num_police
+        contrat.code_inspection = (request.data.get("code_inspection") or "").strip()
+        contrat.statut = ContratPrevoyance.Statut.EN_COURS
+        contrat.agent = request.user
+        contrat.save(update_fields=["num_police", "code_inspection", "statut", "agent"])
+        _traiter_requete_magist(contrat.client_id, request.user)
+        return Response(ContratPrevoyanceSerializer(contrat).data)
 
     @action(detail=True, methods=["post", "put", "patch"], url_path="questionnaire")
     def questionnaire_medical(self, request, pk=None):

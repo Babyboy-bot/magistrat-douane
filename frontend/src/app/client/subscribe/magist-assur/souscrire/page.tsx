@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, Loader2, CheckCircle, ChevronDown, ChevronUp, Tr
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
-import { magistassurApi } from "@/lib/api";
+import { magistassurApi, requestsApi } from "@/lib/api";
 import { toast } from "sonner";
 
 import { StepIdentite } from "./components/step-identite";
@@ -240,6 +240,14 @@ export default function SouscrirePage() {
           },
         });
       }
+
+      const produits = ["Épargne", ...(garantieDeces ? ["Prévoyance Décès"] : []), ...(garantieFuneraires ? ["Frais Funéraires"] : [])];
+      await requestsApi.create("souscription_magist", {
+        produits,
+        montant_cotisation: Number(cot.montant_cotisation),
+        periodicite: cot.periodicite,
+        duree_annees: Number(cot.duree_annees),
+      });
 
       localStorage.removeItem(DRAFT_KEY);
       const msg = (garantieDeces || garantieFuneraires) ? "MAGIST'ASSUR ÉPARGNE + PRÉVOYANCE soumis avec succès !" : "MAGIST'ASSUR ÉPARGNE soumis avec succès !";

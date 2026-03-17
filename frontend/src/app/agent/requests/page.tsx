@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   ClipboardList,
   Search,
@@ -14,6 +15,7 @@ import {
   UserCheck,
   Unlock,
   Lock,
+  Shield,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,6 +57,7 @@ const EMISSION_TYPES = ["souscription_auto", "souscription_mrh", "incorporation"
 const today = new Date().toISOString().split("T")[0];
 
 export default function AgentRequestsPage() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const { data: allRequests, refetch: refetchRequests } = useRequests();
   const [search, setSearch] = useState("");
@@ -561,6 +564,15 @@ export default function AgentRequestsPage() {
                     >
                       <PlusCircle className="h-4 w-4 mr-2" />
                       Créer l'émission
+                    </Button>
+                  )}
+                  {selectedRequest.type === "souscription_magist" && (
+                    <Button
+                      onClick={() => { setShowDetail(false); router.push("/agent/magistassur"); }}
+                      className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      <Shield className="h-4 w-4 mr-2" />
+                      Voir dans MAGIST&apos;ASSUR
                     </Button>
                   )}
                   <Button
