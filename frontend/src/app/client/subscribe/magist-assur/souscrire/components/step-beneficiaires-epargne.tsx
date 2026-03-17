@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,10 +21,17 @@ const emptyBenef = (): BeneficiaireEpargne => ({
 });
 
 export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, benefEnfants, setBenefEnfants, autresBenef, setAutresBenef, consentementDonnees, setConsentementDonnees }: Props) {
+  const [hasAutres, setHasAutres] = useState(autresBenef.some(b => b.nom !== ""));
+
   const update = (i: number, field: keyof BeneficiaireEpargne, val: string) => {
     const arr = [...autresBenef];
     arr[i] = { ...arr[i], [field]: val };
     setAutresBenef(arr);
+  };
+
+  const toggleAutres = (checked: boolean) => {
+    setHasAutres(checked);
+    if (!checked) setAutresBenef([emptyBenef()]);
   };
 
   return (
@@ -43,37 +51,41 @@ export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, bene
           </div>
         </div>
 
-        <p className="text-sm font-semibold text-gray-700">Autre(s) bénéficiaire(s) :</p>
-
-        <div className="space-y-3">
-          {autresBenef.map((b, i) => (
-            <div key={i} className="border rounded-lg p-3 space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-semibold text-gray-500">Bénéficiaire {i + 1}</span>
-                {autresBenef.length > 1 && (
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAutresBenef(autresBenef.filter((_, idx) => idx !== i))}>
-                    <Trash2 className="h-3 w-3 text-red-500" />
-                  </Button>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label className="text-xs">Nom &amp; Prénom(s)</Label><Input className="h-8 text-sm" value={b.nom} onChange={e => update(i, "nom", e.target.value)} /></div>
-                <div><Label className="text-xs">En qualité de</Label><Input className="h-8 text-sm" value={b.en_qualite_de} onChange={e => update(i, "en_qualite_de", e.target.value)} /></div>
-                <div><Label className="text-xs">Date de naissance</Label><Input className="h-8 text-sm" type="date" value={b.date_naissance} onChange={e => update(i, "date_naissance", e.target.value)} /></div>
-                <div><Label className="text-xs">Domicile</Label><Input className="h-8 text-sm" value={b.domicile} onChange={e => update(i, "domicile", e.target.value)} /></div>
-                <div><Label className="text-xs">Adresse Postale</Label><Input className="h-8 text-sm" value={b.adresse_postale} onChange={e => update(i, "adresse_postale", e.target.value)} /></div>
-                <div><Label className="text-xs">N° de téléphone</Label><Input className="h-8 text-sm" value={b.telephone} onChange={e => update(i, "telephone", e.target.value)} /></div>
-                <div><Label className="text-xs">WhatsApp</Label><Input className="h-8 text-sm" value={b.whatsapp} onChange={e => update(i, "whatsapp", e.target.value)} /></div>
-                <div><Label className="text-xs">Email</Label><Input className="h-8 text-sm" type="email" value={b.email} onChange={e => update(i, "email", e.target.value)} /></div>
-                <div><Label className="text-xs">Taux répartition (%)</Label><Input className="h-8 text-sm" type="number" min={0} max={100} value={b.taux_repartition} onChange={e => update(i, "taux_repartition", e.target.value)} /></div>
-              </div>
-            </div>
-          ))}
+        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+          <Checkbox checked={hasAutres} onCheckedChange={c => toggleAutres(!!c)} id="ba" />
+          <Label htmlFor="ba" className="cursor-pointer">Autre(s) bénéficiaire(s)</Label>
         </div>
 
-        <Button variant="outline" size="sm" onClick={() => setAutresBenef([...autresBenef, emptyBenef()])}>
-          <Plus className="h-3 w-3 mr-1" /> Ajouter un bénéficiaire
-        </Button>
+        {hasAutres && (
+          <div className="space-y-3">
+            {autresBenef.map((b, i) => (
+              <div key={i} className="border rounded-lg p-3 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-semibold text-gray-500">Bénéficiaire {i + 1}</span>
+                  {autresBenef.length > 1 && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAutresBenef(autresBenef.filter((_, idx) => idx !== i))}>
+                      <Trash2 className="h-3 w-3 text-red-500" />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div><Label className="text-xs">Nom &amp; Prénom(s)</Label><Input className="h-8 text-sm" value={b.nom} onChange={e => update(i, "nom", e.target.value)} /></div>
+                  <div><Label className="text-xs">En qualité de</Label><Input className="h-8 text-sm" value={b.en_qualite_de} onChange={e => update(i, "en_qualite_de", e.target.value)} /></div>
+                  <div><Label className="text-xs">Date de naissance</Label><Input className="h-8 text-sm" type="date" value={b.date_naissance} onChange={e => update(i, "date_naissance", e.target.value)} /></div>
+                  <div><Label className="text-xs">Domicile</Label><Input className="h-8 text-sm" value={b.domicile} onChange={e => update(i, "domicile", e.target.value)} /></div>
+                  <div><Label className="text-xs">Adresse Postale</Label><Input className="h-8 text-sm" value={b.adresse_postale} onChange={e => update(i, "adresse_postale", e.target.value)} /></div>
+                  <div><Label className="text-xs">N° de téléphone</Label><Input className="h-8 text-sm" value={b.telephone} onChange={e => update(i, "telephone", e.target.value)} /></div>
+                  <div><Label className="text-xs">WhatsApp</Label><Input className="h-8 text-sm" value={b.whatsapp} onChange={e => update(i, "whatsapp", e.target.value)} /></div>
+                  <div><Label className="text-xs">Email</Label><Input className="h-8 text-sm" type="email" value={b.email} onChange={e => update(i, "email", e.target.value)} /></div>
+                  <div><Label className="text-xs">Taux répartition (%)</Label><Input className="h-8 text-sm" type="number" min={0} max={100} value={b.taux_repartition} onChange={e => update(i, "taux_repartition", e.target.value)} /></div>
+                </div>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" onClick={() => setAutresBenef([...autresBenef, emptyBenef()])}>
+              <Plus className="h-3 w-3 mr-1" /> Ajouter un bénéficiaire
+            </Button>
+          </div>
+        )}
 
         <div className="border border-gray-200 rounded-lg p-4 space-y-3 mt-2">
           <p className="text-xs text-gray-600">

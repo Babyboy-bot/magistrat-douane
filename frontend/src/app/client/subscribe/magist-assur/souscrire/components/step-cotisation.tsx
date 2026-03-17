@@ -2,7 +2,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PERIODICITE_LABELS, formatCFA } from "./types";
 import type { CotisationState } from "./types";
 
@@ -64,22 +63,16 @@ export function StepCotisation({ cot, setCot }: Props) {
           </div>
         )}
 
-        <div>
-          <Label>5. Mode de paiement</Label>
-          <Select value={cot.mode_paiement} onValueChange={v => s("mode_paiement", v)}>
-            <SelectTrigger><SelectValue placeholder="Choisir le mode de paiement" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="prelevement">Prélèvement bancaire</SelectItem>
-              <SelectItem value="virement">Virement bancaire</SelectItem>
-              <SelectItem value="mobile_money">Mobile Money</SelectItem>
-              <SelectItem value="especes">Espèces</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="space-y-3">
+          <div>
+            <Label>5. Mode de paiement</Label>
+            <div className="mt-2 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
+              <span className="text-sm font-medium text-amber-800">Prélèvement bancaire</span>
+              <span className="ml-auto text-xs bg-amber-200 text-amber-700 px-2 py-0.5 rounded-full">Uniquement disponible</span>
+            </div>
+          </div>
+          <div><Label>N° de compte (joindre RIB)</Label><Input className="mt-1" placeholder="ex: CI093 00001 000000000001 12" value={cot.numero_compte} onChange={e => s("numero_compte", e.target.value)} /></div>
         </div>
-
-        {cot.mode_paiement === "prelevement" && (
-          <div><Label>N° de compte (joindre RIB)</Label><Input value={cot.numero_compte} onChange={e => s("numero_compte", e.target.value)} /></div>
-        )}
 
         <p className="text-xs text-gray-400 italic">Contrat valide sous réserve d&apos;acceptation du risque par NSIA Vie et paiement de la 1ère cotisation.</p>
       </CardContent>

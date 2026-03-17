@@ -91,7 +91,7 @@ export default function SouscrirePage() {
   const [corresp2, setCorresp2] = useState<CorrespondantState>(emptyCorresp(2));
   const [assureIdem, setAssureIdem] = useState(true);
   const [assure, setAssure] = useState<AssureState>(emptyAssure());
-  const [cot, setCot] = useState<CotisationState>({ duree_annees: "10", periodicite: "mensuelle", date_premiere_cotisation: "", date_effet: "", montant_cotisation: "25000", mode_paiement: "", numero_compte: "" });
+  const [cot, setCot] = useState<CotisationState>({ duree_annees: "10", periodicite: "mensuelle", date_premiere_cotisation: "", date_effet: "", montant_cotisation: "25000", mode_paiement: "prelevement", numero_compte: "" });
   const [benefConjoint_e, setBenefConjoint_e] = useState(false);
   const [benefEnfants_e, setBenefEnfants_e] = useState(false);
   const [autresBenef_e, setAutresBenef_e] = useState<BeneficiaireEpargne[]>([{ nom: "", en_qualite_de: "", date_naissance: "", domicile: "", adresse_postale: "", telephone: "", whatsapp: "", email: "", taux_repartition: "" }]);
