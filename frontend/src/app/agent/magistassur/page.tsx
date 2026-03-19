@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Shield, Search, TrendingUp, Heart, RefreshCw, ChevronDown, ChevronRight, Clock, CheckCircle2, KeyRound } from "lucide-react";
+import { Shield, Search, TrendingUp, Heart, RefreshCw, ChevronDown, ChevronRight, Clock, CheckCircle2, KeyRound, Settings2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { magistassurApi } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 import type { ContratEpargne, ContratPrevoyance } from "@/lib/types";
@@ -48,6 +49,8 @@ export default function AgentMagistAssurPage() {
   const [prevoyances, setPrevoyances] = useState<ContratPrevoyance[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [policeForms, setPoliceForms] = useState<Record<string, PoliceForm>>({});
+  const [pendingStatuts, setPendingStatuts] = useState<Record<string, string>>({});
+  const [statutLoading, setStatutLoading] = useState<string | null>(null);
 
   const loadEpargne = async () => {
     setLoadingEpargne(true);
@@ -74,6 +77,36 @@ export default function AgentMagistAssurPage() {
 
   const setForm = (id: string, patch: Partial<PoliceForm>) =>
     setPoliceForms(f => ({ ...f, [id]: { ...getForm(id), ...patch } }));
+
+  const handleChangeStatutEpargne = async (e: ContratEpargne) => {
+    const newStatut = pendingStatuts[e.id];
+    if (!newStatut || newStatut === e.statut) return;
+    setStatutLoading(e.id);
+    try {
+      await magistassurApi.changeStatutEpargne(e.id, newStatut);
+      toast.success(`Statut mis à jour : ${STATUT_LABELS[newStatut] || newStatut}`);
+      await loadEpargne();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur changement statut");
+    } finally {
+      setStatutLoading(null);
+    }
+  };
+
+  const handleChangeStatutPrevoyance = async (p: ContratPrevoyance) => {
+    const newStatut = pendingStatuts[p.id];
+    if (!newStatut || newStatut === p.statut) return;
+    setStatutLoading(p.id);
+    try {
+      await magistassurApi.changeStatutPrevoyance(p.id, newStatut);
+      toast.success(`Statut mis à jour : ${STATUT_LABELS[newStatut] || newStatut}`);
+      await loadPrevoyance();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur changement statut");
+    } finally {
+      setStatutLoading(null);
+    }
+  };
 
   const handleAssignEpargne = async (e: ContratEpargne) => {
     const form = getForm(e.id);
@@ -431,6 +464,7 @@ export default function AgentMagistAssurPage() {
                         <div><p className="text-xs text-gray-400">1ère cotisation</p><p className="font-medium">{formatDate(e.datePremiereCotisation)}</p></div>
                         <div><p className="text-xs text-gray-400">Taux d&apos;intérêt</p><p className="font-medium">{e.tauxInteret}% / an</p></div>
                         <div><p className="text-xs text-gray-400">Mode paiement</p><p className="font-medium">{e.modePaiement || "—"}</p></div>
+                        <div><p className="text-xs text-gray-400">N° compte (RIB)</p><p className="font-medium font-mono text-xs">{e.numeroCompte || "—"}</p></div>
                         <div><p className="text-xs text-gray-400">Correspondants</p><p className="font-medium">{e.correspondants.length}</p></div>
                         <div><p className="text-xs text-gray-400">Bénéficiaires</p><p className="font-medium">{e.beneficiaires.length}</p></div>
                       </div>
@@ -459,6 +493,33 @@ export default function AgentMagistAssurPage() {
                                 </Badge>
                               </div>
                             ))}
+                          </div>
+                        </div>
+                      )}
+                      {e.numPolice && (
+                        <div className="bg-white rounded-lg p-3 border space-y-2">
+                          <p className="text-xs font-semibold text-gray-700 flex items-center gap-1"><Settings2 className="h-3 w-3" /> Gérer le statut du contrat</p>
+                          <div className="flex gap-2">
+                            <Select
+                              value={pendingStatuts[e.id] ?? e.statut}
+                              onValueChange={v => setPendingStatuts(s => ({ ...s, [e.id]: v }))}
+                            >
+                              <SelectTrigger className="h-8 text-sm flex-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="en_cours">En cours</SelectItem>
+                                <SelectItem value="arrive_terme">Arrivé à terme</SelectItem>
+                                <SelectItem value="rachete">Racheté</SelectItem>
+                                <SelectItem value="suspendu">Suspendu</SelectItem>
+                                <SelectItem value="resilie">Résilié</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button size="sm" className="h-8 bg-gray-700 hover:bg-gray-800"
+                              disabled={statutLoading === e.id || (pendingStatuts[e.id] ?? e.statut) === e.statut}
+                              onClick={() => handleChangeStatutEpargne(e)}>
+                              {statutLoading === e.id ? "..." : "Appliquer"}
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -532,6 +593,32 @@ export default function AgentMagistAssurPage() {
                           <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" disabled={getForm(p.id).loading} onClick={() => handleAssignPrevoyance(p)}>
                             {getForm(p.id).loading ? "Enregistrement..." : "✓ Valider et activer le contrat"}
                           </Button>
+                        </div>
+                      )}
+                      {p.numPolice && (
+                        <div className="bg-white rounded-lg p-3 border space-y-2">
+                          <p className="text-xs font-semibold text-gray-700 flex items-center gap-1"><Settings2 className="h-3 w-3" /> Gérer le statut du contrat</p>
+                          <div className="flex gap-2">
+                            <Select
+                              value={pendingStatuts[p.id] ?? p.statut}
+                              onValueChange={v => setPendingStatuts(s => ({ ...s, [p.id]: v }))}
+                            >
+                              <SelectTrigger className="h-8 text-sm flex-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="en_cours">En cours</SelectItem>
+                                <SelectItem value="sinistre">Sinistre</SelectItem>
+                                <SelectItem value="expire">Expiré</SelectItem>
+                                <SelectItem value="resilie">Résilié</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button size="sm" className="h-8 bg-gray-700 hover:bg-gray-800"
+                              disabled={statutLoading === p.id || (pendingStatuts[p.id] ?? p.statut) === p.statut}
+                              onClick={() => handleChangeStatutPrevoyance(p)}>
+                              {statutLoading === p.id ? "..." : "Appliquer"}
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>

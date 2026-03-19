@@ -1075,6 +1075,22 @@ export const magistassurApi = {
     });
   },
 
+  async changeStatutEpargne(id: string, statut: string): Promise<ContratEpargne> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/epargne/${id}/change-statut/`, {
+      method: "POST",
+      body: JSON.stringify({ statut }),
+    });
+    return mapContratEpargne(raw);
+  },
+
+  async changeStatutPrevoyance(id: string, statut: string): Promise<ContratPrevoyance> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/prevoyance/${id}/change-statut/`, {
+      method: "POST",
+      body: JSON.stringify({ statut }),
+    });
+    return mapContratPrevoyance(raw);
+  },
+
   async assignPoliceEpargne(id: string, numPolice: string, codeInspection?: string): Promise<ContratEpargne> {
     const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/epargne/${id}/assign-police/`, {
       method: "POST",

@@ -102,6 +102,21 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         _traiter_requete_magist(contrat.client_id, request.user)
         return Response(ContratEpargneSerializer(contrat).data)
 
+    @action(detail=True, methods=["post"], url_path="change-statut",
+            permission_classes=[IsAuthenticated])
+    def change_statut(self, request, pk=None):
+        """Permet à un agent de changer le statut d'un contrat épargne."""
+        if request.user.role not in ("agent", "admin"):
+            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
+        nouveau_statut = (request.data.get("statut") or "").strip()
+        statuts_valides = [s.value for s in ContratEpargne.Statut]
+        if nouveau_statut not in statuts_valides:
+            return Response({"detail": f"Statut invalide. Valeurs acceptées : {statuts_valides}"}, status=status.HTTP_400_BAD_REQUEST)
+        contrat = self.get_object()
+        contrat.statut = nouveau_statut
+        contrat.save(update_fields=["statut"])
+        return Response(ContratEpargneSerializer(contrat).data)
+
     @action(detail=True, methods=["post"], url_path="cotisation")
     def ajouter_cotisation(self, request, pk=None):
         contrat = self.get_object()
@@ -169,6 +184,21 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         contrat.agent = request.user
         contrat.save(update_fields=["num_police", "code_inspection", "statut", "agent"])
         _traiter_requete_magist(contrat.client_id, request.user)
+        return Response(ContratPrevoyanceSerializer(contrat).data)
+
+    @action(detail=True, methods=["post"], url_path="change-statut",
+            permission_classes=[IsAuthenticated])
+    def change_statut(self, request, pk=None):
+        """Permet à un agent de changer le statut d'un contrat prévoyance."""
+        if request.user.role not in ("agent", "admin"):
+            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
+        nouveau_statut = (request.data.get("statut") or "").strip()
+        statuts_valides = [s.value for s in ContratPrevoyance.Statut]
+        if nouveau_statut not in statuts_valides:
+            return Response({"detail": f"Statut invalide. Valeurs acceptées : {statuts_valides}"}, status=status.HTTP_400_BAD_REQUEST)
+        contrat = self.get_object()
+        contrat.statut = nouveau_statut
+        contrat.save(update_fields=["statut"])
         return Response(ContratPrevoyanceSerializer(contrat).data)
 
     @action(detail=True, methods=["post", "put", "patch"], url_path="questionnaire")
