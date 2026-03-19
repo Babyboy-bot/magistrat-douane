@@ -81,6 +81,11 @@ class EmissionListCreateView(generics.ListCreateAPIView):
     ordering_fields = ["date", "echeance", "prime_ttc", "prime_nette", "created_at"]
     ordering = ["-date"]
 
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [permissions.IsAuthenticated(), IsAgentOrAdmin()]
+        return [permissions.IsAuthenticated()]
+
     def get_queryset(self):
         user = self.request.user
         if user.role in ("agent", "admin"):
@@ -100,6 +105,19 @@ class EmissionDetailView(generics.RetrieveUpdateDestroyAPIView):
         if user.role in ("agent", "admin"):
             return Emission.objects.all()
         return Emission.objects.filter(client=user)
+
+    def _check_write_permission(self):
+        if self.request.user.role not in ("agent", "admin"):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Seuls les agents et administrateurs peuvent modifier ou supprimer une émission.")
+
+    def update(self, request, *args, **kwargs):
+        self._check_write_permission()
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        self._check_write_permission()
+        return super().destroy(request, *args, **kwargs)
 
 
 # ── Paiements ──
@@ -730,6 +748,22 @@ class EmissionImportView(APIView):
         for field in required:
             if not row.get(field):
                 errors.append(f"Ligne {line_num} : champ '{field}' manquant")
+        if errors:
+            return errors
+        try:
+            prime_nette = float(str(row["prime_nette"]).replace(" ", "").replace(",", "."))
+            prime_ttc = float(str(row["prime_ttc"]).replace(" ", "").replace(",", "."))
+            if prime_nette > prime_ttc:
+                errors.append(f"Ligne {line_num} : prime_nette ({prime_nette}) sup\u00e9rieure \u00e0 prime_ttc ({prime_ttc})")
+        except (ValueError, KeyError):
+            errors.append(f"Ligne {line_num} : prime_nette ou prime_ttc invalides")
+        try:
+            effet = self._parse_date(str(row["effet"]))
+            echeance = self._parse_date(str(row["echeance"]))
+            if echeance <= effet:
+                errors.append(f"Ligne {line_num} : la date d'\u00e9ch\u00e9ance doit \u00eatre post\u00e9rieure \u00e0 la date d'effet")
+        except ValueError:
+            pass
         return errors
 
     def _parse_date(self, value):

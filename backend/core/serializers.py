@@ -60,6 +60,21 @@ class EmissionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "taux_commission", "montant_commission", "created_at"]
 
+    def validate(self, attrs):
+        effet = attrs.get("effet")
+        echeance = attrs.get("echeance")
+        prime_nette = attrs.get("prime_nette")
+        prime_ttc = attrs.get("prime_ttc")
+        if effet and echeance and echeance <= effet:
+            raise serializers.ValidationError(
+                {"echeance": "La date d'\u00e9ch\u00e9ance doit \u00eatre post\u00e9rieure \u00e0 la date d'effet."}
+            )
+        if prime_nette is not None and prime_ttc is not None and prime_nette > prime_ttc:
+            raise serializers.ValidationError(
+                {"prime_nette": "La prime nette ne peut pas d\u00e9passer la prime TTC."}
+            )
+        return attrs
+
 
 class DocumentSerializer(serializers.ModelSerializer):
     MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB

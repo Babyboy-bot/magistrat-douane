@@ -98,8 +98,8 @@ class VerifyUserSerializer(serializers.Serializer):
 
 
 class AgentCreateClientSerializer(serializers.ModelSerializer):
-    """Agent creates a client (pre-verified, no password — client sets it later)."""
-    password = serializers.CharField(write_only=True, required=False, default="Temp@1234")
+    """Agent creates a pre-verified client. Password is required and communicated to the client."""
+    password = serializers.CharField(write_only=True, required=True, min_length=8)
 
     class Meta:
         model = User
@@ -108,8 +108,12 @@ class AgentCreateClientSerializer(serializers.ModelSerializer):
             "profession_type", "telephone", "telephone2",
         ]
 
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
     def create(self, validated_data):
-        password = validated_data.pop("password", "Temp@1234")
+        password = validated_data.pop("password")
         user = User.objects.create_user(
             password=password,
             role="client",

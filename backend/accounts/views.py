@@ -363,8 +363,20 @@ class ResetPasswordView(APIView):
         temp_pw = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10)) + "A1!"
         user.set_password(temp_pw)
         user.save(update_fields=["password"])
-        # In production: send temp_pw via email/SMS
-        return Response({"detail": "Un nouveau mot de passe a été généré. Contactez votre agent ACS pour le récupérer."})
+        log_user_action(user, user, "password_reset", {"method": "reset_view"})
+        try:
+            from notifications.emails import send_welcome_email as _sw
+            import logging
+            logging.getLogger("audit").info(
+                f"RESET_PASSWORD | user={user.email or user.telephone} | temp_pw={temp_pw}"
+            )
+        except Exception:
+            pass
+        return Response({
+            "detail": "Mot de passe temporaire g\u00e9n\u00e9r\u00e9.",
+            "temp_password": temp_pw,
+            "instructions": "Communiquez ce mot de passe au client et demandez-lui de le changer \u00e0 la premi\u00e8re connexion.",
+        })
 
 
 class AgentCreateClientView(generics.CreateAPIView):

@@ -123,23 +123,28 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         # Logique métier stratégique
         is_new = self.pk is None
-        
+        # Ne pas écraser les champs si une mise à jour explicite est en cours via update_fields
+        update_fields = kwargs.get("update_fields")
+        updating_active = update_fields and "is_active" in update_fields
+
         if self.profession_type in (self.ProfessionType.MAGISTRAT, self.ProfessionType.DOUANIER):
-            # Magistrats & Douaniers = clients premium immédiatement
+            # Magistrats & Douaniers = clients premium
             self.risk_level = self.RiskLevel.PREMIUM
-            self.role = self.Role.CLIENT
-            self.account_status = self.AccountStatus.VERIFIED
-            self.verified = True
-            if not self.verified_at:
-                from django.utils import timezone
-                self.verified_at = timezone.now()
+            # Ne pas forcer role/account_status si l'admin modifie explicitement is_active
+            if not updating_active:
+                self.role = self.Role.CLIENT
+                self.account_status = self.AccountStatus.VERIFIED
+                self.verified = True
+                if not self.verified_at:
+                    from django.utils import timezone
+                    self.verified_at = timezone.now()
         else:
             # Grand public = workflow standard
             self.risk_level = self.RiskLevel.STANDARD
             if is_new and (not self.role or self.role in {self.Role.PROSPECT, self.Role.CLIENT}):
-                self.role = self.Role.CLIENT  # Accès immédiat pour tous
+                self.role = self.Role.CLIENT
                 self.account_status = self.AccountStatus.ACTIVE
-        
+
         super().save(*args, **kwargs)
 
 

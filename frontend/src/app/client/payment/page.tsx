@@ -1,6 +1,7 @@
 "use client";
 
-import { CreditCard, ArrowLeft, ExternalLink } from "lucide-react";
+import { useEffect } from "react";
+import { CreditCard, ArrowLeft, ExternalLink, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,15 @@ export default function PaymentPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { data: emissions } = useClientEmissions(user?.id || "");
+
+  useEffect(() => {
+    if (user && !user.verified) {
+      toast.error("Compte non vérifié — accès restreint.");
+      router.replace("/client/dashboard");
+    }
+  }, [user, router]);
+
+  if (!user?.verified) return null;
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("fr-FR").format(amount) + " FCFA";

@@ -185,6 +185,14 @@ export default function AgentRequestsPage() {
       toast.error("Veuillez remplir tous les champs obligatoires");
       return;
     }
+    if (Number(emissionForm.primeNette) > Number(emissionForm.primeTtc)) {
+      toast.error("La prime nette ne peut pas dépasser la prime TTC.");
+      return;
+    }
+    if (emissionForm.echeance <= emissionForm.effet) {
+      toast.error("La date d'échéance doit être postérieure à la date d'effet.");
+      return;
+    }
     setEmissionLoading(true);
     try {
       await emissionsApi.create({
@@ -203,8 +211,11 @@ export default function AgentRequestsPage() {
         primeTtc: emissionForm.primeTtc,
         situation: emissionForm.situation,
       });
-      toast.success("Émission créée avec succès — visible dans le portefeuille client");
+      await requestsApi.treat(Number(selectedRequest.id));
+      toast.success("Émission créée et requête marquée comme traitée.");
       setShowEmission(false);
+      setShowDetail(false);
+      refetchRequests();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de la création de l'émission");
     } finally {
