@@ -79,6 +79,15 @@ function StepIndicator({ current, steps }: { current: number; steps: string[] })
 export default function SouscrirePage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const isAllowed = !user || user.professionType === "magistrat" || user.professionType === "douanier";
+
+  // Guard: accès réservé aux magistrats et douaniers
+  useEffect(() => {
+    if (user && !isAllowed) {
+      router.replace("/client/subscribe/magist-assur");
+    }
+  }, [user, isAllowed, router]);
+
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
@@ -280,6 +289,8 @@ export default function SouscrirePage() {
       default: return null;
     }
   };
+
+  if (!isAllowed) return null;
 
   /* ── Écran d'introduction ── */
   if (showIntro) {

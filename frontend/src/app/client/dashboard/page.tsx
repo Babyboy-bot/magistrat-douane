@@ -1,6 +1,6 @@
 "use client";
 
-import { Wallet, CreditCard, AlertCircle, FileText, Car, Home, Shield } from "lucide-react";
+import { Wallet, CreditCard, AlertCircle, FileText, Car, Home, Shield, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -141,30 +141,39 @@ export default function ClientDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Link href="/client/subscribe/automobile">
+              <Link href="/client/payment">
                 <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
-                  <Car className="h-5 w-5 text-blue-600" />
-                  <span className="text-xs font-medium">Assurance Auto</span>
-                </Button>
-              </Link>
-              <Link href="/client/subscribe/habitation">
-                <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
-                  <Home className="h-5 w-5 text-green-600" />
-                  <span className="text-xs font-medium">Assurance MRH</span>
-                </Button>
-              </Link>
-              <Link href="/client/subscribe/magist-assur">
-                <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
-                  <Shield className="h-5 w-5 text-purple-600" />
-                  <span className="text-xs font-medium">Magist-Assur</span>
+                  <CreditCard className="h-5 w-5 text-blue-600" />
+                  <span className="text-xs font-medium">Payer une prime</span>
                 </Button>
               </Link>
               <Link href="/client/sinistre">
                 <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
                   <AlertCircle className="h-5 w-5 text-red-600" />
-                  <span className="text-xs font-medium">Déclarer Sinistre</span>
+                  <span className="text-xs font-medium">Déclarer sinistre</span>
                 </Button>
               </Link>
+              <Link href="/client/incorporation">
+                <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
+                  <FileText className="h-5 w-5 text-green-600" />
+                  <span className="text-xs font-medium">Incorporation</span>
+                </Button>
+              </Link>
+              {(user.professionType === "magistrat" || user.professionType === "douanier") ? (
+                <Link href="/client/subscribe/magist-assur">
+                  <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
+                    <Shield className="h-5 w-5 text-purple-600" />
+                    <span className="text-xs font-medium">Magist-Assur</span>
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/client/change">
+                  <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
+                    <RefreshCw className="h-5 w-5 text-orange-600" />
+                    <span className="text-xs font-medium">Changement</span>
+                  </Button>
+                </Link>
+              )}
             </div>
           </CardContent>
         </Card>

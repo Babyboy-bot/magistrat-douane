@@ -166,7 +166,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               let actions;
               if (!user.verified) {
                 actions = prospectActions;
-              } else if (user.profession?.toLowerCase().includes('magistrat')) {
+              } else if (user.professionType === 'magistrat' || user.professionType === 'douanier') {
                 actions = magistratActions;
               } else {
                 actions = verifiedActions;

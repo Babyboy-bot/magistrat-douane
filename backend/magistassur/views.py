@@ -115,6 +115,19 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         contrat = self.get_object()
         contrat.statut = nouveau_statut
         contrat.save(update_fields=["statut"])
+        try:
+            from notifications.service import notification_service
+            notification_service.send_notification_to_user(
+                user_id=contrat.client_id,
+                title="Statut de votre contrat mis à jour",
+                message=f"Votre contrat Épargne MAGIST'ASSUR ({contrat.num_police or 'en attente de police'}) "
+                        f"est maintenant : {contrat.get_statut_display()}.",
+                type="info",
+                priority="medium",
+                data={"contrat_id": contrat.id, "type": "epargne", "statut": nouveau_statut},
+            )
+        except Exception:
+            pass
         return Response(ContratEpargneSerializer(contrat).data)
 
     @action(detail=True, methods=["post"], url_path="cotisation")
@@ -199,6 +212,19 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         contrat = self.get_object()
         contrat.statut = nouveau_statut
         contrat.save(update_fields=["statut"])
+        try:
+            from notifications.service import notification_service
+            notification_service.send_notification_to_user(
+                user_id=contrat.client_id,
+                title="Statut de votre contrat mis à jour",
+                message=f"Votre contrat Prévoyance MAGIST'ASSUR ({contrat.num_police or 'en attente de police'}) "
+                        f"est maintenant : {contrat.get_statut_display()}.",
+                type="info",
+                priority="medium",
+                data={"contrat_id": contrat.id, "type": "prevoyance", "statut": nouveau_statut},
+            )
+        except Exception:
+            pass
         return Response(ContratPrevoyanceSerializer(contrat).data)
 
     @action(detail=True, methods=["post", "put", "patch"], url_path="questionnaire")
