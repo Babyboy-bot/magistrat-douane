@@ -206,22 +206,21 @@ def claim_request_view(request, pk):
     """Un agent prend en charge une requête disponible."""
     if request.user.role not in ("agent", "admin"):
         return Response({"detail": "Permission refusée"}, status=status.HTTP_403_FORBIDDEN)
-    try:
-        req = ClientRequest.objects.select_for_update().get(pk=pk)
-    except ClientRequest.DoesNotExist:
-        return Response({"detail": "Requête introuvable"}, status=status.HTTP_404_NOT_FOUND)
-
-    if req.status != ClientRequest.Status.EN_ATTENTE:
-        return Response(
-            {"detail": "Cette requête est déjà prise en charge ou traitée."},
-            status=status.HTTP_409_CONFLICT,
-        )
 
     from django.db import transaction
-    with transaction.atomic():
-        req.agent = request.user
-        req.status = ClientRequest.Status.EN_COURS
-        req.save()
+    try:
+        with transaction.atomic():
+            req = ClientRequest.objects.select_for_update().get(pk=pk)
+            if req.status != ClientRequest.Status.EN_ATTENTE:
+                return Response(
+                    {"detail": "Cette requête est déjà prise en charge ou traitée."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            req.agent = request.user
+            req.status = ClientRequest.Status.EN_COURS
+            req.save()
+    except ClientRequest.DoesNotExist:
+        return Response({"detail": "Requête introuvable"}, status=status.HTTP_404_NOT_FOUND)
 
     # Notifier le client
     from notifications.service import notification_service
