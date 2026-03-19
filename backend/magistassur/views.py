@@ -195,7 +195,16 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         contrat.code_inspection = (request.data.get("code_inspection") or "").strip()
         contrat.statut = ContratPrevoyance.Statut.EN_COURS
         contrat.agent = request.user
-        contrat.save(update_fields=["num_police", "code_inspection", "statut", "agent"])
+        date_effet_raw = (request.data.get("date_effet") or "").strip()
+        if date_effet_raw:
+            from datetime import date
+            try:
+                d = date.fromisoformat(date_effet_raw)
+                contrat.date_effet = d
+                contrat.date_echeance = d.replace(year=d.year + 1)
+            except ValueError:
+                pass
+        contrat.save(update_fields=["num_police", "code_inspection", "statut", "agent", "date_effet", "date_echeance"])
         _traiter_requete_magist(contrat.client_id, request.user)
         return Response(ContratPrevoyanceSerializer(contrat).data)
 

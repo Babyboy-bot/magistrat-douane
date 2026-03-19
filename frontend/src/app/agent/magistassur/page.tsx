@@ -37,7 +37,14 @@ const STATUT_LABELS: Record<string, string> = {
   resilie: "Résilié",
 };
 
-type PoliceForm = { numPolice: string; codeInspection: string; loading: boolean };
+const MODE_LABELS: Record<string, string> = {
+  prelevement: "Prélèvement bancaire",
+  virement: "Virement bancaire",
+  cheque: "Chèque",
+  especes: "Espèces",
+};
+
+type PoliceForm = { numPolice: string; codeInspection: string; dateEffet: string; loading: boolean };
 
 export default function AgentMagistAssurPage() {
   const { isAuthenticated } = useAuthStore();
@@ -73,7 +80,7 @@ export default function AgentMagistAssurPage() {
   }, [isAuthenticated]);
 
   const getForm = (id: string): PoliceForm =>
-    policeForms[id] ?? { numPolice: "", codeInspection: "", loading: false };
+    policeForms[id] ?? { numPolice: "", codeInspection: "", dateEffet: "", loading: false };
 
   const setForm = (id: string, patch: Partial<PoliceForm>) =>
     setPoliceForms(f => ({ ...f, [id]: { ...getForm(id), ...patch } }));
@@ -128,7 +135,7 @@ export default function AgentMagistAssurPage() {
     if (!form.numPolice.trim()) { toast.error("Saisir le numéro de police"); return; }
     setForm(p.id, { loading: true });
     try {
-      await magistassurApi.assignPolicePrevoyance(p.id, form.numPolice.trim(), form.codeInspection.trim());
+      await magistassurApi.assignPolicePrevoyance(p.id, form.numPolice.trim(), form.codeInspection.trim(), form.dateEffet.trim() || undefined);
       toast.success(`N° police ${form.numPolice} assigné — contrat activé`);
       await loadPrevoyance();
     } catch (err) {
@@ -412,6 +419,7 @@ export default function AgentMagistAssurPage() {
                                 <div className="grid grid-cols-2 gap-2">
                                   <div><Label className="text-xs">N° Police *</Label><Input className="h-8 text-sm mt-1" placeholder="ex: PR-2026-001234" value={getForm(p.id).numPolice} onChange={ev => setForm(p.id, { numPolice: ev.target.value })} /></div>
                                   <div><Label className="text-xs">Code inspection</Label><Input className="h-8 text-sm mt-1" placeholder="optionnel" value={getForm(p.id).codeInspection} onChange={ev => setForm(p.id, { codeInspection: ev.target.value })} /></div>
+                                  <div className="col-span-2"><Label className="text-xs">Date d&apos;effet <span className="text-gray-400">(échéance = +1 an)</span></Label><Input type="date" className="h-8 text-sm mt-1" value={getForm(p.id).dateEffet} onChange={ev => setForm(p.id, { dateEffet: ev.target.value })} /></div>
                                 </div>
                                 <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" disabled={getForm(p.id).loading} onClick={() => handleAssignPrevoyance(p)}>
                                   {getForm(p.id).loading ? "Enregistrement..." : "✓ Valider et activer le contrat"}
@@ -463,7 +471,7 @@ export default function AgentMagistAssurPage() {
                         <div><p className="text-xs text-gray-400">Durée</p><p className="font-medium">{e.dureeAnnees} ans</p></div>
                         <div><p className="text-xs text-gray-400">1ère cotisation</p><p className="font-medium">{formatDate(e.datePremiereCotisation)}</p></div>
                         <div><p className="text-xs text-gray-400">Taux d&apos;intérêt</p><p className="font-medium">{e.tauxInteret}% / an</p></div>
-                        <div><p className="text-xs text-gray-400">Mode paiement</p><p className="font-medium">{e.modePaiement || "—"}</p></div>
+                        <div><p className="text-xs text-gray-400">Mode paiement</p><p className="font-medium">{MODE_LABELS[e.modePaiement] || e.modePaiement || "—"}</p></div>
                         <div><p className="text-xs text-gray-400">N° compte (RIB)</p><p className="font-medium font-mono text-xs">{e.numeroCompte || "—"}</p></div>
                         <div><p className="text-xs text-gray-400">Correspondants</p><p className="font-medium">{e.correspondants.length}</p></div>
                         <div><p className="text-xs text-gray-400">Bénéficiaires</p><p className="font-medium">{e.beneficiaires.length}</p></div>

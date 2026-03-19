@@ -1104,10 +1104,10 @@ export const magistassurApi = {
     return mapContratEpargne(raw);
   },
 
-  async assignPolicePrevoyance(id: string, numPolice: string, codeInspection?: string): Promise<ContratPrevoyance> {
+  async assignPolicePrevoyance(id: string, numPolice: string, codeInspection?: string, dateEffet?: string): Promise<ContratPrevoyance> {
     const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/prevoyance/${id}/assign-police/`, {
       method: "POST",
-      body: JSON.stringify({ num_police: numPolice, code_inspection: codeInspection || "" }),
+      body: JSON.stringify({ num_police: numPolice, code_inspection: codeInspection || "", date_effet: dateEffet || "" }),
     });
     return mapContratPrevoyance(raw);
   },
