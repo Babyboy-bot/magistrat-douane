@@ -303,26 +303,6 @@ export default function AgentEmissionsPage() {
             })()}
           </div>
           <div className="flex-1 min-w-[180px]">
-            <Label>Risque</Label>
-            <Select
-              value={filters.risque || "all"}
-              onValueChange={(value) =>
-                setFilters((prev) => ({ ...prev, risque: value === "all" ? "" : value }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Tous les risques" />
-              </SelectTrigger>
-              <SelectContent>
-                {RISQUE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex-1 min-w-[180px]">
             <Label>Situation</Label>
             <Select
               value={filters.situation || "all"}
