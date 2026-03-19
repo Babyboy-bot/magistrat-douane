@@ -224,7 +224,7 @@ def claim_request_view(request, pk):
         req.save()
 
     # Notifier le client
-    from notifications.services import notification_service
+    from notifications.service import notification_service
     notification_service.send_notification_to_user(
         user_id=req.client_id,
         title="Votre requête est en cours de traitement",
@@ -511,7 +511,7 @@ def export_emissions(request):
         cell.fill = header_fill
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    currency_format = "#,##0.00 \€"
+    currency_format = "#,##0 \FCFA"
     date_format = "DD/MM/YYYY"
     datetime_format = "DD/MM/YYYY HH:MM"
 
