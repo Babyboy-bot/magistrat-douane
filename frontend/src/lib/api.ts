@@ -631,12 +631,17 @@ export const emissionsApi = {
 
 // ── Mapping helpers for complex types ──
 
+function normalizeFileUrl(url: string | null | undefined): string {
+  if (!url) return "";
+  try { return new URL(url).pathname; } catch { return url; }
+}
+
 function mapDocument(d: Record<string, unknown>): Document {
   return {
     id: String(d.id),
     nom: d.nom as string,
     typeFichier: (d.type_fichier as string) ?? "",
-    fichier: (d.fichier as string) ?? "",
+    fichier: normalizeFileUrl(d.fichier as string),
     isLivrable: Boolean(d.is_livrable),
     uploadedBy: d.uploaded_by ? String(d.uploaded_by) : "",
     createdAt: (d.created_at as string) ?? "",

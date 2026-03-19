@@ -9,12 +9,8 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useClientRequests } from "@/hooks/use-api-data";
 import { REQUEST_TYPE_LABELS } from "@/lib/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
-
 function buildFileUrl(fichier: string): string {
-  if (!fichier) return "";
-  if (fichier.startsWith("http")) return fichier;
-  return `${API_BASE}${fichier.startsWith("/") ? "" : "/"}${fichier}`;
+  return fichier ?? "";
 }
 
 export default function DocumentsPage() {
