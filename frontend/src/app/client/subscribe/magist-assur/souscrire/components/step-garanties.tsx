@@ -12,9 +12,11 @@ interface Props {
   garantieFuneraires: boolean;
   assuresAssocies: AssureAssocie[];
   setAssuresAssocies: (v: AssureAssocie[]) => void;
+  situationMatrimoniale?: string;
 }
 
-export function StepGaranties({ garantieDeces, garantieFuneraires, assuresAssocies, setAssuresAssocies }: Props) {
+export function StepGaranties({ garantieDeces, garantieFuneraires, assuresAssocies, setAssuresAssocies, situationMatrimoniale }: Props) {
+  const hasConjoint = situationMatrimoniale === "marie" || situationMatrimoniale === "concubin";
   const countAssure = (lien: LienParente) => assuresAssocies.filter(a => a.lien_parente === lien).length;
   const addAssure = (lien: LienParente) => {
     if (countAssure(lien) >= MAX_ASSURES[lien]) return;
@@ -58,11 +60,11 @@ export function StepGaranties({ garantieDeces, garantieFuneraires, assuresAssoci
         <Card className="border-0 shadow-sm">
           <CardHeader>
             <CardTitle className="text-base">Assurés Associés — Frais Funéraires</CardTitle>
-            <p className="text-xs text-gray-500">Conjoint · Enfants (max 4) · Père · Mère</p>
+            <p className="text-xs text-gray-500">{hasConjoint ? "Conjoint · " : ""} Enfants (max 4) · Père · Mère</p>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap gap-2">
-              {(["conjoint", "enfant", "pere", "mere"] as LienParente[]).map(lien => {
+              {(["conjoint", "enfant", "pere", "mere"] as LienParente[]).filter(lien => lien !== "conjoint" || hasConjoint).map(lien => {
                 const count = countAssure(lien);
                 const max = MAX_ASSURES[lien];
                 const full = count >= max;

@@ -13,6 +13,7 @@ interface Props {
   benefEnfants: boolean; setBenefEnfants: (v: boolean) => void;
   autresBenef: BeneficiaireEpargne[]; setAutresBenef: (v: BeneficiaireEpargne[]) => void;
   consentementDonnees: boolean | null; setConsentementDonnees: (v: boolean) => void;
+  situationMatrimoniale?: string;
 }
 
 const emptyBenef = (): BeneficiaireEpargne => ({
@@ -20,8 +21,11 @@ const emptyBenef = (): BeneficiaireEpargne => ({
   adresse_postale: "", telephone: "", whatsapp: "", email: "", taux_repartition: "",
 });
 
-export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, benefEnfants, setBenefEnfants, autresBenef, setAutresBenef, consentementDonnees, setConsentementDonnees }: Props) {
+export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, benefEnfants, setBenefEnfants, autresBenef, setAutresBenef, consentementDonnees, setConsentementDonnees, situationMatrimoniale }: Props) {
+  const hasConjoint = situationMatrimoniale === "marie" || situationMatrimoniale === "concubin";
   const [hasAutres, setHasAutres] = useState(autresBenef.some(b => b.nom !== ""));
+  const totalTaux = autresBenef.filter(b => b.nom).reduce((s, b) => s + (Number(b.taux_repartition) || 0), 0);
+  const taux100 = !hasAutres || totalTaux === 100;
 
   const update = (i: number, field: keyof BeneficiaireEpargne, val: string) => {
     const arr = [...autresBenef];
@@ -41,10 +45,12 @@ export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, bene
         <p className="text-sm text-gray-600">Le souscripteur désigne comme bénéficiaire(s) en cas de décès de l&apos;assuré avant le terme du contrat :</p>
 
         <div className="space-y-2">
+          {hasConjoint && (
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
             <Checkbox checked={benefConjoint} onCheckedChange={c => setBenefConjoint(!!c)} id="bc" />
             <Label htmlFor="bc" className="cursor-pointer">Conjoint(e) du souscripteur non séparé(e) de corps</Label>
           </div>
+          )}
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
             <Checkbox checked={benefEnfants} onCheckedChange={c => setBenefEnfants(!!c)} id="be" />
             <Label htmlFor="be" className="cursor-pointer">Enfants nés ou à naître du souscripteur</Label>
@@ -56,6 +62,9 @@ export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, bene
           <Label htmlFor="ba" className="cursor-pointer">Autre(s) bénéficiaire(s)</Label>
         </div>
 
+        {hasAutres && !taux100 && (
+          <p className="text-xs text-orange-600 bg-orange-50 rounded px-3 py-1.5">⚠ La somme des taux de répartition des autres bénéficiaires est de <strong>{totalTaux}%</strong> — elle devrait être de 100%.</p>
+        )}
         {hasAutres && (
           <div className="space-y-3">
             {autresBenef.map((b, i) => (

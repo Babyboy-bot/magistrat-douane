@@ -30,7 +30,12 @@ export function StepIdentite({ id, setId }: Props) {
           <div><Label>Prénoms</Label><Input value={id.prenoms} onChange={e => s("prenoms", e.target.value)} /></div>
         </div>
 
-        <div><Label>Si Marié(e) — Nom de l&apos;époux / épouse</Label><Input value={id.nom_epoux} onChange={e => s("nom_epoux", e.target.value)} placeholder="Laisser vide si non applicable" /></div>
+        {(id.situation_matrimoniale === "marie" || id.situation_matrimoniale === "concubin") && (
+          <div>
+            <Label>{id.civilite === "Monsieur" ? "Nom de l'épouse" : "Nom de l'époux"}</Label>
+            <Input value={id.nom_epoux} onChange={e => s("nom_epoux", e.target.value)} />
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div><Label>Date de Naissance</Label><Input type="date" value={id.date_naissance} onChange={e => s("date_naissance", e.target.value)} /></div>

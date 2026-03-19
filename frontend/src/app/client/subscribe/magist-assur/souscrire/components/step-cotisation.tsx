@@ -9,6 +9,7 @@ interface Props { cot: CotisationState; setCot: (v: CotisationState) => void; }
 
 export function StepCotisation({ cot, setCot }: Props) {
   const s = (field: keyof CotisationState, val: string) => setCot({ ...cot, [field]: val });
+  const today = new Date().toISOString().split("T")[0];
   const montant = Number(cot.montant_cotisation) || 0;
   const total = montant + 1000;
   const periodeLabel = PERIODICITE_LABELS[cot.periodicite] || cot.periodicite;
@@ -39,8 +40,8 @@ export function StepCotisation({ cot, setCot }: Props) {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>3. Date 1ère cotisation *</Label><Input type="date" value={cot.date_premiere_cotisation} onChange={e => s("date_premiere_cotisation", e.target.value)} /></div>
-          <div><Label>Date d&apos;effet du contrat</Label><Input type="date" value={cot.date_effet} onChange={e => s("date_effet", e.target.value)} /></div>
+          <div><Label>3. Date 1ère cotisation *</Label><Input type="date" min={today} value={cot.date_premiere_cotisation} onChange={e => s("date_premiere_cotisation", e.target.value)} /></div>
+          <div><Label>Date d&apos;effet du contrat</Label><Input type="date" min={today} value={cot.date_effet} onChange={e => s("date_effet", e.target.value)} /></div>
         </div>
 
         <div>
