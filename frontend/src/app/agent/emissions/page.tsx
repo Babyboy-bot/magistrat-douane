@@ -52,6 +52,8 @@ export default function AgentEmissionsPage() {
     created: number; skipped: number; errors: string[]; total_rows: number;
   } | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
+  const [clientSearch, setClientSearch] = useState("");
+  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [aggregatedTotals, setAggregatedTotals] = useState<{ prime_nette: number; prime_ttc: number; total_paye: number; solde: number; commission: number; count: number } | null>(null);
   const searchQuery = search.trim() || undefined;
 
@@ -163,6 +165,7 @@ export default function AgentEmissionsPage() {
 
   const handleResetFilters = () => {
     setFilters({ clientId: "", risque: "", situation: "" });
+    setClientSearch("");
   };
 
   const handleViewEmission = (id: string) => {
@@ -261,24 +264,43 @@ export default function AgentEmissionsPage() {
 
       <div className="space-y-3 border rounded-lg p-4 bg-gray-50">
         <div className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px]">
+          <div className="flex-1 min-w-[200px] relative">
             <Label>Client</Label>
-            <Select
-              value={filters.clientId || "all"}
-              onValueChange={(value) => setFilters((prev) => ({ ...prev, clientId: value === "all" ? "" : value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Tous les clients" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les clients</SelectItem>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.nom} {c.prenoms}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              placeholder="Tapez le nom du client..."
+              value={clientSearch}
+              autoComplete="off"
+              onChange={(e) => {
+                setClientSearch(e.target.value);
+                setShowClientSuggestions(true);
+                if (!e.target.value) {
+                  setFilters(prev => ({ ...prev, clientId: "" }));
+                }
+              }}
+              onBlur={() => setTimeout(() => setShowClientSuggestions(false), 150)}
+            />
+            {showClientSuggestions && clientSearch.trim() && (() => {
+              const q = clientSearch.toLowerCase();
+              const suggestions = clients.filter(c =>
+                `${c.nom} ${c.prenoms}`.toLowerCase().includes(q)
+              ).slice(0, 8);
+              return suggestions.length > 0 ? (
+                <div className="absolute z-10 mt-1 w-full border rounded-md bg-white shadow-md max-h-40 overflow-auto text-sm">
+                  {suggestions.map(c => (
+                    <button type="button" key={c.id}
+                      className="w-full text-left px-3 py-2 hover:bg-gray-100"
+                      onMouseDown={() => {
+                        setClientSearch(`${c.nom} ${c.prenoms}`);
+                        setFilters(prev => ({ ...prev, clientId: c.id }));
+                        setShowClientSuggestions(false);
+                      }}
+                    >
+                      {c.nom} {c.prenoms}
+                    </button>
+                  ))}
+                </div>
+              ) : null;
+            })()}
           </div>
           <div className="flex-1 min-w-[180px]">
             <Label>Risque</Label>
@@ -325,22 +347,6 @@ export default function AgentEmissionsPage() {
           <span>{totalCount} résultat{totalCount > 1 ? "s" : ""}</span>
           <Button variant="ghost" size="sm" onClick={handleResetFilters}>
             <RefreshCw className="h-4 w-4 mr-2" /> Réinitialiser
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            disabled={isExporting || emissions.length === 0}
-          >
-            {isExporting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Export...
-              </>
-            ) : (
-              <>
-                <Download className="mr-2 h-4 w-4" /> Exporter Excel
-              </>
-            )}
           </Button>
         </div>
       </div>
