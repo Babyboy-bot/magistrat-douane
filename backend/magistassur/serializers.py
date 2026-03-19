@@ -117,6 +117,15 @@ class ContratPrevoyanceCreateSerializer(serializers.ModelSerializer):
         model = ContratPrevoyance
         fields = "__all__"
 
+    def validate(self, attrs):
+        deces = attrs.get("garantie_prevoyance_deces", False)
+        funeraires = attrs.get("garantie_frais_funeraires", False)
+        if not deces and not funeraires:
+            raise serializers.ValidationError(
+                {"garanties": "Au moins une garantie doit être sélectionnée (Décès ou Frais Funéraires)."}
+            )
+        return attrs
+
     def create(self, validated_data):
         assures_data = validated_data.pop("assures_associes", [])
         beneficiaires_data = validated_data.pop("beneficiaires", [])

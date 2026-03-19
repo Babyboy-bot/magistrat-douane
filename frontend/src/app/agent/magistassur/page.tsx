@@ -104,9 +104,15 @@ export default function AgentMagistAssurPage() {
   const setForm = (id: string, patch: Partial<PoliceForm>) =>
     setPoliceForms(f => ({ ...f, [id]: { ...getForm(id), ...patch } }));
 
+  const STATUTS_DESTRUCTIFS = ["resilie", "rachete"];
+
   const handleChangeStatutEpargne = async (e: ContratEpargne) => {
     const newStatut = pendingStatuts[e.id];
     if (!newStatut || newStatut === e.statut) return;
+    if (STATUTS_DESTRUCTIFS.includes(newStatut)) {
+      const label = STATUT_LABELS[newStatut] || newStatut;
+      if (!window.confirm(`Confirmer le passage en "${label}" pour le contrat de ${e.clientNom} ? Cette action est irréversible.`)) return;
+    }
     setStatutLoading(e.id);
     try {
       await magistassurApi.changeStatutEpargne(e.id, newStatut);
@@ -122,6 +128,10 @@ export default function AgentMagistAssurPage() {
   const handleChangeStatutPrevoyance = async (p: ContratPrevoyance) => {
     const newStatut = pendingStatuts[p.id];
     if (!newStatut || newStatut === p.statut) return;
+    if (STATUTS_DESTRUCTIFS.includes(newStatut)) {
+      const label = STATUT_LABELS[newStatut] || newStatut;
+      if (!window.confirm(`Confirmer le passage en "${label}" pour le contrat de ${p.clientNom} ? Cette action est irréversible.`)) return;
+    }
     setStatutLoading(p.id);
     try {
       await magistassurApi.changeStatutPrevoyance(p.id, newStatut);

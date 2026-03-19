@@ -117,6 +117,11 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         if nouveau_statut not in statuts_valides:
             return Response({"detail": f"Statut invalide. Valeurs acceptées : {statuts_valides}"}, status=status.HTTP_400_BAD_REQUEST)
         contrat = self.get_object()
+        if nouveau_statut == ContratEpargne.Statut.EN_COURS and not contrat.num_police:
+            return Response(
+                {"detail": "Impossible de passer en 'En cours' sans numéro de police. Utilisez 'Assigner N° police'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         contrat.statut = nouveau_statut
         contrat.save(update_fields=["statut"])
         try:
@@ -155,10 +160,19 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="cotisation")
     def ajouter_cotisation(self, request, pk=None):
         contrat = self.get_object()
+        if contrat.statut not in (ContratEpargne.Statut.EN_COURS,):
+            return Response(
+                {"detail": f"Cotisation impossible : le contrat est '{contrat.get_statut_display()}'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not contrat.num_police:
+            return Response(
+                {"detail": "Cotisation impossible : le contrat n'a pas encore de numéro de police."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         serializer = CotisationEpargneSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         cotisation = serializer.save(contrat=contrat)
-        # Mettre à jour capital constitué
         contrat.capital_constitue += cotisation.montant
         contrat.save(update_fields=["capital_constitue"])
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -241,6 +255,11 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         if nouveau_statut not in statuts_valides:
             return Response({"detail": f"Statut invalide. Valeurs acceptées : {statuts_valides}"}, status=status.HTTP_400_BAD_REQUEST)
         contrat = self.get_object()
+        if nouveau_statut == ContratPrevoyance.Statut.EN_COURS and not contrat.num_police:
+            return Response(
+                {"detail": "Impossible de passer en 'En cours' sans numéro de police. Utilisez 'Assigner N° police'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         contrat.statut = nouveau_statut
         contrat.save(update_fields=["statut"])
         try:

@@ -103,13 +103,15 @@ export default function SouscrirePage() {
       magistassurApi.listEpargne(),
       magistassurApi.listPrevoyance(),
     ]).then(([epargnes, prevoyances]) => {
-      const hasE = epargnes.length > 0;
-      const hasP = prevoyances.length > 0;
+      const activeE = epargnes.filter(e => !!e.numPolice);
+      const activeP = prevoyances.filter(p => !!p.numPolice);
+      const hasE = activeE.length > 0;
+      const hasP = activeP.length > 0;
       if (hasE && hasP) {
         setSubscribeMode("already_complete");
       } else if (hasE) {
         setSubscribeMode("prevoyance_only");
-        const e = epargnes[0];
+        const e = activeE[0];
         setCot({
           duree_annees: String(e.dureeAnnees),
           periodicite: e.periodicite,
@@ -190,14 +192,16 @@ export default function SouscrirePage() {
         if (d.assureIdem !== undefined) setAssureIdem(d.assureIdem);
         if (d.assure) setAssure(d.assure);
         if (d.cot) setCot(d.cot);
-        if (d.benefConjoint_e !== undefined) setBenefConjoint_e(d.benefConjoint_e);
+        const sitMat = d.id?.situation_matrimoniale;
+        const hasConjointSit = sitMat === "marie" || sitMat === "concubin";
+        if (d.benefConjoint_e !== undefined) setBenefConjoint_e(hasConjointSit ? d.benefConjoint_e : false);
         if (d.benefEnfants_e !== undefined) setBenefEnfants_e(d.benefEnfants_e);
         if (d.autresBenef_e) setAutresBenef_e(d.autresBenef_e);
         if (d.consentementDonnees !== undefined) setConsentementDonnees(d.consentementDonnees);
         if (d.garantieDeces !== undefined) setGarantieDeces(d.garantieDeces);
         if (d.garantieFuneraires !== undefined) setGarantieFuneraires(d.garantieFuneraires);
-        if (d.assuresAssocies) setAssuresAssocies(d.assuresAssocies);
-        if (d.benefConjoint_p !== undefined) setBenefConjoint_p(d.benefConjoint_p);
+        if (d.assuresAssocies) setAssuresAssocies(hasConjointSit ? d.assuresAssocies : d.assuresAssocies.filter((a: {lien_parente: string}) => a.lien_parente !== "conjoint"));
+        if (d.benefConjoint_p !== undefined) setBenefConjoint_p(hasConjointSit ? d.benefConjoint_p : false);
         if (d.benefEnfants_p !== undefined) setBenefEnfants_p(d.benefEnfants_p);
         if (d.autresBenef_p) setAutresBenef_p(d.autresBenef_p);
         if (d.q) setQ(d.q);
