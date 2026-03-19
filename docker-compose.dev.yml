@@ -77,6 +77,7 @@ services:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_BASE: ""
+      BACKEND_URL: "http://backend:8000"
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
     command: sh -c "npm install && npm run dev"

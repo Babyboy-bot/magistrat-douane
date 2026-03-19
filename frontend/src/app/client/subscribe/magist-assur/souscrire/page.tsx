@@ -94,6 +94,38 @@ export default function SouscrirePage() {
   const [showEncadre, setShowEncadre] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
 
+  type SubscribeMode = "loading" | "full" | "prevoyance_only" | "already_complete";
+  const [subscribeMode, setSubscribeMode] = useState<SubscribeMode>("loading");
+
+  useEffect(() => {
+    if (!user) return;
+    Promise.all([
+      magistassurApi.listEpargne(),
+      magistassurApi.listPrevoyance(),
+    ]).then(([epargnes, prevoyances]) => {
+      const hasE = epargnes.length > 0;
+      const hasP = prevoyances.length > 0;
+      if (hasE && hasP) {
+        setSubscribeMode("already_complete");
+      } else if (hasE) {
+        setSubscribeMode("prevoyance_only");
+        const e = epargnes[0];
+        setCot({
+          duree_annees: String(e.dureeAnnees),
+          periodicite: e.periodicite,
+          date_premiere_cotisation: e.datePremiereCotisation || "",
+          date_effet: e.dateEffet || "",
+          montant_cotisation: String(e.montantCotisation),
+          mode_paiement: e.modePaiement || "prelevement",
+          numero_compte: e.numeroCompte || "",
+        });
+      } else {
+        setSubscribeMode("full");
+      }
+    }).catch(() => setSubscribeMode("full"));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   /* ── État Épargne ── */
   const [id, setId] = useState<IdentiteState>(emptyId());
   const [corresp1, setCorresp1] = useState<CorrespondantState>(emptyCorresp(1));
@@ -120,18 +152,30 @@ export default function SouscrirePage() {
 
   /* ── Steps dynamiques ── */
   const steps = useMemo(() => {
+    if (subscribeMode === "prevoyance_only") {
+      const s = ["Options Prévoyance"];
+      if (garantieDeces || garantieFuneraires) s.push(...STEP_LABELS_PREV);
+      s.push("Récapitulatif");
+      return s;
+    }
     const s = [...STEP_LABELS_FIXED];
     if (garantieDeces || garantieFuneraires) s.push(...STEP_LABELS_PREV);
     s.push("Récapitulatif");
     return s;
-  }, [garantieDeces, garantieFuneraires]);
+  }, [subscribeMode, garantieDeces, garantieFuneraires]);
 
   const stepId = useMemo(() => {
+    if (subscribeMode === "prevoyance_only") {
+      const ids = ["options"];
+      if (garantieDeces || garantieFuneraires) ids.push("garanties", "benef-prev", "questionnaire");
+      ids.push("recap");
+      return ids[step] || "recap";
+    }
     const ids = ["identite", "correspondants", "assure", "cotisation", "benef-epargne", "options"];
     if (garantieDeces || garantieFuneraires) ids.push("garanties", "benef-prev", "questionnaire");
     ids.push("recap");
     return ids[step] || "recap";
-  }, [step, garantieDeces, garantieFuneraires]);
+  }, [step, subscribeMode, garantieDeces, garantieFuneraires]);
 
   /* ── Brouillon ── */
   useEffect(() => {
@@ -195,10 +239,14 @@ export default function SouscrirePage() {
   /* ── Soumission ── */
   const handleSubmit = async () => {
     if (!user) return;
+    if (subscribeMode === "prevoyance_only" && !garantieDeces && !garantieFuneraires) {
+      toast.error("Sélectionnez au moins une garantie prévoyance avant de soumettre");
+      return;
+    }
     setLoading(true);
     try {
       const montant = Number(cot.montant_cotisation) || 0;
-      await magistassurApi.createEpargne({
+      if (subscribeMode !== "prevoyance_only") await magistassurApi.createEpargne({
         client: user.id, ...id,
         date_naissance: id.date_naissance || null,
         validite_piece: id.validite_piece || null,
@@ -222,37 +270,39 @@ export default function SouscrirePage() {
       });
 
       if (garantieDeces || garantieFuneraires) {
-        await magistassurApi.createPrevoyance({
-          client: user.id, ...id,
-          date_naissance: id.date_naissance || null,
-          validite_piece: id.validite_piece || null,
-          corresp_nom: corresp1.nom, corresp_prenom: corresp1.prenom,
-          corresp_domicile: corresp1.domicile, corresp_adresse_postale: corresp1.adresse_postale,
-          corresp_telephone: corresp1.telephone, corresp_email: corresp1.email,
-          corresp_whatsapp: corresp1.whatsapp, corresp_facebook: corresp1.facebook,
-          corresp_linkedin: corresp1.linkedin, corresp_autres_reseaux: corresp1.autres_reseaux,
-          garantie_prevoyance_deces: garantieDeces,
-          garantie_frais_funeraires: garantieFuneraires,
-          assures_associes: assuresAssocies.map(a => ({ ...a, date_naissance: a.date_naissance || null, montant_indemnite: ({ conjoint: 1_000_000, enfant: 500_000, pere: 750_000, mere: 750_000 })[a.lien_parente] })),
-          beneficiaires: [
-            ...(benefConjoint_p ? [{ conjoint_corps: true, enfants_nes: false, nom: "", taux_repartition: 0, telephone: "", en_qualite_de: "Conjoint(e)" }] : []),
-            ...(benefEnfants_p ? [{ conjoint_corps: false, enfants_nes: true, nom: "", taux_repartition: 0, telephone: "", en_qualite_de: "Enfants nés ou à naître" }] : []),
-            ...autresBenef_p.filter(b => b.nom).map(b => ({ ...b, conjoint_corps: false, enfants_nes: false, taux_repartition: Number(b.taux_repartition) || 0 })),
-          ],
-          questionnaire_medical: {
-            taille_cm: q.taille_cm ? Number(q.taille_cm) : null,
-            poids_kg: q.poids_kg ? Number(q.poids_kg) : null,
-            tension_arterielle: q.tension_arterielle, fumeur: q.fumeur,
-            cigarettes_par_jour: q.cigarettes_par_jour ? Number(q.cigarettes_par_jour) : null,
-            alcool: q.alcool, distractions: q.distractions, sport: q.sport, sport_titre: q.sport_titre,
-            invalidite: q.invalidite, invalidite_nature: q.invalidite_nature, invalidite_date: q.invalidite_date || null, antecedents,
-          },
-        });
+          await magistassurApi.createPrevoyance({
+            client: user.id, ...id,
+            date_naissance: id.date_naissance || null,
+            validite_piece: id.validite_piece || null,
+            corresp_nom: corresp1.nom, corresp_prenom: corresp1.prenom,
+            corresp_domicile: corresp1.domicile, corresp_adresse_postale: corresp1.adresse_postale,
+            corresp_telephone: corresp1.telephone, corresp_email: corresp1.email,
+            corresp_whatsapp: corresp1.whatsapp, corresp_facebook: corresp1.facebook,
+            corresp_linkedin: corresp1.linkedin, corresp_autres_reseaux: corresp1.autres_reseaux,
+            garantie_prevoyance_deces: garantieDeces,
+            garantie_frais_funeraires: garantieFuneraires,
+            assures_associes: assuresAssocies.map(a => ({ ...a, date_naissance: a.date_naissance || null, montant_indemnite: ({ conjoint: 1_000_000, enfant: 500_000, pere: 750_000, mere: 750_000 })[a.lien_parente] })),
+            beneficiaires: [
+              ...(benefConjoint_p ? [{ conjoint_corps: true, enfants_nes: false, nom: "", taux_repartition: 0, telephone: "", en_qualite_de: "Conjoint(e)" }] : []),
+              ...(benefEnfants_p ? [{ conjoint_corps: false, enfants_nes: true, nom: "", taux_repartition: 0, telephone: "", en_qualite_de: "Enfants nés ou à naître" }] : []),
+              ...autresBenef_p.filter(b => b.nom).map(b => ({ ...b, conjoint_corps: false, enfants_nes: false, taux_repartition: Number(b.taux_repartition) || 0 })),
+            ],
+            questionnaire_medical: {
+              taille_cm: q.taille_cm ? Number(q.taille_cm) : null,
+              poids_kg: q.poids_kg ? Number(q.poids_kg) : null,
+              tension_arterielle: q.tension_arterielle, fumeur: q.fumeur,
+              cigarettes_par_jour: q.cigarettes_par_jour ? Number(q.cigarettes_par_jour) : null,
+              alcool: q.alcool, distractions: q.distractions, sport: q.sport, sport_titre: q.sport_titre,
+              invalidite: q.invalidite, invalidite_nature: q.invalidite_nature, invalidite_date: q.invalidite_date || null, antecedents,
+            },
+          });
       }
 
       // Notif agents — non bloquant : si ça échoue, les contrats existent déjà
       try {
-        const produits = ["Épargne", ...(garantieDeces ? ["Prévoyance Décès"] : []), ...(garantieFuneraires ? ["Frais Funéraires"] : [])];
+        const produits = subscribeMode === "prevoyance_only"
+          ? [...(garantieDeces ? ["Prévoyance Décès"] : []), ...(garantieFuneraires ? ["Frais Funéraires"] : [])]
+          : ["Épargne", ...(garantieDeces ? ["Prévoyance Décès"] : []), ...(garantieFuneraires ? ["Frais Funéraires"] : [])];
         await requestsApi.create("souscription_magist", {
           produits,
           montant_cotisation: Number(cot.montant_cotisation),
@@ -264,7 +314,9 @@ export default function SouscrirePage() {
       }
 
       localStorage.removeItem(DRAFT_KEY);
-      const msg = (garantieDeces || garantieFuneraires) ? "MAGIST'ASSUR ÉPARGNE + PRÉVOYANCE soumis avec succès !" : "MAGIST'ASSUR ÉPARGNE soumis avec succès !";
+      const msg = subscribeMode === "prevoyance_only"
+        ? "Prévoyance ajoutée avec succès à votre contrat !"
+        : (garantieDeces || garantieFuneraires) ? "MAGIST'ASSUR ÉPARGNE + PRÉVOYANCE soumis avec succès !" : "MAGIST'ASSUR ÉPARGNE soumis avec succès !";
       toast.success(msg);
       router.push("/client/dashboard");
     } catch (err) {
@@ -292,8 +344,80 @@ export default function SouscrirePage() {
 
   if (!isAllowed) return null;
 
+  if (subscribeMode === "loading") {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
+      </div>
+    );
+  }
+
+  if (subscribeMode === "already_complete") {
+    return (
+      <div className="max-w-2xl mx-auto space-y-5 pb-10">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-4 w-4" /></Button>
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Shield className="h-5 w-5 text-amber-600" />MAGIST&apos;ASSUR</h1>
+        </div>
+        <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-2xl p-6 text-white text-center">
+          <CheckCircle className="h-14 w-14 mx-auto mb-3" />
+          <p className="text-xl font-bold">Vous êtes déjà couvert !</p>
+          <p className="text-sm opacity-80 mt-2">Vous disposez déjà des 3 produits MAGIST&apos;ASSUR : Épargne, Prévoyance Décès et Frais Funéraires.</p>
+        </div>
+        <Button variant="outline" className="w-full" onClick={() => router.push("/client/dashboard")}>
+          Retour au tableau de bord
+        </Button>
+      </div>
+    );
+  }
+
   /* ── Écran d'introduction ── */
   if (showIntro) {
+    if (subscribeMode === "prevoyance_only") {
+      return (
+        <div className="max-w-2xl mx-auto space-y-5 pb-10">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-4 w-4" /></Button>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Shield className="h-5 w-5 text-amber-600" />MAGIST&apos;ASSUR</h1>
+              <p className="text-xs text-gray-500">Ajout de Prévoyance — NSIA Vie Assurances</p>
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-amber-600 to-amber-800 rounded-2xl p-5 text-white">
+            <p className="text-sm opacity-80">Vous avez déjà un contrat Épargne actif.</p>
+            <p className="text-xl font-bold mt-0.5">Ajoutez la Prévoyance</p>
+            <p className="text-sm opacity-75 mt-2">Complétez votre couverture en ajoutant une ou deux garanties prévoyance.</p>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+            <p className="font-semibold mb-1">Ce formulaire ne modifie pas votre Épargne.</p>
+            <p>Seules les étapes Prévoyance vous seront présentées. Votre contrat Épargne reste inchangé.</p>
+          </div>
+          <div className="space-y-3">
+            <div className="rounded-xl border-2 border-amber-100 bg-white p-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0"><Shield className="h-5 w-5 text-amber-500" /></div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2"><span className="font-bold text-gray-900">PRÉVOYANCE Décès</span><span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">Optionnel</span></div>
+                  <p className="text-sm text-gray-500 mt-1">45 000 FCFA/an · Capital 10 000 000 FCFA</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl border-2 border-amber-100 bg-white p-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0"><Heart className="h-5 w-5 text-amber-500" /></div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2"><span className="font-bold text-gray-900">FRAIS Funéraires</span><span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">Optionnel</span></div>
+                  <p className="text-sm text-gray-500 mt-1">58 000 FCFA/an · Magistrat + Famille couverts</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <Button onClick={() => setShowIntro(false)} className="w-full bg-amber-600 hover:bg-amber-700 text-white h-12 text-base font-semibold rounded-xl">
+            Ajouter la Prévoyance <ArrowRight className="h-5 w-5 ml-2" />
+          </Button>
+        </div>
+      );
+    }
     return (
       <div className="max-w-2xl mx-auto space-y-5 pb-10">
         {/* En-tête */}
