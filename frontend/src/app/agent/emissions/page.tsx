@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileSpreadsheet, Search, Download, RefreshCw, Loader2, Upload } from "lucide-react";
+import { FileSpreadsheet, Search, Download, RefreshCw, Loader2, Upload, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEmissions, useUsers } from "@/hooks/use-api-data";
-import { compagniesApi, emissionsApi } from "@/lib/api";
+import { emissionsApi } from "@/lib/api";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { RISQUES } from "@/lib/types";
 import { EmissionFormDialog } from "./components/emission-form-dialog";
 import { EmissionTable } from "./components/emission-table";
@@ -29,9 +30,9 @@ const SITUATION_OPTIONS = [
   { label: "Modification", value: "Modification" },
 ];
 
-const buildQueryString = (filters: { compagnie: string; risque: string; situation: string }) => {
+const buildQueryString = (filters: { clientId: string; risque: string; situation: string }) => {
   const params = new URLSearchParams();
-  if (filters.compagnie) params.set("compagnie", filters.compagnie);
+  if (filters.clientId) params.set("client", filters.clientId);
   if (filters.risque) params.set("risque", filters.risque);
   if (filters.situation) params.set("situation", filters.situation);
   return params.toString();
@@ -44,16 +45,13 @@ export default function AgentEmissionsPage() {
   const [search, setSearch] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [paymentDialogId, setPaymentDialogId] = useState<string | null>(null);
-  const [filters, setFilters] = useState({ compagnie: "", risque: "", situation: "" });
+  const [filters, setFilters] = useState({ clientId: "", risque: "", situation: "" });
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<{
     created: number; skipped: number; errors: string[]; total_rows: number;
   } | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
-  const [compagnieSuggestions, setCompagnieSuggestions] = useState<string[]>([]);
-  const [compagnieLoading, setCompagnieLoading] = useState(false);
-  const [compagnieError, setCompagnieError] = useState<string | null>(null);
   const [aggregatedTotals, setAggregatedTotals] = useState<{ prime_nette: number; prime_ttc: number; total_paye: number; solde: number; commission: number; count: number } | null>(null);
   const searchQuery = search.trim() || undefined;
 
@@ -66,7 +64,7 @@ export default function AgentEmissionsPage() {
     page,
     pageSize: PAGE_SIZE,
     search: searchQuery,
-    compagnie: filters.compagnie || undefined,
+    clientId: filters.clientId || undefined,
     risque: filters.risque || undefined,
     situation: filters.situation || undefined,
   });
@@ -76,7 +74,7 @@ export default function AgentEmissionsPage() {
     try {
       const t = await emissionsApi.totals({
         search: searchQuery,
-        compagnie: filters.compagnie || undefined,
+        clientId: filters.clientId || undefined,
         risque: filters.risque || undefined,
         situation: filters.situation || undefined,
       });
@@ -84,7 +82,7 @@ export default function AgentEmissionsPage() {
     } catch {
       setAggregatedTotals(null);
     }
-  }, [searchQuery, filters.compagnie, filters.risque, filters.situation]);
+  }, [searchQuery, filters.clientId, filters.risque, filters.situation]);
 
   useEffect(() => { fetchTotals(); }, [fetchTotals]);
 
@@ -161,33 +159,10 @@ export default function AgentEmissionsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [filters.compagnie, filters.risque, filters.situation]);
-
-  useEffect(() => {
-    const controller = setTimeout(async () => {
-      if (!filters.compagnie) {
-        setCompagnieSuggestions([]);
-        setCompagnieError(null);
-        return;
-      }
-      setCompagnieLoading(true);
-      setCompagnieError(null);
-      try {
-        const results = await compagniesApi.search(filters.compagnie);
-        setCompagnieSuggestions(results);
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Erreur lors de la recherche";
-        setCompagnieError(message);
-      } finally {
-        setCompagnieLoading(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(controller);
-  }, [filters.compagnie]);
+  }, [filters.clientId, filters.risque, filters.situation]);
 
   const handleResetFilters = () => {
-    setFilters({ compagnie: "", risque: "", situation: "" });
+    setFilters({ clientId: "", risque: "", situation: "" });
   };
 
   const handleViewEmission = (id: string) => {
@@ -211,7 +186,7 @@ export default function AgentEmissionsPage() {
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Rechercher..."
+              placeholder="Rechercher police, immat..."
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
@@ -227,23 +202,29 @@ export default function AgentEmissionsPage() {
             className="hidden"
             onChange={handleImportFile}
           />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownloadTemplate}
-            title="Télécharger le modèle CSV"
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Modèle CSV
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleImportClick}
-            disabled={isImporting}
-          >
-            {isImporting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
-            Import
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={isImporting || isExporting}>
+                {(isImporting || isExporting) ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+                Import / Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleImportClick}>
+                <Upload className="h-4 w-4 mr-2" /> Importer un fichier
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDownloadTemplate}>
+                <Download className="h-4 w-4 mr-2" /> Télécharger le modèle CSV
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => {
+                const qs = buildQueryString(filters);
+                emissionsApi.export(qs);
+              }}>
+                <Download className="h-4 w-4 mr-2" /> Exporter en Excel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={() => setShowAddDialog(true)} className="bg-primary text-white">
             Nouvelle émission
           </Button>
@@ -281,33 +262,23 @@ export default function AgentEmissionsPage() {
       <div className="space-y-3 border rounded-lg p-4 bg-gray-50">
         <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-[200px]">
-            <Label htmlFor="compagnie">Compagnie</Label>
-            <Input
-              id="compagnie"
-              placeholder="Tapez le nom de la compagnie"
-              value={filters.compagnie}
-              onChange={(event) => setFilters((prev) => ({ ...prev, compagnie: event.target.value }))}
-              autoComplete="off"
-            />
-            {compagnieLoading && <p className="text-xs text-gray-500 mt-1">Recherche en cours...</p>}
-            {compagnieError && <p className="text-xs text-red-500 mt-1">{compagnieError}</p>}
-            {!compagnieLoading && compagnieSuggestions.length > 0 && (
-              <div className="mt-1 border rounded-md bg-white max-h-32 overflow-auto text-sm">
-                {compagnieSuggestions.map((suggestion) => (
-                  <button
-                    type="button"
-                    key={suggestion}
-                    className="w-full text-left px-3 py-1 hover:bg-gray-100"
-                    onClick={() => {
-                      setFilters((prev) => ({ ...prev, compagnie: suggestion }));
-                      setCompagnieSuggestions([]);
-                    }}
-                  >
-                    {suggestion}
-                  </button>
+            <Label>Client</Label>
+            <Select
+              value={filters.clientId || "all"}
+              onValueChange={(value) => setFilters((prev) => ({ ...prev, clientId: value === "all" ? "" : value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Tous les clients" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les clients</SelectItem>
+                {clients.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.nom} {c.prenoms}
+                  </SelectItem>
                 ))}
-              </div>
-            )}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex-1 min-w-[180px]">
             <Label>Risque</Label>
