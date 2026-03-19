@@ -321,7 +321,7 @@ def _pdf_section(elements, text, styles):
     from reportlab.platypus import Paragraph, Spacer
     from reportlab.lib.units import mm
     elements.append(Spacer(1, 4 * mm))
-    elements.append(Paragraph(text, styles["section"]))
+    elements.append(Paragraph(text, styles["ma_section"]))
     elements.append(Spacer(1, 2 * mm))
 
 
@@ -354,7 +354,7 @@ def _build_pdf_styles():
 
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(
-        name="title",
+        name="ma_title",
         fontName="Helvetica-Bold",
         fontSize=16,
         textColor=colors.Color(0.12, 0.23, 0.37),
@@ -362,7 +362,7 @@ def _build_pdf_styles():
         spaceAfter=4,
     ))
     styles.add(ParagraphStyle(
-        name="subtitle",
+        name="ma_subtitle",
         fontName="Helvetica",
         fontSize=10,
         textColor=colors.grey,
@@ -370,7 +370,7 @@ def _build_pdf_styles():
         spaceAfter=8,
     ))
     styles.add(ParagraphStyle(
-        name="section",
+        name="ma_section",
         fontName="Helvetica-Bold",
         fontSize=10,
         textColor=colors.white,
@@ -400,11 +400,11 @@ def export_epargne_pdf(contrat):
     styles = _build_pdf_styles()
     elements = []
 
-    elements.append(Paragraph("MAGIST'ASSUR — Contrat Épargne", styles["title"]))
+    elements.append(Paragraph("MAGIST'ASSUR — Contrat Épargne", styles["ma_title"]))
     elements.append(Paragraph(
         f"N° Police : <b>{contrat.num_police or 'En attente'}</b>   |   "
         f"Exporté le {date.today().strftime('%d/%m/%Y')}",
-        styles["subtitle"]
+        styles["ma_subtitle"]
     ))
     elements.append(HRFlowable(width="100%", thickness=1, color=colors.Color(0.18, 0.46, 0.71)))
     elements.append(Spacer(1, 4 * mm))
@@ -497,11 +497,11 @@ def export_prevoyance_pdf(contrat):
     styles = _build_pdf_styles()
     elements = []
 
-    elements.append(Paragraph("MAGIST'ASSUR — Contrat Prévoyance", styles["title"]))
+    elements.append(Paragraph("MAGIST'ASSUR — Contrat Prévoyance", styles["ma_title"]))
     elements.append(Paragraph(
         f"N° Police : <b>{contrat.num_police or 'En attente'}</b>   |   "
         f"Exporté le {date.today().strftime('%d/%m/%Y')}",
-        styles["subtitle"]
+        styles["ma_subtitle"]
     ))
     elements.append(HRFlowable(width="100%", thickness=1, color=colors.Color(0.18, 0.46, 0.71)))
     elements.append(Spacer(1, 4 * mm))
