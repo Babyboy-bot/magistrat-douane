@@ -1016,6 +1016,11 @@ function mapContratPrevoyance(r: Record<string, unknown>): ContratPrevoyance {
     telephone: (r.telephone as string) || undefined,
     emailPersonnel: (r.email_personnel as string) || undefined,
     adressePostale: (r.adresse_postale as string) || undefined,
+    correspNom: (r.corresp_nom as string) || undefined,
+    correspPrenom: (r.corresp_prenom as string) || undefined,
+    correspTelephone: (r.corresp_telephone as string) || undefined,
+    correspEmail: (r.corresp_email as string) || undefined,
+    correspWhatsapp: (r.corresp_whatsapp as string) || undefined,
   };
 }
 

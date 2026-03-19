@@ -241,13 +241,18 @@ export default function SouscrirePage() {
         });
       }
 
-      const produits = ["Épargne", ...(garantieDeces ? ["Prévoyance Décès"] : []), ...(garantieFuneraires ? ["Frais Funéraires"] : [])];
-      await requestsApi.create("souscription_magist", {
-        produits,
-        montant_cotisation: Number(cot.montant_cotisation),
-        periodicite: cot.periodicite,
-        duree_annees: Number(cot.duree_annees),
-      });
+      // Notif agents — non bloquant : si ça échoue, les contrats existent déjà
+      try {
+        const produits = ["Épargne", ...(garantieDeces ? ["Prévoyance Décès"] : []), ...(garantieFuneraires ? ["Frais Funéraires"] : [])];
+        await requestsApi.create("souscription_magist", {
+          produits,
+          montant_cotisation: Number(cot.montant_cotisation),
+          periodicite: cot.periodicite,
+          duree_annees: Number(cot.duree_annees),
+        });
+      } catch {
+        // Notification non critique — la souscription reste valide
+      }
 
       localStorage.removeItem(DRAFT_KEY);
       const msg = (garantieDeces || garantieFuneraires) ? "MAGIST'ASSUR ÉPARGNE + PRÉVOYANCE soumis avec succès !" : "MAGIST'ASSUR ÉPARGNE soumis avec succès !";

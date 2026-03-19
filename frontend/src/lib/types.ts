@@ -357,4 +357,10 @@ export interface ContratPrevoyance {
   telephone?: string;
   emailPersonnel?: string;
   adressePostale?: string;
+  // Correspondant Prévoyance
+  correspNom?: string;
+  correspPrenom?: string;
+  correspTelephone?: string;
+  correspEmail?: string;
+  correspWhatsapp?: string;
 }

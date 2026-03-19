@@ -582,6 +582,16 @@ export default function AgentMagistAssurPage() {
                           </div>
                         </div>
                       )}
+                      {(p.correspNom || p.correspTelephone) && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Correspondant</p>
+                          <div className="flex gap-4 text-xs bg-white rounded px-3 py-2 border">
+                            <span className="font-medium">{p.correspNom} {p.correspPrenom}</span>
+                            {p.correspTelephone && <span className="text-gray-500">{p.correspTelephone}</span>}
+                            {p.correspEmail && <span className="text-gray-500">{p.correspEmail}</span>}
+                          </div>
+                        </div>
+                      )}
                       {p.questionnaireMedical && <div className="text-xs text-green-700 bg-green-50 rounded px-2 py-1">✓ Questionnaire médical rempli</div>}
                       {!p.numPolice && (
                         <div className="bg-white rounded-lg p-3 border space-y-2">
