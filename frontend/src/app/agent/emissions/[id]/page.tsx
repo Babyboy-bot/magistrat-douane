@@ -1,83 +1,45 @@
-import { cookies } from "next/headers";
-import { notFound } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import type { Emission } from "@/lib/types";
+import { emissionsApi } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
-
-function mapEmission(data: Record<string, any>): Emission {
-  return {
-    id: String(data.id),
-    clientId: String(data.client_id ?? data.client),
-    clientNom: data.client_nom as string,
-    date: data.date as string,
-    risque: data.risque as string,
-    compagnie: data.compagnie as string,
-    numFacture: data.num_facture as string,
-    numPolice: data.num_police as string,
-    marque: data.marque as string,
-    immatriculation: data.immatriculation as string,
-    effet: data.effet as string,
-    echeance: data.echeance as string,
-    primeNette: Number(data.prime_nette),
-    primeTTC: Number(data.prime_ttc),
-    situation: data.situation,
-    paiements: Array.isArray(data.paiements)
-      ? data.paiements.map((p: Record<string, any>) => ({
-          id: String(p.id),
-          emissionId: String(p.emission_id ?? p.emission ?? data.id),
-          dateReglement: p.date_reglement as string,
-          reference: p.reference as string,
-          montantRegle: Number(p.montant_regle),
-          observations: p.observations as string | undefined,
-        }))
-      : [],
-  };
-}
-
-async function fetchEmission(id: string): Promise<Emission | null> {
-  try {
-    const cookieStore = await cookies();
-    const cookieHeader = cookieStore
-      .getAll()
-      .map((cookie: { name: string; value: string }) => `${cookie.name}=${cookie.value}`)
-      .join("; ");
-    const response = await fetch(`${API_BASE}/api/emissions/${id}/`, {
-      headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      if (response.status === 404) return null;
-      console.error("Emission detail fetch error", await response.text());
-      return null;
-    }
-    const data = await response.json();
-    return mapEmission(data);
-  } catch (error) {
-    console.error("Emission detail fetch error", error);
-    return null;
-  }
-}
-
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("fr-FR", { style: "currency", currency: "XOF", maximumFractionDigits: 0 }).format(value);
 
-interface PageProps {
-  params: { id: string };
-}
+export default function EmissionDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const [emission, setEmission] = useState<Emission | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-export default async function EmissionDetailPage({ params }: PageProps) {
-  const { id } = params;
-  const emission = await fetchEmission(id);
+  useEffect(() => {
+    if (!id) return;
+    emissionsApi.getById(id)
+      .then(setEmission)
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  }, [id]);
 
-  if (!emission) {
-    notFound();
+  if (loading) {
+    return <div className="flex items-center justify-center py-16 text-gray-400">Chargement...</div>;
   }
 
-  const totalPaid = emission.paiements.reduce((sum, paiement) => sum + paiement.montantRegle, 0);
+  if (notFound || !emission) {
+    return (
+      <div className="text-center py-16 space-y-3">
+        <p className="text-gray-500">Émission introuvable.</p>
+        <Link href="/agent/emissions" className="text-sm text-primary hover:underline">← Retour aux émissions</Link>
+      </div>
+    );
+  }
+
+  const totalPaid = emission.paiements.reduce((sum, p) => sum + p.montantRegle, 0);
   const solde = emission.primeTTC - totalPaid;
 
   return (
@@ -152,9 +114,7 @@ export default async function EmissionDetailPage({ params }: PageProps) {
                 <ul className="space-y-2 text-sm">
                   {emission.paiements.map((paiement) => (
                     <li key={paiement.id} className="flex justify-between">
-                      <span>
-                        {paiement.dateReglement} — {paiement.reference}
-                      </span>
+                      <span>{paiement.dateReglement} — {paiement.reference}</span>
                       <span className="text-green-600">{formatCurrency(paiement.montantRegle)}</span>
                     </li>
                   ))}
