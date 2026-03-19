@@ -181,7 +181,7 @@ export default function AgentRequestsPage() {
   };
 
   const handleCreateEmission = async () => {
-    if (!selectedRequest || !emissionForm.compagnie || !emissionForm.numFacture || !emissionForm.numPolice || !emissionForm.echeance || !emissionForm.primeTtc) {
+    if (!selectedRequest || !emissionForm.risque || !emissionForm.compagnie || !emissionForm.numPolice || !emissionForm.effet || !emissionForm.echeance || !emissionForm.primeNette || !emissionForm.primeTtc) {
       toast.error("Veuillez remplir tous les champs obligatoires");
       return;
     }
