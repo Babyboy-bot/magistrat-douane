@@ -6,15 +6,25 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Emission } from "@/lib/types";
 
+interface EmissionTotals {
+  prime_nette: number;
+  prime_ttc: number;
+  total_paye: number;
+  solde: number;
+  commission: number;
+  count: number;
+}
+
 interface EmissionTableProps {
   emissions: Emission[];
   formatCurrency: (value: number) => string;
   onRequestPayment: (id: string) => void;
   onViewEmission: (id: string) => void;
+  aggregatedTotals?: EmissionTotals | null;
 }
 
-export function EmissionTable({ emissions, formatCurrency, onRequestPayment, onViewEmission }: EmissionTableProps) {
-  const totals = emissions.reduce(
+export function EmissionTable({ emissions, formatCurrency, onRequestPayment, onViewEmission, aggregatedTotals }: EmissionTableProps) {
+  const pageTotals = emissions.reduce(
     (acc, emission) => {
       acc.primeNette += emission.primeNette;
       acc.ttc += emission.primeTTC;
@@ -25,6 +35,9 @@ export function EmissionTable({ emissions, formatCurrency, onRequestPayment, onV
     },
     { primeNette: 0, ttc: 0, paye: 0, solde: 0, commission: 0 }
   );
+  const totals = aggregatedTotals
+    ? { primeNette: aggregatedTotals.prime_nette, ttc: aggregatedTotals.prime_ttc, paye: aggregatedTotals.total_paye, solde: aggregatedTotals.solde, commission: aggregatedTotals.commission }
+    : pageTotals;
 
   return (
     <Card className="border-0 shadow-sm">

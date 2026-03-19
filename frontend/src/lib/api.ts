@@ -570,6 +570,22 @@ export const emissionsApi = {
     return mapEmission(raw);
   },
 
+  async totals(params?: EmissionListParams): Promise<{ prime_nette: number; prime_ttc: number; total_paye: number; solde: number; commission: number; count: number }> {
+    const query = new URLSearchParams();
+    if (params?.search) query.append("search", params.search);
+    if (params?.compagnie) query.append("compagnie", params.compagnie);
+    if (params?.risque) query.append("risque", params.risque);
+    if (params?.situation) query.append("situation", params.situation);
+    if (params?.clientId) query.append("client", params.clientId);
+    if (params?.agentId) query.append("agent", params.agentId);
+    if (params?.dateFrom) query.append("date__gte", params.dateFrom);
+    if (params?.dateTo) query.append("date__lte", params.dateTo);
+    if (params?.echeanceFrom) query.append("echeance__gte", params.echeanceFrom);
+    if (params?.echeanceTo) query.append("echeance__lte", params.echeanceTo);
+    const url = query.toString() ? `/api/emissions/totals/?${query.toString()}` : "/api/emissions/totals/";
+    return apiFetch(url);
+  },
+
   async getBalance(id: string): Promise<{ emission_id: number; prime_ttc: number; total_paye: number; solde: number }> {
     return apiFetch(`/api/emissions/${id}/balance/`);
   },

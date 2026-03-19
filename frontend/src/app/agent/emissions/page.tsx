@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileSpreadsheet, Search, Download, RefreshCw, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,7 @@ export default function AgentEmissionsPage() {
   const [compagnieSuggestions, setCompagnieSuggestions] = useState<string[]>([]);
   const [compagnieLoading, setCompagnieLoading] = useState(false);
   const [compagnieError, setCompagnieError] = useState<string | null>(null);
+  const [aggregatedTotals, setAggregatedTotals] = useState<{ prime_nette: number; prime_ttc: number; total_paye: number; solde: number; commission: number; count: number } | null>(null);
   const searchQuery = search.trim() || undefined;
 
   const {
@@ -72,6 +73,22 @@ export default function AgentEmissionsPage() {
     situation: filters.situation || undefined,
   });
   const { data: allUsers } = useUsers();
+
+  const fetchTotals = useCallback(async () => {
+    try {
+      const t = await emissionsApi.totals({
+        search: searchQuery,
+        compagnie: filters.compagnie || undefined,
+        risque: filters.risque || undefined,
+        situation: filters.situation || undefined,
+      });
+      setAggregatedTotals(t);
+    } catch {
+      setAggregatedTotals(null);
+    }
+  }, [searchQuery, filters.compagnie, filters.risque, filters.situation]);
+
+  useEffect(() => { fetchTotals(); }, [fetchTotals]);
 
   const emissions = useMemo(
     () => paginatedEmissions.results ?? [],
@@ -381,6 +398,7 @@ export default function AgentEmissionsPage() {
             formatCurrency={formatCurrency}
             onRequestPayment={(id) => setPaymentDialogId(id)}
             onViewEmission={handleViewEmission}
+            aggregatedTotals={aggregatedTotals}
           />
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-sm text-gray-500">
             <span>

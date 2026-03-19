@@ -112,6 +112,55 @@ class PaiementCreateView(generics.CreateAPIView):
         serializer.save(created_by=self.request.user)
 
 
+# ── Emission totals endpoint ──
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def emission_totals_view(request):
+    """Retourne les agrégats (sommes) pour les émissions filtrées — toutes pages confondues."""
+    from django.db.models import Q
+    user = request.user
+    qs = Emission.objects.all() if user.role in ("agent", "admin") else Emission.objects.filter(client=user)
+
+    p = request.query_params
+    if p.get("client"):
+        qs = qs.filter(client=p["client"])
+    if p.get("agent"):
+        qs = qs.filter(agent=p["agent"])
+    if p.get("compagnie"):
+        qs = qs.filter(compagnie=p["compagnie"])
+    if p.get("risque"):
+        qs = qs.filter(risque=p["risque"])
+    if p.get("situation"):
+        qs = qs.filter(situation=p["situation"])
+    if p.get("date__gte"):
+        qs = qs.filter(date__gte=p["date__gte"])
+    if p.get("date__lte"):
+        qs = qs.filter(date__lte=p["date__lte"])
+    if p.get("echeance__gte"):
+        qs = qs.filter(echeance__gte=p["echeance__gte"])
+    if p.get("echeance__lte"):
+        qs = qs.filter(echeance__lte=p["echeance__lte"])
+    if p.get("search"):
+        s = p["search"]
+        qs = qs.filter(
+            Q(client__nom__icontains=s) | Q(client__prenoms__icontains=s) |
+            Q(num_police__icontains=s) | Q(num_facture__icontains=s) |
+            Q(immatriculation__icontains=s) | Q(marque__icontains=s) |
+            Q(compagnie__icontains=s) | Q(risque__icontains=s)
+        )
+
+    totals = qs.aggregate(
+        prime_nette=Coalesce(Sum("prime_nette"), Value(0, output_field=DecimalField())),
+        prime_ttc=Coalesce(Sum("prime_ttc"), Value(0, output_field=DecimalField())),
+        total_paye=Coalesce(Sum("paiements__montant_regle"), Value(0, output_field=DecimalField())),
+    )
+    totals["solde"] = totals["prime_ttc"] - totals["total_paye"]
+    totals["commission"] = totals["prime_ttc"] - totals["prime_nette"]
+    totals["count"] = qs.count()
+    return Response(totals)
+
+
 # ── Emission balance endpoint ──
 
 @api_view(["GET"])
