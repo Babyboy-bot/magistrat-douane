@@ -1132,6 +1132,54 @@ export const magistassurApi = {
     });
     return mapContratPrevoyance(raw);
   },
+
+  async exportEpargneExcel(id: string): Promise<void> {
+    const response = await fetch(`/api/magistassur/epargne/${id}/export-excel/`, { credentials: "include" });
+    if (!response.ok) throw new Error("Erreur export Excel");
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `epargne_${id}.xlsx`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  },
+
+  async exportEpargnePdf(id: string): Promise<void> {
+    const response = await fetch(`/api/magistassur/epargne/${id}/export-pdf/`, { credentials: "include" });
+    if (!response.ok) throw new Error("Erreur export PDF");
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `epargne_${id}.pdf`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  },
+
+  async exportPrevoyanceExcel(id: string): Promise<void> {
+    const response = await fetch(`/api/magistassur/prevoyance/${id}/export-excel/`, { credentials: "include" });
+    if (!response.ok) throw new Error("Erreur export Excel");
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `prevoyance_${id}.xlsx`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  },
+
+  async exportPrevoyancePdf(id: string): Promise<void> {
+    const response = await fetch(`/api/magistassur/prevoyance/${id}/export-pdf/`, { credentials: "include" });
+    if (!response.ok) throw new Error("Erreur export PDF");
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `prevoyance_${id}.pdf`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  },
 };
 
 // ── Dashboard API ──

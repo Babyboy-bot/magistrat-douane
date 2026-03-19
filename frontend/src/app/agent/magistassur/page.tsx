@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Shield, Search, TrendingUp, Heart, RefreshCw, ChevronDown, ChevronRight, Clock, CheckCircle2, KeyRound, Settings2 } from "lucide-react";
+import { Shield, Search, TrendingUp, Heart, RefreshCw, ChevronDown, ChevronRight, Clock, CheckCircle2, KeyRound, Settings2, FileSpreadsheet, FileDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,25 @@ export default function AgentMagistAssurPage() {
   const [policeForms, setPoliceForms] = useState<Record<string, PoliceForm>>({});
   const [pendingStatuts, setPendingStatuts] = useState<Record<string, string>>({});
   const [statutLoading, setStatutLoading] = useState<string | null>(null);
+  const [exportLoading, setExportLoading] = useState<string | null>(null);
+
+  const handleExportEpargne = async (id: string, format: "excel" | "pdf") => {
+    setExportLoading(`${id}-${format}`);
+    try {
+      if (format === "excel") await magistassurApi.exportEpargneExcel(id);
+      else await magistassurApi.exportEpargnePdf(id);
+    } catch { toast.error("Erreur lors de l'export"); }
+    finally { setExportLoading(null); }
+  };
+
+  const handleExportPrevoyance = async (id: string, format: "excel" | "pdf") => {
+    setExportLoading(`${id}-${format}`);
+    try {
+      if (format === "excel") await magistassurApi.exportPrevoyanceExcel(id);
+      else await magistassurApi.exportPrevoyancePdf(id);
+    } catch { toast.error("Erreur lors de l'export"); }
+    finally { setExportLoading(null); }
+  };
 
   const loadEpargne = async () => {
     setLoadingEpargne(true);
@@ -324,6 +343,18 @@ export default function AgentMagistAssurPage() {
                                   </div>
                                 </div>
                               )}
+                              {/* Export NSIA */}
+                              <div className="bg-blue-50 rounded-lg p-3 border border-blue-100 space-y-2">
+                                <p className="text-xs font-semibold text-blue-700 flex items-center gap-1"><FileDown className="h-3 w-3" /> Exporter pour envoi à NSIA</p>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" className="flex-1 h-8 text-xs border-green-300 text-green-700 hover:bg-green-50" disabled={exportLoading === `${e.id}-excel`} onClick={() => handleExportEpargne(e.id, "excel")}>
+                                    <FileSpreadsheet className="h-3.5 w-3.5 mr-1" />{exportLoading === `${e.id}-excel` ? "..." : "Excel"}
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="flex-1 h-8 text-xs border-red-300 text-red-700 hover:bg-red-50" disabled={exportLoading === `${e.id}-pdf`} onClick={() => handleExportEpargne(e.id, "pdf")}>
+                                    <FileDown className="h-3.5 w-3.5 mr-1" />{exportLoading === `${e.id}-pdf` ? "..." : "PDF"}
+                                  </Button>
+                                </div>
+                              </div>
                               {/* Assignation police */}
                               <div className="bg-white rounded-lg p-3 border space-y-2">
                                 <p className="text-xs font-semibold text-gray-700 flex items-center gap-1"><KeyRound className="h-3 w-3" /> Assigner le N° de police NSIA</p>
@@ -412,6 +443,18 @@ export default function AgentMagistAssurPage() {
                               {/* Questionnaire médical */}
                               <div className={`text-xs rounded px-3 py-2 ${p.questionnaireMedical ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
                                 {p.questionnaireMedical ? "✓ Questionnaire médical rempli" : "✗ Questionnaire médical non rempli — à vérifier"}
+                              </div>
+                              {/* Export NSIA */}
+                              <div className="bg-blue-50 rounded-lg p-3 border border-blue-100 space-y-2">
+                                <p className="text-xs font-semibold text-blue-700 flex items-center gap-1"><FileDown className="h-3 w-3" /> Exporter pour envoi à NSIA</p>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" className="flex-1 h-8 text-xs border-green-300 text-green-700 hover:bg-green-50" disabled={exportLoading === `${p.id}-excel`} onClick={() => handleExportPrevoyance(p.id, "excel")}>
+                                    <FileSpreadsheet className="h-3.5 w-3.5 mr-1" />{exportLoading === `${p.id}-excel` ? "..." : "Excel"}
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="flex-1 h-8 text-xs border-red-300 text-red-700 hover:bg-red-50" disabled={exportLoading === `${p.id}-pdf`} onClick={() => handleExportPrevoyance(p.id, "pdf")}>
+                                    <FileDown className="h-3.5 w-3.5 mr-1" />{exportLoading === `${p.id}-pdf` ? "..." : "PDF"}
+                                  </Button>
+                                </div>
                               </div>
                               {/* Assignation police */}
                               <div className="bg-white rounded-lg p-3 border space-y-2">
@@ -504,6 +547,17 @@ export default function AgentMagistAssurPage() {
                           </div>
                         </div>
                       )}
+                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-100 space-y-2">
+                        <p className="text-xs font-semibold text-blue-700 flex items-center gap-1"><FileDown className="h-3 w-3" /> Exporter pour envoi à NSIA</p>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="flex-1 h-8 text-xs border-green-300 text-green-700 hover:bg-green-50" disabled={exportLoading === `${e.id}-excel`} onClick={() => handleExportEpargne(e.id, "excel")}>
+                            <FileSpreadsheet className="h-3.5 w-3.5 mr-1" />{exportLoading === `${e.id}-excel` ? "..." : "Excel"}
+                          </Button>
+                          <Button size="sm" variant="outline" className="flex-1 h-8 text-xs border-red-300 text-red-700 hover:bg-red-50" disabled={exportLoading === `${e.id}-pdf`} onClick={() => handleExportEpargne(e.id, "pdf")}>
+                            <FileDown className="h-3.5 w-3.5 mr-1" />{exportLoading === `${e.id}-pdf` ? "..." : "PDF"}
+                          </Button>
+                        </div>
+                      </div>
                       {e.numPolice && (
                         <div className="bg-white rounded-lg p-3 border space-y-2">
                           <p className="text-xs font-semibold text-gray-700 flex items-center gap-1"><Settings2 className="h-3 w-3" /> Gérer le statut du contrat</p>
@@ -613,6 +667,17 @@ export default function AgentMagistAssurPage() {
                           </Button>
                         </div>
                       )}
+                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-100 space-y-2">
+                        <p className="text-xs font-semibold text-blue-700 flex items-center gap-1"><FileDown className="h-3 w-3" /> Exporter pour envoi à NSIA</p>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="flex-1 h-8 text-xs border-green-300 text-green-700 hover:bg-green-50" disabled={exportLoading === `${p.id}-excel`} onClick={() => handleExportPrevoyance(p.id, "excel")}>
+                            <FileSpreadsheet className="h-3.5 w-3.5 mr-1" />{exportLoading === `${p.id}-excel` ? "..." : "Excel"}
+                          </Button>
+                          <Button size="sm" variant="outline" className="flex-1 h-8 text-xs border-red-300 text-red-700 hover:bg-red-50" disabled={exportLoading === `${p.id}-pdf`} onClick={() => handleExportPrevoyance(p.id, "pdf")}>
+                            <FileDown className="h-3.5 w-3.5 mr-1" />{exportLoading === `${p.id}-pdf` ? "..." : "PDF"}
+                          </Button>
+                        </div>
+                      </div>
                       {p.numPolice && (
                         <div className="bg-white rounded-lg p-3 border space-y-2">
                           <p className="text-xs font-semibold text-gray-700 flex items-center gap-1"><Settings2 className="h-3 w-3" /> Gérer le statut du contrat</p>

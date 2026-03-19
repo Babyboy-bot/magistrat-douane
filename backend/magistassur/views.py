@@ -4,6 +4,10 @@ from rest_framework.permissions import IsAuthenticated, BasePermission
 from rest_framework.response import Response
 from django.db.models import Q
 from django.utils import timezone
+from .exports import (
+    export_epargne_excel, export_epargne_pdf,
+    export_prevoyance_excel, export_prevoyance_pdf,
+)
 
 
 from .models import (
@@ -130,6 +134,24 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
             pass
         return Response(ContratEpargneSerializer(contrat).data)
 
+    @action(detail=True, methods=["get"], url_path="export-excel",
+            permission_classes=[IsAuthenticated])
+    def export_excel(self, request, pk=None):
+        """Exporte le contrat épargne en Excel (NSIA)."""
+        if request.user.role not in ("agent", "admin"):
+            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
+        contrat = self.get_object()
+        return export_epargne_excel(contrat)
+
+    @action(detail=True, methods=["get"], url_path="export-pdf",
+            permission_classes=[IsAuthenticated])
+    def export_pdf(self, request, pk=None):
+        """Exporte le contrat épargne en PDF (NSIA)."""
+        if request.user.role not in ("agent", "admin"):
+            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
+        contrat = self.get_object()
+        return export_epargne_pdf(contrat)
+
     @action(detail=True, methods=["post"], url_path="cotisation")
     def ajouter_cotisation(self, request, pk=None):
         contrat = self.get_object()
@@ -235,6 +257,24 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         except Exception:
             pass
         return Response(ContratPrevoyanceSerializer(contrat).data)
+
+    @action(detail=True, methods=["get"], url_path="export-excel",
+            permission_classes=[IsAuthenticated])
+    def export_excel(self, request, pk=None):
+        """Exporte le contrat prévoyance en Excel (NSIA)."""
+        if request.user.role not in ("agent", "admin"):
+            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
+        contrat = self.get_object()
+        return export_prevoyance_excel(contrat)
+
+    @action(detail=True, methods=["get"], url_path="export-pdf",
+            permission_classes=[IsAuthenticated])
+    def export_pdf(self, request, pk=None):
+        """Exporte le contrat prévoyance en PDF (NSIA)."""
+        if request.user.role not in ("agent", "admin"):
+            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
+        contrat = self.get_object()
+        return export_prevoyance_pdf(contrat)
 
     @action(detail=True, methods=["post", "put", "patch"], url_path="questionnaire")
     def questionnaire_medical(self, request, pk=None):
