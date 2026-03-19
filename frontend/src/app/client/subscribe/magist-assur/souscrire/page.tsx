@@ -96,6 +96,7 @@ export default function SouscrirePage() {
 
   type SubscribeMode = "loading" | "full" | "prevoyance_only" | "already_complete";
   const [subscribeMode, setSubscribeMode] = useState<SubscribeMode>("loading");
+  const [activePrevoyance, setActivePrevoyance] = useState<import("@/lib/types").ContratPrevoyance | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -103,11 +104,12 @@ export default function SouscrirePage() {
       magistassurApi.listEpargne(),
       magistassurApi.listPrevoyance(),
     ]).then(([epargnes, prevoyances]) => {
-      const activeE = epargnes.filter(e => !!e.numPolice);
-      const activeP = prevoyances.filter(p => !!p.numPolice);
+      const activeE = epargnes.filter(e => !!e.numPolice && e.statut === "en_cours");
+      const activeP = prevoyances.filter(p => !!p.numPolice && p.statut === "en_cours");
       const hasE = activeE.length > 0;
       const hasP = activeP.length > 0;
       if (hasE && hasP) {
+        setActivePrevoyance(activeP[0]);
         setSubscribeMode("already_complete");
       } else if (hasE) {
         setSubscribeMode("prevoyance_only");
@@ -357,6 +359,10 @@ export default function SouscrirePage() {
   }
 
   if (subscribeMode === "already_complete") {
+    const garanties: string[] = ["Épargne"];
+    if (activePrevoyance?.garantiePrevoyanceDeces) garanties.push("Prévoyance Décès");
+    if (activePrevoyance?.garantiefraisFuneraires) garanties.push("Frais Funéraires");
+    const allThree = garanties.length === 3;
     return (
       <div className="max-w-2xl mx-auto space-y-5 pb-10">
         <div className="flex items-center gap-3">
@@ -366,11 +372,25 @@ export default function SouscrirePage() {
         <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-2xl p-6 text-white text-center">
           <CheckCircle className="h-14 w-14 mx-auto mb-3" />
           <p className="text-xl font-bold">Vous êtes déjà couvert !</p>
-          <p className="text-sm opacity-80 mt-2">Vous disposez déjà des 3 produits MAGIST&apos;ASSUR : Épargne, Prévoyance Décès et Frais Funéraires.</p>
+          <p className="text-sm opacity-80 mt-2">
+            {allThree
+              ? "Vous disposez déjà des 3 produits MAGIST\u2019ASSUR : Épargne, Prévoyance Décès et Frais Funéraires."
+              : `Vos contrats actifs\u00a0: ${garanties.join(", ")}.`
+            }
+          </p>
         </div>
-        <Button variant="outline" className="w-full" onClick={() => router.push("/client/dashboard")}>
-          Retour au tableau de bord
-        </Button>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+          <p className="font-semibold mb-1">Vous avez déjà un ou plusieurs contrats MAGIST&apos;ASSUR actifs.</p>
+          <p>Pour toute modification ou résiliation, contactez votre agent ACS. Une nouvelle souscription n&apos;est possible qu&apos;après clôture de vos contrats en cours.</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={() => router.push("/client/dashboard")}>
+            Tableau de bord
+          </Button>
+          <Button className="flex-1 bg-amber-600 hover:bg-amber-700 text-white" onClick={() => router.push("/client/history")}>
+            Voir mes requêtes
+          </Button>
+        </div>
       </div>
     );
   }
