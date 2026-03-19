@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { emissionsApi, requestsApi, dashboardApi, usersApi, auditLogsApi } from "@/lib/api";
+import { emissionsApi, requestsApi, dashboardApi, usersApi, auditLogsApi, magistassurApi } from "@/lib/api";
 import type { EmissionListParams, UserListParams } from "@/lib/api";
-import type { User, CompteStats, AuditLogEntry, PaginatedResponse, Emission } from "@/lib/types";
+import type { User, CompteStats, AuditLogEntry, PaginatedResponse, Emission, ContratEpargne, ContratPrevoyance } from "@/lib/types";
 import { useAuthStore } from "@/stores/auth-store";
 
 // ── Generic fetch hook — no mock fallback ──
@@ -206,6 +206,26 @@ export function useClientStats(clientId: string) {
   };
 
   return { stats, emissions: emissionsArray, loading };
+}
+
+// ── MAGIST'ASSUR (client) ──
+
+export function useClientEpargne(clientId?: string) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  return useApi(
+    () => magistassurApi.listEpargne(clientId ? { clientId } : {}),
+    [] as ContratEpargne[],
+    { enabled: isAuthenticated && Boolean(clientId), deps: [clientId, isAuthenticated] }
+  );
+}
+
+export function useClientPrevoyance(clientId?: string) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  return useApi(
+    () => magistassurApi.listPrevoyance(clientId ? { clientId } : {}),
+    [] as ContratPrevoyance[],
+    { enabled: isAuthenticated && Boolean(clientId), deps: [clientId, isAuthenticated] }
+  );
 }
 
 // ── Audit Logs (admin only) ──

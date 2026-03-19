@@ -15,6 +15,7 @@ class ContratEpargne(models.Model):
         RACHETÉ = "rachete", "Racheté"
         ARRIVE_TERME = "arrive_terme", "Arrivé à terme"
         SUSPENDU = "suspendu", "Suspendu"
+        RESILIE = "resilie", "Résilié"
 
     class SituationMatrimoniale(models.TextChoices):
         CELIBATAIRE = "celibataire", "Célibataire"
@@ -40,7 +41,7 @@ class ContratEpargne(models.Model):
         ACTIVITE_COMMERCIALE = "activite_commerciale", "Activité commerciale"
 
     # Identifiants
-    num_police = models.CharField("N° Police", max_length=50, unique=True, blank=True, default="")
+    num_police = models.CharField("N° Police", max_length=50, unique=True, null=True, blank=True, default=None)
     code_inspection = models.CharField("Code inspection", max_length=50, blank=True, default="")
 
     # Liens
@@ -241,7 +242,7 @@ class ContratPrevoyance(models.Model):
         AUTRE = "autre", "Autre"
 
     # Identifiants
-    num_police = models.CharField("N° Police", max_length=50, unique=True, blank=True, default="")
+    num_police = models.CharField("N° Police", max_length=50, unique=True, null=True, blank=True, default=None)
     num_client = models.CharField("N° Client", max_length=50, blank=True, default="")
     code_inspection = models.CharField("Code inspection", max_length=50, blank=True, default="")
 

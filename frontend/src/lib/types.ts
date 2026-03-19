@@ -286,6 +286,9 @@ export interface ContratEpargne {
   revenuMensuel?: number;
   origineRevenu?: string;
   whatsapp?: string;
+  telephone?: string;
+  emailPersonnel?: string;
+  adressePostale?: string;
 }
 
 export interface AssureAssocie {
@@ -351,4 +354,13 @@ export interface ContratPrevoyance {
   nni?: string;
   professionDetail?: string;
   whatsapp?: string;
+  telephone?: string;
+  emailPersonnel?: string;
+  adressePostale?: string;
+  // Correspondant Prévoyance
+  correspNom?: string;
+  correspPrenom?: string;
+  correspTelephone?: string;
+  correspEmail?: string;
+  correspWhatsapp?: string;
 }

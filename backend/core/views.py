@@ -206,25 +206,24 @@ def claim_request_view(request, pk):
     """Un agent prend en charge une requête disponible."""
     if request.user.role not in ("agent", "admin"):
         return Response({"detail": "Permission refusée"}, status=status.HTTP_403_FORBIDDEN)
+
+    from django.db import transaction
     try:
-        req = ClientRequest.objects.select_for_update().get(pk=pk)
+        with transaction.atomic():
+            req = ClientRequest.objects.select_for_update().get(pk=pk)
+            if req.status != ClientRequest.Status.EN_ATTENTE:
+                return Response(
+                    {"detail": "Cette requête est déjà prise en charge ou traitée."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            req.agent = request.user
+            req.status = ClientRequest.Status.EN_COURS
+            req.save()
     except ClientRequest.DoesNotExist:
         return Response({"detail": "Requête introuvable"}, status=status.HTTP_404_NOT_FOUND)
 
-    if req.status != ClientRequest.Status.EN_ATTENTE:
-        return Response(
-            {"detail": "Cette requête est déjà prise en charge ou traitée."},
-            status=status.HTTP_409_CONFLICT,
-        )
-
-    from django.db import transaction
-    with transaction.atomic():
-        req.agent = request.user
-        req.status = ClientRequest.Status.EN_COURS
-        req.save()
-
     # Notifier le client
-    from notifications.services import notification_service
+    from notifications.service import notification_service
     notification_service.send_notification_to_user(
         user_id=req.client_id,
         title="Votre requête est en cours de traitement",
@@ -511,7 +510,7 @@ def export_emissions(request):
         cell.fill = header_fill
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    currency_format = "#,##0.00 \€"
+    currency_format = "#,##0 \FCFA"
     date_format = "DD/MM/YYYY"
     datetime_format = "DD/MM/YYYY HH:MM"
 

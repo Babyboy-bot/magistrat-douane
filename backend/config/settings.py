@@ -168,32 +168,21 @@ REST_FRAMEWORK = {
 
 # JWT
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
-    'AUTH_HEADER_TYPES': ('Bearer',),
     'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'VERIFYING_KEY': None,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
     'JTI_CLAIM': 'jti',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
-    # Sécurité additionnelle
-    'CHECK_REVOKE_TOKEN': True,
-    'REVOKE_TOKEN_ON_REFRESH': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': True,
-    # Configuration pour production
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # Plus court pour production
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # Plus long mais limité
 }
 
 # CORS
@@ -226,8 +215,8 @@ COOKIE_HTTPONLY = True
 COOKIE_SECURE = not DEBUG
 COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
 COOKIE_PATH = '/'
-ACCESS_COOKIE_MAX_AGE = 30 * 60          # 30 min
-REFRESH_COOKIE_MAX_AGE = 24 * 60 * 60    # 1 day
+ACCESS_COOKIE_MAX_AGE = 15 * 60              # 15 min  (= ACCESS_TOKEN_LIFETIME)
+REFRESH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 jours (= REFRESH_TOKEN_LIFETIME)
 
 # Security headers
 SECURE_CONTENT_TYPE_NOSNIFF = True

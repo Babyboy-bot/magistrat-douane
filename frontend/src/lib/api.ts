@@ -85,6 +85,29 @@ const extractErrorMessage = (data: unknown): string | undefined => {
   return undefined;
 };
 
+// ── Shared refresh promise (prevents race conditions on simultaneous 401s) ──
+let _refreshPromise: Promise<boolean> | null = null;
+
+const _doRefresh = async (): Promise<boolean> => {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/token/refresh/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    _refreshPromise = null;
+  }
+};
+
+const refreshOnce = (): Promise<boolean> => {
+  if (!_refreshPromise) _refreshPromise = _doRefresh();
+  return _refreshPromise;
+};
+
 // ── Core API fetch function with automatic token refresh ──
 
 export const apiFetch = async <T = unknown>(
@@ -107,36 +130,20 @@ export const apiFetch = async <T = unknown>(
     credentials: "include",
   });
 
-  const buildApiUrl = (path: string) => `${API_BASE}${path}`;
+  const buildApiUrl = (p: string) => `${API_BASE}${p}`;
 
   // First attempt
   let response = await fetch(buildApiUrl(path), buildRequestInit());
 
   // If 401, try to refresh token once (unless skipped)
   if (!skipAuthHandling && response.status === 401 && !path.includes('/token/refresh/')) {
-    console.warn('Token expired, attempting refresh...');
-    
-    try {
-      const refreshResponse = await fetch(`${API_BASE}/api/auth/token/refresh/`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (refreshResponse.ok) {
-        response = await fetch(`${API_BASE}${path}`, buildRequestInit());
-      } else {
-        localStorage.removeItem('auth-storage');
-        window.location.href = '/login';
-        throw new Error('Session expired');
-      }
-    } catch (refreshError) {
-      console.error('Token refresh failed:', refreshError);
+    const refreshed = await refreshOnce();
+    if (refreshed) {
+      response = await fetch(buildApiUrl(path), buildRequestInit());
+    } else {
       localStorage.removeItem('auth-storage');
       window.location.href = '/login';
-      throw new Error('Session expired');
+      throw new Error('Session expirée');
     }
   }
 
@@ -254,7 +261,7 @@ export const authApi = {
   },
 
   async me(): Promise<User> {
-    const raw = await apiFetch<Record<string, unknown>>("/api/auth/me/", { skipAuthHandling: true });
+    const raw = await apiFetch<Record<string, unknown>>("/api/auth/me/");
     return mapUser(raw);
   },
 
@@ -948,6 +955,9 @@ function mapContratEpargne(r: Record<string, unknown>): ContratEpargne {
     revenuMensuel: r.revenu_mensuel ? Number(r.revenu_mensuel) : undefined,
     origineRevenu: (r.origine_revenu as string) || undefined,
     whatsapp: (r.whatsapp as string) || undefined,
+    telephone: (r.telephone as string) || undefined,
+    emailPersonnel: (r.email_personnel as string) || undefined,
+    adressePostale: (r.adresse_postale as string) || undefined,
   };
 }
 
@@ -1003,6 +1013,14 @@ function mapContratPrevoyance(r: Record<string, unknown>): ContratPrevoyance {
     nni: (r.nni as string) || undefined,
     professionDetail: (r.profession_detail as string) || undefined,
     whatsapp: (r.whatsapp as string) || undefined,
+    telephone: (r.telephone as string) || undefined,
+    emailPersonnel: (r.email_personnel as string) || undefined,
+    adressePostale: (r.adresse_postale as string) || undefined,
+    correspNom: (r.corresp_nom as string) || undefined,
+    correspPrenom: (r.corresp_prenom as string) || undefined,
+    correspTelephone: (r.corresp_telephone as string) || undefined,
+    correspEmail: (r.corresp_email as string) || undefined,
+    correspWhatsapp: (r.corresp_whatsapp as string) || undefined,
   };
 }
 
@@ -1060,6 +1078,38 @@ export const magistassurApi = {
       method: "POST",
       body: JSON.stringify(data),
     });
+  },
+
+  async changeStatutEpargne(id: string, statut: string): Promise<ContratEpargne> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/epargne/${id}/change-statut/`, {
+      method: "POST",
+      body: JSON.stringify({ statut }),
+    });
+    return mapContratEpargne(raw);
+  },
+
+  async changeStatutPrevoyance(id: string, statut: string): Promise<ContratPrevoyance> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/prevoyance/${id}/change-statut/`, {
+      method: "POST",
+      body: JSON.stringify({ statut }),
+    });
+    return mapContratPrevoyance(raw);
+  },
+
+  async assignPoliceEpargne(id: string, numPolice: string, codeInspection?: string): Promise<ContratEpargne> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/epargne/${id}/assign-police/`, {
+      method: "POST",
+      body: JSON.stringify({ num_police: numPolice, code_inspection: codeInspection || "" }),
+    });
+    return mapContratEpargne(raw);
+  },
+
+  async assignPolicePrevoyance(id: string, numPolice: string, codeInspection?: string): Promise<ContratPrevoyance> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/prevoyance/${id}/assign-police/`, {
+      method: "POST",
+      body: JSON.stringify({ num_police: numPolice, code_inspection: codeInspection || "" }),
+    });
+    return mapContratPrevoyance(raw);
   },
 };
 
