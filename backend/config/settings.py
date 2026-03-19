@@ -24,7 +24,7 @@ if not _secret:
     _secret = 'insecure-test-key-do-not-use-in-production'
 SECRET_KEY = _secret
 DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost,testserver,192.168.137.1,192.168.1.49', cast=Csv())
+ALLOWED_HOSTS = ['*'] if DEBUG else config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv())
 
 
 # Application definition
@@ -186,14 +186,13 @@ SIMPLE_JWT = {
 }
 
 # CORS
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
-    'http://192.168.137.1:3000',
-    'http://192.168.1.49:3000',
-]
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOWED_ORIGINS = [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+    ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -224,12 +223,15 @@ REFRESH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 jours (= REFRESH_TOKEN_LIFETIME)
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'DENY'
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://192.168.137.1:3000',
-    'http://192.168.1.49:3000',
-]
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default=','.join([
+        'http://localhost:3000', 'http://127.0.0.1:3000',
+        'http://localhost:8080', 'http://127.0.0.1:8080',
+        'http://192.168.137.1:8080', 'http://192.168.1.49:8080',
+    ]),
+    cast=Csv()
+)
 
 # Audit logging
 LOGGING = {
