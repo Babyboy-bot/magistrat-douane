@@ -86,7 +86,7 @@ export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, bene
                   <div><Label className="text-xs">N° de téléphone</Label><Input className="h-8 text-sm" value={b.telephone} onChange={e => update(i, "telephone", e.target.value)} /></div>
                   <div><Label className="text-xs">WhatsApp</Label><Input className="h-8 text-sm" value={b.whatsapp} onChange={e => update(i, "whatsapp", e.target.value)} /></div>
                   <div><Label className="text-xs">Email</Label><Input className="h-8 text-sm" type="email" value={b.email} onChange={e => update(i, "email", e.target.value)} /></div>
-                  <div><Label className="text-xs">Taux répartition (%)</Label><Input className="h-8 text-sm" type="number" min={0} max={100} value={b.taux_repartition} onChange={e => update(i, "taux_repartition", e.target.value)} /></div>
+                  <div><Label className="text-xs">Taux répartition (%)</Label><Input className="h-8 text-sm" type="number" min={0} max={100 - (totalTaux - (Number(b.taux_repartition) || 0))} value={b.taux_repartition} onChange={e => { const max = 100 - (totalTaux - (Number(b.taux_repartition) || 0)); update(i, "taux_repartition", String(Math.min(Number(e.target.value), max))); }} /></div>
                 </div>
               </div>
             ))}

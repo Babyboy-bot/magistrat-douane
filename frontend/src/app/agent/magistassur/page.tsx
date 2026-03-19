@@ -520,15 +520,9 @@ export default function AgentMagistAssurPage() {
                         <div><p className="text-xs text-gray-400">Bénéficiaires</p><p className="font-medium">{e.beneficiaires.length}</p></div>
                       </div>
                       {!e.numPolice && (
-                        <div className="bg-white rounded-lg p-3 border space-y-2">
-                          <p className="text-xs font-semibold text-gray-700 flex items-center gap-1"><KeyRound className="h-3 w-3" /> Assigner le N° de police NSIA</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div><Label className="text-xs">N° Police *</Label><Input className="h-8 text-sm mt-1" placeholder="ex: EP-2026-001234" value={getForm(e.id).numPolice} onChange={ev => setForm(e.id, { numPolice: ev.target.value })} /></div>
-                            <div><Label className="text-xs">Code inspection</Label><Input className="h-8 text-sm mt-1" placeholder="optionnel" value={getForm(e.id).codeInspection} onChange={ev => setForm(e.id, { codeInspection: ev.target.value })} /></div>
-                          </div>
-                          <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" disabled={getForm(e.id).loading} onClick={() => handleAssignEpargne(e)}>
-                            {getForm(e.id).loading ? "Enregistrement..." : "✓ Valider et activer le contrat"}
-                          </Button>
+                        <div className="text-xs text-orange-600 bg-orange-50 rounded px-3 py-2 flex items-center gap-2">
+                          <Clock className="h-3.5 w-3.5 shrink-0" />
+                          En attente d&apos;assignation — traiter dans l&apos;onglet <strong>En attente</strong>
                         </div>
                       )}
                       {e.cotisations.length > 0 && (
@@ -656,15 +650,9 @@ export default function AgentMagistAssurPage() {
                       )}
                       {p.questionnaireMedical && <div className="text-xs text-green-700 bg-green-50 rounded px-2 py-1">✓ Questionnaire médical rempli</div>}
                       {!p.numPolice && (
-                        <div className="bg-white rounded-lg p-3 border space-y-2">
-                          <p className="text-xs font-semibold text-gray-700 flex items-center gap-1"><KeyRound className="h-3 w-3" /> Assigner le N° de police NSIA</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div><Label className="text-xs">N° Police *</Label><Input className="h-8 text-sm mt-1" placeholder="ex: PR-2026-001234" value={getForm(p.id).numPolice} onChange={ev => setForm(p.id, { numPolice: ev.target.value })} /></div>
-                            <div><Label className="text-xs">Code inspection</Label><Input className="h-8 text-sm mt-1" placeholder="optionnel" value={getForm(p.id).codeInspection} onChange={ev => setForm(p.id, { codeInspection: ev.target.value })} /></div>
-                          </div>
-                          <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" disabled={getForm(p.id).loading} onClick={() => handleAssignPrevoyance(p)}>
-                            {getForm(p.id).loading ? "Enregistrement..." : "✓ Valider et activer le contrat"}
-                          </Button>
+                        <div className="text-xs text-orange-600 bg-orange-50 rounded px-3 py-2 flex items-center gap-2">
+                          <Clock className="h-3.5 w-3.5 shrink-0" />
+                          En attente d&apos;assignation — traiter dans l&apos;onglet <strong>En attente</strong>
                         </div>
                       )}
                       <div className="bg-blue-50 rounded-lg p-3 border border-blue-100 space-y-2">
