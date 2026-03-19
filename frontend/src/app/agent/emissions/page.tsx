@@ -9,26 +9,24 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEmissions, useUsers } from "@/hooks/use-api-data";
 import { compagniesApi, emissionsApi } from "@/lib/api";
+import { RISQUES } from "@/lib/types";
 import { EmissionFormDialog } from "./components/emission-form-dialog";
 import { EmissionTable } from "./components/emission-table";
 import { PaymentDialog } from "./components/payment-dialog";
 import { toast } from "sonner";
 
 const RISQUE_OPTIONS = [
-  { label: "Tous", value: "all" },
-  { label: "Auto", value: "auto" },
-  { label: "Habitation", value: "habitation" },
-  { label: "Santé", value: "sante" },
-  { label: "Vie", value: "vie" },
-  { label: "Pro", value: "pro" },
+  { label: "Tous les risques", value: "all" },
+  ...RISQUES.map(r => ({ label: r.nom, value: r.nom })),
 ];
 
 const SITUATION_OPTIONS = [
   { label: "Toutes", value: "all" },
-  { label: "En cours", value: "en_cours" },
-  { label: "Soldée", value: "soldee" },
-  { label: "Annulée", value: "annulee" },
-  { label: "Suspendue", value: "suspendue" },
+  { label: "Affaire nouvelle", value: "Affaire nouvelle" },
+  { label: "Incorporation", value: "Incorporation" },
+  { label: "Retrait", value: "Retrait" },
+  { label: "Renouvellement", value: "Renouvellement" },
+  { label: "Modification", value: "Modification" },
 ];
 
 const buildQueryString = (filters: { compagnie: string; risque: string; situation: string }) => {
