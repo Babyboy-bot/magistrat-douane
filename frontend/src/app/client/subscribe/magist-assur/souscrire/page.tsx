@@ -285,7 +285,7 @@ export default function SouscrirePage() {
       case "garanties":       return <StepGaranties garantieDeces={garantieDeces} garantieFuneraires={garantieFuneraires} assuresAssocies={assuresAssocies} setAssuresAssocies={setAssuresAssocies} />;
       case "benef-prev":      return <StepBeneficiairesPrev benefConjoint={benefConjoint_p} setBenefConjoint={setBenefConjoint_p} benefEnfants={benefEnfants_p} setBenefEnfants={setBenefEnfants_p} autresBenef={autresBenef_p} setAutresBenef={setAutresBenef_p} />;
       case "questionnaire":   return <StepQuestionnaire q={q} setQ={setQ} antecedents={antecedents} setAntecedents={setAntecedents} />;
-      case "recap":           return <StepRecap id={id} assureIdem={assureIdem} assure={assure} cot={cot} benefConjoint_e={benefConjoint_e} benefEnfants_e={benefEnfants_e} autresBenef_e={autresBenef_e} garantieDeces={garantieDeces} garantieFuneraires={garantieFuneraires} assuresAssocies={assuresAssocies} benefConjoint_p={benefConjoint_p} benefEnfants_p={benefEnfants_p} autresBenef_p={autresBenef_p} userName={`${user?.nom || ""} ${user?.prenoms || ""}`} />;
+      case "recap":           return <StepRecap id={id} corresp1={corresp1} corresp2={corresp2} assureIdem={assureIdem} assure={assure} cot={cot} benefConjoint_e={benefConjoint_e} benefEnfants_e={benefEnfants_e} autresBenef_e={autresBenef_e} garantieDeces={garantieDeces} garantieFuneraires={garantieFuneraires} assuresAssocies={assuresAssocies} benefConjoint_p={benefConjoint_p} benefEnfants_p={benefEnfants_p} autresBenef_p={autresBenef_p} userName={`${user?.nom || ""} ${user?.prenoms || ""}`} />;
       default: return null;
     }
   };
