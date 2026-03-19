@@ -91,6 +91,19 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default='127.0.0.1'),
         'PORT': config('DB_PORT', default='5432'),
+        'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
+        'OPTIONS': {
+            'connect_timeout': 10,
+        },
+    }
+}
+
+# Cache
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'acs-cache',
+        'TIMEOUT': 60,
     }
 }
 
@@ -248,9 +261,11 @@ LOGGING = {
             'formatter': 'audit',
         },
         'audit_file': {
-            'class': 'logging.FileHandler',
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': BASE_DIR / 'audit.log',
             'formatter': 'audit',
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 5,
         },
     },
     'loggers': {

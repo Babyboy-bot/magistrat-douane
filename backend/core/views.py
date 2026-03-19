@@ -88,9 +88,10 @@ class EmissionListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        qs = Emission.objects.select_related("client", "agent").prefetch_related("paiements")
         if user.role in ("agent", "admin"):
-            return Emission.objects.all()
-        return Emission.objects.filter(client=user)
+            return qs
+        return qs.filter(client=user)
 
     def perform_create(self, serializer):
         serializer.save(agent=self.request.user)
@@ -102,9 +103,10 @@ class EmissionDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        qs = Emission.objects.select_related("client", "agent").prefetch_related("paiements")
         if user.role in ("agent", "admin"):
-            return Emission.objects.all()
-        return Emission.objects.filter(client=user)
+            return qs
+        return qs.filter(client=user)
 
     def _check_write_permission(self):
         if self.request.user.role not in ("agent", "admin"):
@@ -214,10 +216,11 @@ class ClientRequestListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        qs = ClientRequest.objects.select_related("client", "agent").prefetch_related("documents")
         if user.role in ("agent", "admin"):
-            return ClientRequest.objects.all()
+            return qs
         if user.account_status in ("active", "verified"):
-            return ClientRequest.objects.filter(client=user)
+            return qs.filter(client=user)
         return ClientRequest.objects.none()
 
     def perform_create(self, serializer):
@@ -463,7 +466,12 @@ class CompagnieListView(APIView):
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
 def dashboard_stats_view(request):
+    from django.core.cache import cache
     user = request.user
+    cache_key = f"dashboard_stats_{user.id}_{user.role}"
+    cached = cache.get(cache_key)
+    if cached:
+        return Response(cached)
     if user.role in ("agent", "admin"):
         emissions = Emission.objects.all()
         # Stats utilisateurs pour admin/agent
@@ -486,7 +494,7 @@ def dashboard_stats_view(request):
         emission__in=emissions
     ).aggregate(t=Sum("montant_regle"))["t"] or 0
 
-    return Response({
+    data = {
         "total_contrats": emissions.count(),
         "contrats_actifs": actifs.count(),
         "contrats_expires": expires.count(),
@@ -496,7 +504,9 @@ def dashboard_stats_view(request):
         "total_clients": total_clients,
         "total_prospects": total_prospects,
         "total_agents": total_agents,
-    })
+    }
+    cache.set(cache_key, data, timeout=60)
+    return Response(data)
 
 
 @api_view(["GET"])
