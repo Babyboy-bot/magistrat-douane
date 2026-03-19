@@ -5,8 +5,15 @@ import { toast } from "sonner";
 
 function getWsBase(): string {
   if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
-  return apiBase.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE;
+  if (apiBase) {
+    return apiBase.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
+  }
+  if (typeof window !== "undefined") {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}`;
+  }
+  return "ws://localhost:8000";
 }
 const WS_BASE = getWsBase();
 
