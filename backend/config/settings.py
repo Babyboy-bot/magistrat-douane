@@ -24,7 +24,7 @@ if not _secret:
     _secret = 'insecure-test-key-do-not-use-in-production'
 SECRET_KEY = _secret
 DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost,testserver', cast=Csv())
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost,testserver,192.168.137.1,192.168.1.49', cast=Csv())
 
 
 # Application definition
@@ -191,6 +191,8 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://localhost:3001',
     'http://127.0.0.1:3001',
+    'http://192.168.137.1:3000',
+    'http://192.168.1.49:3000',
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
@@ -225,6 +227,8 @@ X_FRAME_OPTIONS = 'DENY'
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://192.168.137.1:3000',
+    'http://192.168.1.49:3000',
 ]
 
 # Audit logging
