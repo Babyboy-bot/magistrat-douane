@@ -24,7 +24,11 @@ if not _secret:
     _secret = 'insecure-test-key-do-not-use-in-production'
 SECRET_KEY = _secret
 DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = ['*'] if DEBUG else config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv())
+ALLOWED_HOSTS = ['*'] if DEBUG else config(
+    'ALLOWED_HOSTS',
+    default='127.0.0.1,localhost,localhost:8080,backend',
+    cast=Csv()
+)
 
 
 # Application definition
@@ -209,10 +213,14 @@ SIMPLE_JWT = {
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
-    CORS_ALLOWED_ORIGINS = [
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-    ]
+    CORS_ALLOWED_ORIGINS = config(
+        'CORS_ALLOWED_ORIGINS',
+        default=','.join([
+            'http://localhost:3000', 'http://127.0.0.1:3000',
+            'http://localhost:8080', 'http://127.0.0.1:8080',
+        ]),
+        cast=Csv()
+    )
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -322,7 +330,7 @@ LOGGING = {
 
 # Production-only (enabled when DEBUG=False)
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
