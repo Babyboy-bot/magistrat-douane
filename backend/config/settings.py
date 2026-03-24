@@ -368,18 +368,42 @@ SPECTACULAR_SETTINGS = {
     'COMPONENT_SPLIT_REQUEST': True,
 }
 
-# ── Sentry (monitoring erreurs) ──
+# ── Sentry (monitoring erreurs + performance) ──
 _sentry_dsn = config('SENTRY_DSN', default='')
 if _sentry_dsn:
     import sentry_sdk
     from sentry_sdk.integrations.django import DjangoIntegration
     from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.redis import RedisIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+    import logging as _logging
+
     sentry_sdk.init(
         dsn=_sentry_dsn,
-        integrations=[DjangoIntegration(), CeleryIntegration()],
-        traces_sample_rate=0.1,
+        integrations=[
+            DjangoIntegration(
+                transaction_style="url",
+                middleware_spans=True,
+            ),
+            CeleryIntegration(
+                monitor_beat_tasks=True,
+                propagate_traces=True,
+            ),
+            RedisIntegration(),
+            LoggingIntegration(
+                level=_logging.WARNING,
+                event_level=_logging.ERROR,
+            ),
+        ],
+        traces_sample_rate=config('SENTRY_TRACES_SAMPLE_RATE', default=0.2, cast=float),
+        profiles_sample_rate=config('SENTRY_PROFILES_SAMPLE_RATE', default=0.1, cast=float),
         send_default_pii=False,
         environment=config('SENTRY_ENVIRONMENT', default='production'),
+        release=config('APP_VERSION', default=''),
+        ignore_errors=[
+            'django.exceptions.DisallowedHost',
+            'django.http.response.Http404',
+        ],
     )
 
 # ── Celery ──
