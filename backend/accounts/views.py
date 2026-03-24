@@ -15,6 +15,15 @@ import json
 import re
 
 from notifications.emails import send_welcome_email
+from core.permissions import IsAgentOrAdmin, IsAdminOnly as IsAdmin
+from .models import User, UserAuditLog
+from .services import (
+    reset_user_password,
+    verify_prospect,
+    reject_prospect,
+    deactivate_user as deactivate_user_service,
+    toggle_user_active,
+)
 from .serializers import (
     UserSerializer,
     UserCreateSerializer,
@@ -35,8 +44,6 @@ from .audit import (
     log_user_action,
     get_client_ip,
 )
-
-from .models import UserAuditLog
 
 User = get_user_model()
 
@@ -71,16 +78,6 @@ def _clear_auth_cookies(response):
     response.delete_cookie(conf.ACCESS_TOKEN_COOKIE, path=conf.COOKIE_PATH)
     response.delete_cookie(conf.REFRESH_TOKEN_COOKIE, path=conf.COOKIE_PATH)
     return response
-
-
-class IsAgentOrAdmin(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in ("agent", "admin")
-
-
-class IsAdmin(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == "admin"
 
 
 # ── Auth views ──
@@ -359,23 +356,11 @@ class ResetPasswordView(APIView):
                 {"detail": "Aucun compte trouvé avec cet identifiant"},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        import secrets, string
-        temp_pw = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10)) + "A1!"
-        user.set_password(temp_pw)
-        user.save(update_fields=["password"])
-        log_user_action(user, user, "password_reset", {"method": "reset_view"})
-        try:
-            from notifications.emails import send_welcome_email as _sw
-            import logging
-            logging.getLogger("audit").info(
-                f"RESET_PASSWORD | user={user.email or user.telephone} | temp_pw={temp_pw}"
-            )
-        except Exception:
-            pass
+        temp_pw = reset_user_password(user)
         return Response({
-            "detail": "Mot de passe temporaire g\u00e9n\u00e9r\u00e9.",
+            "detail": "Mot de passe temporaire généré.",
             "temp_password": temp_pw,
-            "instructions": "Communiquez ce mot de passe au client et demandez-lui de le changer \u00e0 la premi\u00e8re connexion.",
+            "instructions": "Communiquez ce mot de passe au client et demandez-lui de le changer à la première connexion.",
         })
 
 
@@ -421,12 +406,11 @@ def admin_delete_user_view(request, pk):
         return Response({"detail": "Utilisateur introuvable"}, status=status.HTTP_404_NOT_FOUND)
     
     if request.method == "DELETE":
-        if target.role == "admin":
-            return Response({"detail": "Impossible de supprimer un administrateur"}, status=status.HTTP_400_BAD_REQUEST)
         name = target.full_name
-        target.is_active = False
-        target.save(update_fields=["is_active"])
-        log_user_action(request.user, target, "deactivation", {"reason": "admin_delete"})
+        try:
+            deactivate_user_service(target, request.user)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"detail": f"Compte de {name} désactivé"})
     
     elif request.method == "PATCH":
@@ -491,19 +475,13 @@ def verify_user_view(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    action = serializer.validated_data["action"]
-    if action == "verify":
-        target.verified = True
-        target.verified_at = timezone.now()
-        target.verified_by = request.user
-        target.role = "client"
-        target.save()
-        log_verify(request.user, target, "approve")
-        log_user_action(request.user, target, "role_change", {"from": "prospect", "to": "client"})
-        return Response({"detail": f"Compte de {target.full_name} vérifié"})
-    else:
-        target.is_active = False
-        target.save()
-        log_verify(request.user, target, "reject")
-        log_user_action(request.user, target, "deactivation", {"reason": "verify_reject"})
-        return Response({"detail": "Compte refusé et désactivé"})
+    action_type = serializer.validated_data["action"]
+    try:
+        if action_type == "verify":
+            verify_prospect(target, request.user)
+            return Response({"detail": f"Compte de {target.full_name} vérifié"})
+        else:
+            reject_prospect(target, request.user)
+            return Response({"detail": "Compte refusé et désactivé"})
+    except ValueError as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

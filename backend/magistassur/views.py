@@ -1,9 +1,13 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated, BasePermission
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Q
-from django.utils import timezone
+from core.permissions import IsAgentOrAdmin
+from .services import (
+    assigner_police_epargne, changer_statut_epargne, ajouter_cotisation_epargne,
+    assigner_police_prevoyance, changer_statut_prevoyance,
+)
 from .exports import (
     export_epargne_excel, export_epargne_pdf,
     export_prevoyance_excel, export_prevoyance_pdf,
@@ -21,32 +25,6 @@ from .serializers import (
 )
 
 
-def _traiter_requete_magist(client_id, agent):
-    """Marque comme traitée la dernière requête souscription_magist en attente du client."""
-    try:
-        from core.models import ClientRequest
-        req = (
-            ClientRequest.objects
-            .filter(client_id=client_id, type="souscription_magist")
-            .exclude(status=ClientRequest.Status.TRAITE)
-            .order_by("-created_at")
-            .first()
-        )
-        if req:
-            req.status = ClientRequest.Status.TRAITE
-            req.agent = agent
-            req.treated_at = timezone.now()
-            req.save(update_fields=["status", "agent", "treated_at"])
-    except Exception:
-        pass
-
-
-class IsAgentOrAdmin(BasePermission):
-    """Seuls les agents et admins peuvent modifier ou supprimer."""
-    def has_permission(self, request, view):
-        if request.method in ('GET', 'HEAD', 'OPTIONS', 'POST'):
-            return True
-        return request.user.role in ('agent', 'admin')
 
 
 class ContratEpargneViewSet(viewsets.ModelViewSet):
@@ -91,19 +69,19 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="assign-police",
             permission_classes=[IsAuthenticated])
     def assign_police(self, request, pk=None):
-        """Assigne un numéro de police et active le contrat. Réserve aux agents/admins."""
+        """Assigne un numéro de police et active le contrat. Réservé aux agents/admins."""
         if request.user.role not in ("agent", "admin"):
             return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
         num_police = (request.data.get("num_police") or "").strip()
         if not num_police:
             return Response({"detail": "Le numéro de police est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
         contrat = self.get_object()
-        contrat.num_police = num_police
-        contrat.code_inspection = (request.data.get("code_inspection") or "").strip()
-        contrat.statut = ContratEpargne.Statut.EN_COURS
-        contrat.agent = request.user
-        contrat.save(update_fields=["num_police", "code_inspection", "statut", "agent"])
-        _traiter_requete_magist(contrat.client_id, request.user)
+        assigner_police_epargne(
+            contrat,
+            num_police,
+            (request.data.get("code_inspection") or "").strip(),
+            request.user,
+        )
         return Response(ContratEpargneSerializer(contrat).data)
 
     @action(detail=True, methods=["post"], url_path="change-statut",
@@ -113,30 +91,11 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         if request.user.role not in ("agent", "admin"):
             return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
         nouveau_statut = (request.data.get("statut") or "").strip()
-        statuts_valides = [s.value for s in ContratEpargne.Statut]
-        if nouveau_statut not in statuts_valides:
-            return Response({"detail": f"Statut invalide. Valeurs acceptées : {statuts_valides}"}, status=status.HTTP_400_BAD_REQUEST)
         contrat = self.get_object()
-        if nouveau_statut == ContratEpargne.Statut.EN_COURS and not contrat.num_police:
-            return Response(
-                {"detail": "Impossible de passer en 'En cours' sans numéro de police. Utilisez 'Assigner N° police'."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        contrat.statut = nouveau_statut
-        contrat.save(update_fields=["statut"])
         try:
-            from notifications.service import notification_service
-            notification_service.send_notification_to_user(
-                user_id=contrat.client_id,
-                title="Statut de votre contrat mis à jour",
-                message=f"Votre contrat Épargne MAGIST'ASSUR ({contrat.num_police or 'en attente de police'}) "
-                        f"est maintenant : {contrat.get_statut_display()}.",
-                type="info",
-                priority="medium",
-                data={"contrat_id": contrat.id, "type": "epargne", "statut": nouveau_statut},
-            )
-        except Exception:
-            pass
+            changer_statut_epargne(contrat, nouveau_statut)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(ContratEpargneSerializer(contrat).data)
 
     @action(detail=True, methods=["get"], url_path="export-excel",
@@ -160,22 +119,12 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="cotisation")
     def ajouter_cotisation(self, request, pk=None):
         contrat = self.get_object()
-        if contrat.statut not in (ContratEpargne.Statut.EN_COURS,):
-            return Response(
-                {"detail": f"Cotisation impossible : le contrat est '{contrat.get_statut_display()}'."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if not contrat.num_police:
-            return Response(
-                {"detail": "Cotisation impossible : le contrat n'a pas encore de numéro de police."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        serializer = CotisationEpargneSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        cotisation = serializer.save(contrat=contrat)
-        contrat.capital_constitue += cotisation.montant
-        contrat.save(update_fields=["capital_constitue"])
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            cotisation = ajouter_cotisation_epargne(contrat, request.data)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        from .serializers import CotisationEpargneSerializer
+        return Response(CotisationEpargneSerializer(cotisation).data, status=status.HTTP_201_CREATED)
 
 
 class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
@@ -220,28 +169,20 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="assign-police",
             permission_classes=[IsAuthenticated])
     def assign_police(self, request, pk=None):
-        """Assigne un numéro de police et active le contrat. Réserve aux agents/admins."""
+        """Assigne un numéro de police et active le contrat. Réservé aux agents/admins."""
         if request.user.role not in ("agent", "admin"):
             return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
         num_police = (request.data.get("num_police") or "").strip()
         if not num_police:
             return Response({"detail": "Le numéro de police est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
         contrat = self.get_object()
-        contrat.num_police = num_police
-        contrat.code_inspection = (request.data.get("code_inspection") or "").strip()
-        contrat.statut = ContratPrevoyance.Statut.EN_COURS
-        contrat.agent = request.user
-        date_effet_raw = (request.data.get("date_effet") or "").strip()
-        if date_effet_raw:
-            from datetime import date
-            try:
-                d = date.fromisoformat(date_effet_raw)
-                contrat.date_effet = d
-                contrat.date_echeance = d.replace(year=d.year + 1)
-            except ValueError:
-                pass
-        contrat.save(update_fields=["num_police", "code_inspection", "statut", "agent", "date_effet", "date_echeance"])
-        _traiter_requete_magist(contrat.client_id, request.user)
+        assigner_police_prevoyance(
+            contrat,
+            num_police,
+            (request.data.get("code_inspection") or "").strip(),
+            request.user,
+            (request.data.get("date_effet") or "").strip(),
+        )
         return Response(ContratPrevoyanceSerializer(contrat).data)
 
     @action(detail=True, methods=["post"], url_path="change-statut",
@@ -251,30 +192,11 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         if request.user.role not in ("agent", "admin"):
             return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
         nouveau_statut = (request.data.get("statut") or "").strip()
-        statuts_valides = [s.value for s in ContratPrevoyance.Statut]
-        if nouveau_statut not in statuts_valides:
-            return Response({"detail": f"Statut invalide. Valeurs acceptées : {statuts_valides}"}, status=status.HTTP_400_BAD_REQUEST)
         contrat = self.get_object()
-        if nouveau_statut == ContratPrevoyance.Statut.EN_COURS and not contrat.num_police:
-            return Response(
-                {"detail": "Impossible de passer en 'En cours' sans numéro de police. Utilisez 'Assigner N° police'."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        contrat.statut = nouveau_statut
-        contrat.save(update_fields=["statut"])
         try:
-            from notifications.service import notification_service
-            notification_service.send_notification_to_user(
-                user_id=contrat.client_id,
-                title="Statut de votre contrat mis à jour",
-                message=f"Votre contrat Prévoyance MAGIST'ASSUR ({contrat.num_police or 'en attente de police'}) "
-                        f"est maintenant : {contrat.get_statut_display()}.",
-                type="info",
-                priority="medium",
-                data={"contrat_id": contrat.id, "type": "prevoyance", "statut": nouveau_statut},
-            )
-        except Exception:
-            pass
+            changer_statut_prevoyance(contrat, nouveau_statut)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(ContratPrevoyanceSerializer(contrat).data)
 
     @action(detail=True, methods=["get"], url_path="export-excel",

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'channels',
+    'drf_spectacular',
     # Local
     'accounts',
     'core',
@@ -168,6 +169,11 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 50,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.URLPathVersioning',
+    'DEFAULT_VERSION': 'v1',
+    'ALLOWED_VERSIONS': ['v1'],
+    'VERSION_PARAM': 'version',
     'DEFAULT_THROTTLE_CLASSES': (
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
@@ -246,33 +252,70 @@ CSRF_TRUSTED_ORIGINS = config(
     cast=Csv()
 )
 
-# Audit logging
+# ── Logging JSON structuré (ELK / Datadog ready) ──
+class _JsonFormatter:
+    """Formateur JSON simple sans dépendance externe."""
+    def format(self, record):
+        import json, traceback
+        payload = {
+            'timestamp': __import__('datetime').datetime.utcfromtimestamp(record.created).isoformat() + 'Z',
+            'level': record.levelname,
+            'logger': record.name,
+            'message': record.getMessage(),
+            'module': record.module,
+            'func': record.funcName,
+            'line': record.lineno,
+        }
+        if record.exc_info:
+            payload['exception'] = traceback.format_exception(*record.exc_info)
+        return json.dumps(payload, ensure_ascii=False)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'audit': {
-            'format': '%(asctime)s %(levelname)s %(message)s',
-        },
+        'json': { '()': 'config.settings._JsonFormatter' },
+        'simple': { 'format': '%(asctime)s %(levelname)s %(name)s %(message)s' },
     },
     'handlers': {
-        'audit_console': {
+        'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'audit',
+            'formatter': 'json' if not DEBUG else 'simple',
         },
         'audit_file': {
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': BASE_DIR / 'audit.log',
-            'formatter': 'audit',
+            'formatter': 'json',
             'maxBytes': 10 * 1024 * 1024,
             'backupCount': 5,
+            'encoding': 'utf-8',
         },
     },
     'loggers': {
         'audit': {
-            'handlers': ['audit_console', 'audit_file'],
+            'handlers': ['console', 'audit_file'],
             'level': 'INFO',
+            'propagate': False,
         },
+        'django': {
+            'handlers': ['console'],
+            'level': config('DJANGO_LOG_LEVEL', default='WARNING'),
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'celery': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
     },
 }
 
@@ -294,6 +337,42 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='ACS <noreply@acs.ci>')
 ACS_CONTACT_PHONE = config('ACS_CONTACT_PHONE', default='+225 00 00 00 00')
+
+# ── Swagger / OpenAPI (drf-spectacular) ──
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'ACS Magistrat-Douane API',
+    'DESCRIPTION': 'API de gestion des contrats, émissions et requêtes ACS',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+}
+
+# ── Sentry (monitoring erreurs) ──
+_sentry_dsn = config('SENTRY_DSN', default='')
+if _sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[DjangoIntegration(), CeleryIntegration()],
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+        environment=config('SENTRY_ENVIRONMENT', default='production'),
+    )
+
+# ── Celery ──
+_celery_broker = config('CELERY_BROKER_URL', default='')
+if _celery_broker:
+    CELERY_BROKER_URL = _celery_broker
+    CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default=_celery_broker)
+    CELERY_ACCEPT_CONTENT = ['json']
+    CELERY_TASK_SERIALIZER = 'json'
+    CELERY_RESULT_SERIALIZER = 'json'
+    CELERY_TIMEZONE = TIME_ZONE
+    CELERY_TASK_ALWAYS_EAGER = False
+else:
+    CELERY_TASK_ALWAYS_EAGER = True
 
 # Channels configuration
 ASGI_APPLICATION = 'config.asgi.application'

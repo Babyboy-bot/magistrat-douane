@@ -21,17 +21,13 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from notifications.emails import (
-    send_request_acknowledgment,
-    send_new_request_alert_to_agents,
-    send_request_treated,
-    send_livrable_notification,
+from .services import (
+    notify_new_request,
+    notify_request_treated,
+    notify_livrable_added,
+    get_dashboard_stats,
 )
-from notifications.ws import (
-    notify_agents_new_request,
-    notify_client_request_treated,
-    notify_client_livrable_added,
-)
+from .permissions import IsAgentOrAdmin
 from .models import Emission, Paiement, ClientRequest, Document
 from .serializers import (
     EmissionSerializer,
@@ -40,11 +36,6 @@ from .serializers import (
     ClientRequestCreateSerializer,
     DocumentSerializer,
 )
-
-
-class IsAgentOrAdmin(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.role in ("agent", "admin")
 
 
 # ── Emissions ──
@@ -225,9 +216,7 @@ class ClientRequestListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        send_request_acknowledgment(instance)
-        send_new_request_alert_to_agents(instance)
-        notify_agents_new_request(instance)
+        notify_new_request(instance)
 
 
 class ClientRequestDetailView(generics.RetrieveUpdateAPIView):
@@ -265,8 +254,7 @@ def treat_request_view(request, pk):
     req.treated_at = timezone.now()
     req.agent = request.user
     req.save()
-    send_request_treated(req)
-    notify_client_request_treated(req)
+    notify_request_treated(req)
     return Response(ClientRequestSerializer(req).data)
 
 
@@ -472,39 +460,7 @@ def dashboard_stats_view(request):
     cached = cache.get(cache_key)
     if cached:
         return Response(cached)
-    if user.role in ("agent", "admin"):
-        emissions = Emission.objects.all()
-        # Stats utilisateurs pour admin/agent
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        total_clients = User.objects.filter(role="client").count()
-        total_prospects = User.objects.filter(role="prospect").count()
-        total_agents = User.objects.filter(role="agent").count()
-    else:
-        emissions = Emission.objects.filter(client=user)
-        total_clients = 0
-        total_prospects = 0
-        total_agents = 0
-
-    now = timezone.now().date()
-    actifs = emissions.filter(echeance__gt=now)
-    expires = emissions.filter(echeance__lte=now)
-    total_primes = emissions.aggregate(t=Sum("prime_ttc"))["t"] or 0
-    primes_payees = Paiement.objects.filter(
-        emission__in=emissions
-    ).aggregate(t=Sum("montant_regle"))["t"] or 0
-
-    data = {
-        "total_contrats": emissions.count(),
-        "contrats_actifs": actifs.count(),
-        "contrats_expires": expires.count(),
-        "total_primes": total_primes,
-        "primes_payees": primes_payees,
-        "primes_impayees": total_primes - primes_payees,
-        "total_clients": total_clients,
-        "total_prospects": total_prospects,
-        "total_agents": total_agents,
-    }
+    data = get_dashboard_stats(user)
     cache.set(cache_key, data, timeout=60)
     return Response(data)
 

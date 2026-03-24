@@ -35,20 +35,22 @@ frontend/yarn-error.log*
 frontend/*.tsbuildinfo
 frontend/next-env.d.ts
 
-# ── Scripts de debug / test temporaires (racine) ──
-debug_*.py
-test_*.py
-check_*.py
-start_*.py
-capture_*.py
-etat_*.py
-get_*.py
-investigation_*.py
-nettoyer_*.py
-restart_*.py
-verifier_*.py
-vider_*.py
-corriger_*.py
+# ── Scripts de debug / test temporaires (racine seulement) ──
+/debug_*.py
+/test_*.py
+/check_*.py
+/start_*.py
+/capture_*.py
+/etat_*.py
+/get_*.py
+/investigation_*.py
+/nettoyer_*.py
+/restart_*.py
+/verifier_*.py
+/vider_*.py
+/corriger_*.py
+/backend/test_*.py
+/backend/check_*.py
 
 # ── Fichiers de diagnostic Markdown temporaires ──
 DIAGNOSTIC_*.md

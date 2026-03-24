@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/auth-provider";
+import QueryProvider from "@/components/query-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -24,12 +25,14 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={`${inter.variable} font-sans antialiased`}>
-        <AuthProvider>
-          <TooltipProvider>
-            {children}
-            <Toaster position="top-right" richColors />
-          </TooltipProvider>
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <TooltipProvider>
+              {children}
+              <Toaster position="top-right" richColors />
+            </TooltipProvider>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );
