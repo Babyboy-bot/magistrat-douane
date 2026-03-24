@@ -35,12 +35,12 @@ class TestUserModel:
         )
         assert not u.is_active
 
-    def test_default_role_is_client(self, db):
+    def test_default_role_is_prospect(self, db):
         u = User.objects.create_user(
             email="newuser@test.ci", password="Pass123!",
             nom="New", prenoms="User",
         )
-        assert u.role == "client"
+        assert u.role == "prospect"
 
     def test_prospect_account_status_pending(self, prospect_user):
         assert prospect_user.role == "prospect"

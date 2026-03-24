@@ -196,10 +196,13 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
     ),
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '30/minute' if not DEBUG else '200/minute',
-        'user': '60/minute' if not DEBUG else '500/minute',
-        'login': '5/minute' if not DEBUG else '20/minute',
+        'anon': '60/minute' if not DEBUG else '500/minute',
+        'user': '120/minute' if not DEBUG else '1000/minute',
+        'login': '10/minute' if not DEBUG else '50/minute',
     },
+    # 1 proxy (nginx) devant Django — lit le vrai IP client dans X-Forwarded-For
+    # Sans ça, tous les users partagent le même bucket de rate limit (IP nginx interne)
+    'NUM_PROXIES': 1,
 }
 
 # JWT
@@ -253,8 +256,8 @@ CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 ACCESS_TOKEN_COOKIE = 'access_token'
 REFRESH_TOKEN_COOKIE = 'refresh_token'
 COOKIE_HTTPONLY = True
-COOKIE_SECURE = not DEBUG
-COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
+COOKIE_SECURE = config('COOKIE_SECURE', default=not DEBUG, cast=bool)
+COOKIE_SAMESITE = 'None' if COOKIE_SECURE else 'Lax'
 COOKIE_PATH = '/'
 ACCESS_COOKIE_MAX_AGE = 15 * 60              # 15 min  (= ACCESS_TOKEN_LIFETIME)
 REFRESH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 jours (= REFRESH_TOKEN_LIFETIME)

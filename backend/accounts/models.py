@@ -141,9 +141,11 @@ class User(AbstractUser):
         else:
             # Grand public = workflow standard
             self.risk_level = self.RiskLevel.STANDARD
-            if is_new and (not self.role or self.role in {self.Role.PROSPECT, self.Role.CLIENT}):
-                self.role = self.Role.CLIENT
-                self.account_status = self.AccountStatus.ACTIVE
+            if is_new:
+                if self.role == self.Role.PROSPECT:
+                    self.account_status = self.AccountStatus.PENDING_VERIFICATION
+                elif self.role == self.Role.CLIENT:
+                    self.account_status = self.AccountStatus.ACTIVE
 
         super().save(*args, **kwargs)
 

@@ -56,6 +56,8 @@ const _doRefresh = async (): Promise<boolean> => {
       credentials: "include",
       headers: { "Content-Type": "application/json" },
     });
+    // 429 = rate limit, pas une session expirée — ne pas déconnecter
+    if (res.status === 429) return false;
     return res.ok;
   } catch {
     return false;
@@ -96,7 +98,11 @@ export const apiFetch = async <T = unknown>(
       res = await fetch(url(path), init());
     } else {
       localStorage.removeItem("auth-storage");
-      window.location.href = "/login";
+      const publicPaths = ["/login", "/register", "/reset-password"];
+      const isPublic = publicPaths.some((p) => window.location.pathname.startsWith(p));
+      if (!isPublic) {
+        window.location.href = "/login";
+      }
       throw new Error("Session expirée");
     }
   }

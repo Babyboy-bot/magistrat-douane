@@ -19,7 +19,7 @@ class TestRegisterView:
         }, format="json")
         assert resp.status_code == 201
         user = User.objects.get(telephone="0102030405")
-        assert user.role == "client"
+        assert user.role == "prospect"
         assert user.verified is False
 
     def test_duplicate_telephone_rejected(self, api_client, client_user):

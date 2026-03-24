@@ -138,6 +138,7 @@ class CookieLoginView(APIView):
 class CookieRefreshView(APIView):
     """Read refresh token from cookie, rotate it, set new cookies."""
     permission_classes = [permissions.AllowAny]
+    throttle_classes = []  # Pas de throttle : nécessite un cookie valide, pas brute-forçable
 
     def post(self, request):
         # Essayer d'abord le body JSON (pour le frontend)

@@ -253,7 +253,7 @@ export default function AgentClientsPage() {
 
                 {/* Actions */}
                 <div className="flex gap-2">
-                  {!selectedClient.verified && (
+                  {selectedClient.role === "prospect" && !selectedClient.verified && (
                     <Button size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                       disabled={verifyingId === selectedClient.id}
                       onClick={() => handleVerify(selectedClient.id)}
