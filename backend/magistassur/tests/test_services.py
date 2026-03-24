@@ -16,11 +16,11 @@ def contrat_epargne(db, client_user, agent):
     return ContratEpargne.objects.create(
         client=client_user,
         agent=agent,
-        duree_cotisation=10,
-        mode_paiement="mensuel",
+        duree_annees=10,
+        periodicite="mensuelle",
         date_premiere_cotisation="2025-01-01",
         date_effet="2025-01-01",
-        cotisation_mensuelle=25_000,
+        montant_cotisation=25_000,
         capital_constitue=0,
     )
 
@@ -32,7 +32,6 @@ def contrat_prevoyance(db, client_user, agent):
         agent=agent,
         garantie_prevoyance_deces=True,
         garantie_frais_funeraires=False,
-        cotisation_mensuelle=15_000,
     )
 
 
@@ -79,7 +78,7 @@ class TestAjouterCotisationEpargne:
     def test_cotisation_increases_capital(self, contrat_epargne, agent):
         assigner_police_epargne(contrat_epargne, "POL-EP-004", "", agent)
         cotisation = ajouter_cotisation_epargne(
-            contrat_epargne, {"montant": 25_000, "date_paiement": "2025-02-01"}
+            contrat_epargne, {"montant": 25_000, "date_echeance": "2025-02-01"}
         )
         contrat_epargne.refresh_from_db()
         assert contrat_epargne.capital_constitue == 25_000
@@ -87,7 +86,7 @@ class TestAjouterCotisationEpargne:
     def test_cotisation_on_inactive_contract_raises(self, contrat_epargne):
         with pytest.raises(ValueError, match="Cotisation impossible"):
             ajouter_cotisation_epargne(
-                contrat_epargne, {"montant": 25_000, "date_paiement": "2025-02-01"}
+                contrat_epargne, {"montant": 25_000, "date_echeance": "2025-02-01"}
             )
 
     def test_cotisation_without_police_raises(self, contrat_epargne):
@@ -95,7 +94,7 @@ class TestAjouterCotisationEpargne:
         contrat_epargne.save()
         with pytest.raises(ValueError, match="police"):
             ajouter_cotisation_epargne(
-                contrat_epargne, {"montant": 25_000, "date_paiement": "2025-02-01"}
+                contrat_epargne, {"montant": 25_000, "date_echeance": "2025-02-01"}
             )
 
 
