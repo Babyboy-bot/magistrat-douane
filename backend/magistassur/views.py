@@ -7,6 +7,7 @@ from core.permissions import IsAgentOrAdmin
 from .services import (
     assigner_police_epargne, changer_statut_epargne, ajouter_cotisation_epargne,
     assigner_police_prevoyance, changer_statut_prevoyance,
+    create_contrat_epargne, create_contrat_prevoyance,
 )
 from .exports import (
     export_epargne_excel, export_epargne_pdf,
@@ -64,13 +65,18 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
             )
         return qs
 
-    def perform_create(self, serializer):
-        user = self.request.user
-        if user.role in ("agent", "admin"):
-            serializer.save(agent=user)
-        else:
-            # Forcer client=user, ignorer toute valeur client envoyée dans le body
-            serializer.save(client=user)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        try:
+            contrat = create_contrat_epargne(
+                validated_data=data,
+                agent=request.user,
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ContratEpargneSerializer(contrat).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"], url_path="assign-police",
             permission_classes=[IsAuthenticated])
@@ -170,13 +176,18 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
             )
         return qs
 
-    def perform_create(self, serializer):
-        user = self.request.user
-        if user.role in ("agent", "admin"):
-            serializer.save(agent=user)
-        else:
-            # Forcer client=user, ignorer toute valeur client envoyée dans le body
-            serializer.save(client=user)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        try:
+            contrat = create_contrat_prevoyance(
+                validated_data=data,
+                agent=request.user,
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ContratPrevoyanceSerializer(contrat).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"], url_path="assign-police",
             permission_classes=[IsAuthenticated])

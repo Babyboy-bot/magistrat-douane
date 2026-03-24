@@ -16,11 +16,63 @@ def force_login(api_client, user):
 
 @pytest.mark.django_db
 class TestEmissionListView:
-    def test_agent_lists_all_emissions(self, api_client, agent, emission):
+    def test_agent_sees_own_emissions_only(self, api_client, agent, agent2, client_user):
+        from core.models import Emission
+        e1 = Emission.objects.create(
+            client=client_user, agent=agent,
+            date="2025-01-15", risque="Automobile", compagnie="NSIA",
+            num_facture="FAC-A1", num_police="POL-A1",
+            effet="2025-01-15", echeance="2026-01-14",
+            prime_nette=100_000, prime_ttc=120_000, situation="Affaire nouvelle",
+        )
+        Emission.objects.create(
+            client=client_user, agent=agent2,
+            date="2025-01-15", risque="Automobile", compagnie="SUNU",
+            num_facture="FAC-B1", num_police="POL-B1",
+            effet="2025-01-15", echeance="2026-01-14",
+            prime_nette=200_000, prime_ttc=240_000, situation="Affaire nouvelle",
+        )
         force_login(api_client, agent)
         resp = api_client.get("/api/emissions/")
         assert resp.status_code == 200
-        assert resp.data["count"] >= 1
+        ids = [item["id"] for item in resp.data["results"]]
+        assert e1.id in ids
+        for item in resp.data["results"]:
+            assert item["agent"] == agent.id, "Agent ne doit voir que ses propres émissions"
+
+    def test_agent_cannot_access_other_agent_emission(self, api_client, agent, agent2, client_user):
+        from core.models import Emission
+        emission_b = Emission.objects.create(
+            client=client_user, agent=agent2,
+            date="2025-01-15", risque="Automobile", compagnie="SUNU",
+            num_facture="FAC-B2", num_police="POL-B2",
+            effet="2025-01-15", echeance="2026-01-14",
+            prime_nette=200_000, prime_ttc=240_000, situation="Affaire nouvelle",
+        )
+        force_login(api_client, agent)
+        resp = api_client.get(f"/api/emissions/{emission_b.id}/")
+        assert resp.status_code == 404, "Agent A ne doit pas accéder à l'émission de l'agent B"
+
+    def test_admin_sees_all_emissions(self, api_client, admin_user, agent, agent2, client_user):
+        from core.models import Emission
+        Emission.objects.create(
+            client=client_user, agent=agent,
+            date="2025-01-15", risque="Automobile", compagnie="NSIA",
+            num_facture="FAC-ADM1", num_police="POL-ADM1",
+            effet="2025-01-15", echeance="2026-01-14",
+            prime_nette=100_000, prime_ttc=120_000, situation="Affaire nouvelle",
+        )
+        Emission.objects.create(
+            client=client_user, agent=agent2,
+            date="2025-01-15", risque="Automobile", compagnie="SUNU",
+            num_facture="FAC-ADM2", num_police="POL-ADM2",
+            effet="2025-01-15", echeance="2026-01-14",
+            prime_nette=200_000, prime_ttc=240_000, situation="Affaire nouvelle",
+        )
+        force_login(api_client, admin_user)
+        resp = api_client.get("/api/emissions/")
+        assert resp.status_code == 200
+        assert resp.data["count"] == 2, "Admin doit voir toutes les émissions du cabinet"
 
     def test_client_lists_own_emissions_only(self, api_client, client_user, agent, emission):
         other = __import__("django.contrib.auth", fromlist=["get_user_model"]).get_user_model()

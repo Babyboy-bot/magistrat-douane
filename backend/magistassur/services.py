@@ -5,6 +5,7 @@ Les vues délèguent à ces fonctions ; elles ne font que parser la requête HTT
 """
 from datetime import date as date_type
 
+from django.db import transaction
 from django.utils import timezone
 
 from .models import ContratEpargne, ContratPrevoyance, CotisationEpargne
@@ -31,6 +32,38 @@ def _notifier_changement_statut(client_id, num_police: str, type_contrat: str, s
         )
     except Exception:
         pass
+
+
+# ── Création contrats ────────────────────────────────────────────────────────
+
+
+@transaction.atomic
+def create_contrat_epargne(validated_data: dict, agent) -> ContratEpargne:
+    """
+    Crée un contrat épargne avec validation métier.
+    Lève ValueError si les données sont incohérentes.
+    Atomique : rollback complet en cas d'erreur.
+    """
+    duree = validated_data.get("duree_annees")
+    if duree is not None and duree <= 0:
+        raise ValueError("La durée du contrat doit être supérieure à 0 ans.")
+
+    montant = validated_data.get("montant_cotisation")
+    if montant is not None and montant <= 0:
+        raise ValueError("Le montant de cotisation doit être strictement positif.")
+
+    contrat = ContratEpargne.objects.create(**validated_data, agent=agent)
+    return contrat
+
+
+@transaction.atomic
+def create_contrat_prevoyance(validated_data: dict, agent) -> ContratPrevoyance:
+    """
+    Crée un contrat prévoyance avec validation métier.
+    Atomique : rollback complet en cas d'erreur.
+    """
+    contrat = ContratPrevoyance.objects.create(**validated_data, agent=agent)
+    return contrat
 
 
 # ── Requêtes client ─────────────────────────────────────────────────────────
