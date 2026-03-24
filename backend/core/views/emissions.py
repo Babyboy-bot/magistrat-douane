@@ -201,7 +201,7 @@ def export_emissions(request):
         ws.append([e.num_police, e.client.full_name if e.client else "", e.compagnie, e.risque, float(e.prime_ttc), float(tp), float(e.prime_ttc - tp), e.effet, e.situation, cat])
 
     for row in ws.iter_rows(min_row=2, min_col=5, max_col=7):
-        for c in row: c.number_format = "#,##0 \FCFA"
+        for c in row: c.number_format = r"#,##0\ FCFA"
     for row in ws.iter_rows(min_row=2, min_col=8, max_col=8):
         for c in row: c.number_format = "DD/MM/YYYY"
     for row in ws.iter_rows(min_row=2, min_col=10, max_col=10):

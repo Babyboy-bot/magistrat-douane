@@ -28,7 +28,7 @@ class TestEmissionListView:
         resp = api_client.get("/api/emissions/")
         assert resp.status_code == 200
         for item in resp.data["results"]:
-            assert item["client"]["id"] == client_user.id
+            assert item["client"] == client_user.id
 
     def test_anonymous_blocked(self, api_client):
         resp = api_client.get("/api/emissions/")

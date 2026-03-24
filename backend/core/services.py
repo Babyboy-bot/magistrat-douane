@@ -79,7 +79,7 @@ def claim_request(request_obj: ClientRequest, agent) -> None:
     Un agent prend en charge une requête disponible.
     Lève ValueError si la requête est déjà prise par quelqu'un d'autre.
     """
-    if request_obj.status not in (ClientRequest.Status.PENDING, ClientRequest.Status.EN_COURS):
+    if request_obj.status not in (ClientRequest.Status.EN_ATTENTE, ClientRequest.Status.EN_COURS):
         raise ValueError("Cette requête n'est plus disponible.")
     if request_obj.agent and request_obj.agent != agent:
         raise ValueError("Cette requête est déjà prise en charge par un autre agent.")
@@ -96,7 +96,7 @@ def release_request(request_obj: ClientRequest, agent) -> None:
     if request_obj.agent != agent:
         raise ValueError("Vous ne pouvez libérer que vos propres requêtes.")
     request_obj.agent = None
-    request_obj.status = ClientRequest.Status.PENDING
+    request_obj.status = ClientRequest.Status.EN_ATTENTE
     request_obj.save(update_fields=["agent", "status"])
 
 

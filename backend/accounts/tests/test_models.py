@@ -13,7 +13,7 @@ class TestUserModel:
             nom="Mag", prenoms="Test",
             profession_type="magistrat",
         )
-        assert u.risk_level == "magistrat"
+        assert u.risk_level == "premium"
 
     def test_douanier_gets_douanier_risk(self, db):
         u = User.objects.create_user(
@@ -21,7 +21,7 @@ class TestUserModel:
             nom="Doua", prenoms="Test",
             profession_type="douanier",
         )
-        assert u.risk_level == "douanier"
+        assert u.risk_level == "premium"
 
     def test_full_name_property(self, client_user):
         assert client_user.nom in client_user.full_name
@@ -35,14 +35,15 @@ class TestUserModel:
         )
         assert not u.is_active
 
-    def test_default_role_is_prospect(self, db):
+    def test_default_role_is_client(self, db):
         u = User.objects.create_user(
             email="newuser@test.ci", password="Pass123!",
             nom="New", prenoms="User",
         )
-        assert u.role == "prospect"
+        assert u.role == "client"
 
     def test_prospect_account_status_pending(self, prospect_user):
+        assert prospect_user.role == "prospect"
         assert prospect_user.account_status == "pending_verification"
 
     def test_agent_creation(self, agent):

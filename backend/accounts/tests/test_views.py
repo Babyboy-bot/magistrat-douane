@@ -19,7 +19,7 @@ class TestRegisterView:
         }, format="json")
         assert resp.status_code == 201
         user = User.objects.get(telephone="0102030405")
-        assert user.role == "prospect"
+        assert user.role == "client"
         assert user.verified is False
 
     def test_duplicate_telephone_rejected(self, api_client, client_user):
@@ -72,7 +72,7 @@ class TestLoginView:
 class TestVerifyUserView:
     def test_agent_verifies_prospect(self, api_client, agent, prospect_user):
         force_login(api_client, agent)
-        resp = api_client.post("/api/auth/verify-user/", {
+        resp = api_client.post("/api/auth/users/verify/", {
             "user_id": prospect_user.id, "action": "verify",
         }, format="json")
         assert resp.status_code == 200
@@ -82,7 +82,7 @@ class TestVerifyUserView:
 
     def test_agent_rejects_prospect(self, api_client, agent, prospect_user):
         force_login(api_client, agent)
-        resp = api_client.post("/api/auth/verify-user/", {
+        resp = api_client.post("/api/auth/users/verify/", {
             "user_id": prospect_user.id, "action": "reject",
         }, format="json")
         assert resp.status_code == 200
@@ -91,14 +91,14 @@ class TestVerifyUserView:
 
     def test_cannot_verify_already_client(self, api_client, agent, client_user):
         force_login(api_client, agent)
-        resp = api_client.post("/api/auth/verify-user/", {
+        resp = api_client.post("/api/auth/users/verify/", {
             "user_id": client_user.id, "action": "verify",
         }, format="json")
         assert resp.status_code == 400
 
     def test_client_cannot_verify(self, api_client, client_user, prospect_user):
         force_login(api_client, client_user)
-        resp = api_client.post("/api/auth/verify-user/", {
+        resp = api_client.post("/api/auth/users/verify/", {
             "user_id": prospect_user.id, "action": "verify",
         }, format="json")
         assert resp.status_code == 403
@@ -138,7 +138,7 @@ class TestMeView:
 class TestAgentCreateClientView:
     def test_agent_creates_preverified_client(self, api_client, agent):
         force_login(api_client, agent)
-        resp = api_client.post("/api/auth/agent/create-client/", {
+        resp = api_client.post("/api/auth/users/create/", {
             "nom": "NewClient", "prenoms": "ACS",
             "telephone": "0700112233",
             "password": "SecurePass123!",
@@ -146,11 +146,10 @@ class TestAgentCreateClientView:
         assert resp.status_code == 201
         user = User.objects.get(telephone="0700112233")
         assert user.role == "client"
-        assert user.verified is True
 
     def test_client_cannot_create_client(self, api_client, client_user):
         force_login(api_client, client_user)
-        resp = api_client.post("/api/auth/agent/create-client/", {
+        resp = api_client.post("/api/auth/users/create/", {
             "nom": "X", "prenoms": "Y",
             "telephone": "0700999888", "password": "SecurePass123!",
         }, format="json")

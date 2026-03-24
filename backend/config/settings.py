@@ -84,18 +84,19 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # Database
+_db_engine = config('DB_ENGINE', default='django.db.backends.postgresql')
+_db_options = {'connect_timeout': 10} if 'postgresql' in _db_engine else {}
+
 DATABASES = {
     'default': {
-        'ENGINE': config('DB_ENGINE', default='django.db.backends.postgresql'),
+        'ENGINE': _db_engine,
         'NAME': config('DB_NAME', default='magistrat_douane'),
         'USER': config('DB_USER', default='postgres'),
         'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default='127.0.0.1'),
         'PORT': config('DB_PORT', default='5432'),
         'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
-        'OPTIONS': {
-            'connect_timeout': 10,
-        },
+        'OPTIONS': _db_options,
     }
 }
 

@@ -24,9 +24,10 @@ class TestEmissionModel:
         with pytest.raises(ProtectedError):
             client_user.delete()
 
-    def test_protect_prevents_agent_deletion(self, emission, agent):
-        with pytest.raises(ProtectedError):
-            agent.delete()
+    def test_agent_deletion_sets_null(self, emission, agent):
+        agent.delete()
+        emission.refresh_from_db()
+        assert emission.agent is None
 
 
 @pytest.mark.django_db
@@ -35,14 +36,15 @@ class TestPaiementModel:
         p = Paiement.objects.create(
             emission=emission,
             montant_regle=50_000,
-            date_paiement="2025-02-01",
+            date_reglement="2025-02-01",
+            reference="REF-001",
         )
         assert p.emission == emission
         assert emission.paiements.count() == 1
 
     def test_multiple_paiements_allowed(self, emission):
-        Paiement.objects.create(emission=emission, montant_regle=30_000, date_paiement="2025-02-01")
-        Paiement.objects.create(emission=emission, montant_regle=30_000, date_paiement="2025-03-01")
+        Paiement.objects.create(emission=emission, montant_regle=30_000, date_reglement="2025-02-01", reference="REF-002")
+        Paiement.objects.create(emission=emission, montant_regle=70_000, date_reglement="2025-03-01", reference="REF-003")
         assert emission.paiements.count() == 2
 
 

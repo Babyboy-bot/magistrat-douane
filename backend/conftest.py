@@ -73,11 +73,18 @@ def client_user_douanier(db):
 
 @pytest.fixture
 def prospect_user(db):
-    return User.objects.create_user(
+    u = User.objects.create_user(
         email="prospect@test.ci", password="TestPass123!",
-        nom="Prospect", prenoms="Test", role="prospect",
-        is_active=True, account_status="pending_verification",
+        nom="Prospect", prenoms="Test",
+        is_active=True,
     )
+    User.objects.filter(pk=u.pk).update(
+        role="prospect",
+        account_status="pending_verification",
+        verified=False,
+    )
+    u.refresh_from_db()
+    return u
 
 
 # ── Emissions ─────────────────────────────────────────────────────────────────
