@@ -19,4 +19,5 @@ urlpatterns = [
     path("emissions/import/", views.EmissionImportView.as_view(), name="emission_import"),
     path("emissions/export/", views.export_emissions, name="export_emissions"),
     path("compagnies/", views.CompagnieListView.as_view(), name="compagnies"),
+    path("audit-trail/", views.AuditEntryListView.as_view(), name="audit_trail"),
 ]

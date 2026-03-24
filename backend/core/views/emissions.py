@@ -22,6 +22,7 @@ from rest_framework.views import APIView
 from core.models import Emission, Paiement
 from core.permissions import IsAgentOrAdmin
 from core.serializers import EmissionSerializer, PaiementSerializer
+from core.services import create_emission, create_paiement
 
 
 class EmissionPagination(PageNumberPagination):
@@ -63,8 +64,17 @@ class EmissionListCreateView(generics.ListCreateAPIView):
             return qs
         return qs.filter(client=user)
 
-    def perform_create(self, serializer):
-        serializer.save(agent=self.request.user)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            emission = create_emission(
+                validated_data=serializer.validated_data,
+                agent=request.user,
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(EmissionSerializer(emission).data, status=status.HTTP_201_CREATED)
 
 
 class EmissionDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -96,8 +106,20 @@ class PaiementCreateView(generics.CreateAPIView):
     serializer_class = PaiementSerializer
     permission_classes = [permissions.IsAuthenticated, IsAgentOrAdmin]
 
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        emission = data.pop("emission")
+        try:
+            paiement = create_paiement(
+                validated_data=data,
+                agent=request.user,
+                emission=emission,
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(PaiementSerializer(paiement).data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET"])

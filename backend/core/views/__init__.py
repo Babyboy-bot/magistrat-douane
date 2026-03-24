@@ -27,6 +27,7 @@ from .dashboard import (
     CompagnieListView,
     dashboard_stats_view,
 )
+from .audit import AuditEntryListView
 
 __all__ = [
     "EmissionListCreateView", "EmissionDetailView", "PaiementCreateView",
@@ -35,4 +36,5 @@ __all__ = [
     "treat_request_view", "claim_request_view", "release_request_view",
     "RequestLivrablesView", "DocumentUploadView", "CarteGriseUploadView",
     "CompagnieListView", "dashboard_stats_view",
+    "AuditEntryListView",
 ]

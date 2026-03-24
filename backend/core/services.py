@@ -4,6 +4,7 @@ Logique métier : requêtes client, émissions, dashboard stats, notifications.
 Les vues délèguent ici ; elles ne font que parser HTTP et retourner la réponse.
 """
 from django.utils import timezone
+from django.db import transaction
 from django.db.models import Sum
 
 from .models import Emission, Paiement, ClientRequest, Document
@@ -69,6 +70,57 @@ def notify_livrable_added(request_obj: ClientRequest) -> None:
         notify_client_livrable_added(request_obj)
     except Exception:
         pass
+
+
+# ── Émissions ────────────────────────────────────────────────────────────────
+
+
+@transaction.atomic
+def create_emission(validated_data: dict, agent) -> Emission:
+    """
+    Crée une émission avec validation métier.
+    Lève ValueError si les données métier sont incohérentes.
+    Atomique : toute erreur rollback la création.
+    """
+    echeance = validated_data.get("echeance")
+    date = validated_data.get("date")
+    if echeance and date and echeance <= date:
+        raise ValueError("La date d'échéance doit être postérieure à la date d'effet.")
+
+    prime_ttc = validated_data.get("prime_ttc", 0)
+    if prime_ttc is not None and prime_ttc < 0:
+        raise ValueError("La prime TTC ne peut pas être négative.")
+
+    emission = Emission.objects.create(**validated_data, agent=agent)
+    return emission
+
+
+@transaction.atomic
+def create_paiement(validated_data: dict, agent, emission: Emission) -> Paiement:
+    """
+    Enregistre un paiement sur une émission.
+    Lève ValueError si le montant dépasse le solde restant.
+    Atomique : rollback si contrainte violée.
+    """
+    montant = validated_data.get("montant_regle", 0)
+    if montant <= 0:
+        raise ValueError("Le montant réglé doit être strictement positif.")
+
+    solde = emission.prime_ttc - (
+        Paiement.objects.filter(emission=emission)
+        .aggregate(t=Sum("montant_regle"))["t"] or 0
+    )
+    if montant > solde:
+        raise ValueError(
+            f"Le montant ({montant} FCFA) dépasse le solde restant ({solde} FCFA)."
+        )
+
+    paiement = Paiement.objects.create(
+        **validated_data,
+        emission=emission,
+        created_by=agent,
+    )
+    return paiement
 
 
 # ── Requêtes client ──────────────────────────────────────────────────────────

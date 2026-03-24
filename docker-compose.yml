@@ -72,6 +72,29 @@ services:
       redis:
         condition: service_healthy
 
+  # ── Backup PostgreSQL (toutes les 24h, rétention 7 jours) ──
+  db_backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: ${DB_USER:-postgres}
+      PGPASSWORD: ${DB_PASSWORD}
+      PGDATABASE: ${DB_NAME:-magistrat_douane}
+    volumes:
+      - db_backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "while true; do
+        FILENAME=/backups/backup_$$(date +%Y%m%d_%H%M%S).sql.gz;
+        pg_dump | gzip > $$FILENAME;
+        echo \"Backup: $$FILENAME\";
+        find /backups -name '*.sql.gz' -mtime +7 -delete;
+        sleep 86400;
+      done"
+
   # ── Celery Beat (tâches périodiques) ──
   celery_beat:
     build:
@@ -120,3 +143,4 @@ volumes:
   redis_data:
   media_files:
   static_files:
+  db_backups:

@@ -252,3 +252,38 @@ class Document(models.Model):
 
     def __str__(self):
         return self.nom
+
+
+class AuditEntry(models.Model):
+    class Action(models.TextChoices):
+        CREATED = "created", "Créé"
+        UPDATED = "updated", "Modifié"
+        DELETED = "deleted", "Supprimé"
+
+    object_type = models.CharField("Type d'objet", max_length=50)
+    object_id   = models.PositiveBigIntegerField("ID objet")
+    object_repr = models.CharField("Représentation", max_length=200, blank=True)
+    action      = models.CharField("Action", max_length=10, choices=Action.choices)
+    before      = models.JSONField("Avant", null=True, blank=True)
+    after       = models.JSONField("Après",  null=True, blank=True)
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="audit_entries",
+        verbose_name="Effectué par",
+    )
+    ip_address  = models.GenericIPAddressField("IP", null=True, blank=True)
+    timestamp   = models.DateTimeField("Horodatage", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Entrée d'audit"
+        verbose_name_plural = "Entrées d'audit"
+        ordering = ["-timestamp"]
+        indexes = [
+            models.Index(fields=["object_type", "object_id"]),
+            models.Index(fields=["performed_by", "timestamp"]),
+        ]
+
+    def __str__(self):
+        return f"[{self.timestamp:%Y-%m-%d %H:%M}] {self.action} {self.object_type}#{self.object_id}"
