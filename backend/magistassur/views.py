@@ -41,22 +41,28 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         qs = ContratEpargne.objects.select_related("client", "agent").prefetch_related(
             "correspondants", "beneficiaires", "cotisations"
         )
-        if user.role in ("agent", "admin"):
-            client_id = self.request.query_params.get("client_id")
-            statut = self.request.query_params.get("statut")
-            search = self.request.query_params.get("search")
-            if client_id:
-                qs = qs.filter(client_id=client_id)
-            if statut:
-                qs = qs.filter(statut=statut)
-            if search:
-                qs = qs.filter(
-                    Q(client__nom__icontains=search) |
-                    Q(client__prenoms__icontains=search) |
-                    Q(num_police__icontains=search)
-                )
-            return qs
-        return qs.filter(client=user)
+        # Admin : portefeuille complet du cabinet
+        if user.role == "admin":
+            pass
+        # Agent : uniquement ses propres contrats (isolation RGPD)
+        elif user.role == "agent":
+            qs = qs.filter(agent=user)
+        else:
+            return qs.filter(client=user)
+        client_id = self.request.query_params.get("client_id")
+        statut = self.request.query_params.get("statut")
+        search = self.request.query_params.get("search")
+        if client_id:
+            qs = qs.filter(client_id=client_id)
+        if statut:
+            qs = qs.filter(statut=statut)
+        if search:
+            qs = qs.filter(
+                Q(client__nom__icontains=search) |
+                Q(client__prenoms__icontains=search) |
+                Q(num_police__icontains=search)
+            )
+        return qs
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -141,22 +147,28 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         qs = ContratPrevoyance.objects.select_related("client", "agent").prefetch_related(
             "assures_associes", "beneficiaires"
         )
-        if user.role in ("agent", "admin"):
-            client_id = self.request.query_params.get("client_id")
-            statut = self.request.query_params.get("statut")
-            search = self.request.query_params.get("search")
-            if client_id:
-                qs = qs.filter(client_id=client_id)
-            if statut:
-                qs = qs.filter(statut=statut)
-            if search:
-                qs = qs.filter(
-                    Q(client__nom__icontains=search) |
-                    Q(client__prenoms__icontains=search) |
-                    Q(num_police__icontains=search)
-                )
-            return qs
-        return qs.filter(client=user)
+        # Admin : portefeuille complet du cabinet
+        if user.role == "admin":
+            pass
+        # Agent : uniquement ses propres contrats (isolation RGPD)
+        elif user.role == "agent":
+            qs = qs.filter(agent=user)
+        else:
+            return qs.filter(client=user)
+        client_id = self.request.query_params.get("client_id")
+        statut = self.request.query_params.get("statut")
+        search = self.request.query_params.get("search")
+        if client_id:
+            qs = qs.filter(client_id=client_id)
+        if statut:
+            qs = qs.filter(statut=statut)
+        if search:
+            qs = qs.filter(
+                Q(client__nom__icontains=search) |
+                Q(client__prenoms__icontains=search) |
+                Q(num_police__icontains=search)
+            )
+        return qs
 
     def perform_create(self, serializer):
         user = self.request.user

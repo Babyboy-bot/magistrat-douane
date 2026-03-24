@@ -100,8 +100,12 @@ def create_paiement(validated_data: dict, agent, emission: Emission) -> Paiement
     """
     Enregistre un paiement sur une émission.
     Lève ValueError si le montant dépasse le solde restant.
-    Atomique : rollback si contrainte violée.
+    select_for_update() : verrou row-level PostgreSQL jusqu'au commit —
+    deux agents simultanés ne peuvent pas lire le même solde.
     """
+    # Pose un verrou exclusif sur la ligne emission pour toute la transaction
+    emission = Emission.objects.select_for_update().get(pk=emission.pk)
+
     montant = validated_data.get("montant_regle", 0)
     if montant <= 0:
         raise ValueError("Le montant réglé doit être strictement positif.")

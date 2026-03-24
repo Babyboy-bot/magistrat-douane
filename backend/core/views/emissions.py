@@ -60,8 +60,13 @@ class EmissionListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         qs = Emission.objects.select_related("client", "agent").prefetch_related("paiements")
-        if user.role in ("agent", "admin"):
+        # Admin : portefeuille complet du cabinet
+        if user.role == "admin":
             return qs
+        # Agent : uniquement ses propres émissions (isolation RGPD)
+        if user.role == "agent":
+            return qs.filter(agent=user)
+        # Client : uniquement ses propres contrats
         return qs.filter(client=user)
 
     def create(self, request, *args, **kwargs):
@@ -84,8 +89,10 @@ class EmissionDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         user = self.request.user
         qs = Emission.objects.select_related("client", "agent").prefetch_related("paiements")
-        if user.role in ("agent", "admin"):
+        if user.role == "admin":
             return qs
+        if user.role == "agent":
+            return qs.filter(agent=user)
         return qs.filter(client=user)
 
     def _check_write_permission(self):
