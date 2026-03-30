@@ -30,7 +30,7 @@ import { PROFESSION_LABELS, REQUEST_TYPE_LABELS, Emission } from "@/lib/types";
 import { useAuthStore } from "@/stores/auth-store";
 
 const PAGE_SIZE = 15;
-type Segment = "magistrats" | "douaniers" | "autres" | "prospects";
+type Segment = "magistrats" | "douaniers" | "autres";
 
 
 const initialFormState = { nom: "", prenoms: "", email: "", telephone: "", telephone2: "" };
@@ -56,13 +56,13 @@ export default function AgentClientsPage() {
   const { data: allUsers } = useUsers();
   const canCreate = user?.role === "admin";
 
-  const professionType = segment === "magistrats" ? "magistrat" : segment === "douaniers" ? "douanier" : segment === "autres" ? "autre" : undefined;
+  const professionType = segment === "magistrats" ? "magistrat" : segment === "douaniers" ? "douanier" : "autre";
 
   const { data: paginatedUsers, loading, error, refetch } = usePaginatedUsers({
     page,
     pageSize: PAGE_SIZE,
     search: search.trim() || undefined,
-    role: segment === "prospects" ? "prospect" : "client",
+    role: "client",
     profession_type: professionType,
   });
 
@@ -173,11 +173,10 @@ export default function AgentClientsPage() {
                   Liste des clients
                 </CardTitle>
                 <Tabs value={segment} onValueChange={(v) => { setSegment(v as Segment); setPage(1); setSelectedClientId(null); }}>
-                  <TabsList className="grid grid-cols-4">
+                  <TabsList className="grid grid-cols-3">
                     <TabsTrigger value="magistrats">Magistrats</TabsTrigger>
                     <TabsTrigger value="douaniers">Douaniers</TabsTrigger>
                     <TabsTrigger value="autres">Autres</TabsTrigger>
-                    <TabsTrigger value="prospects">Prospects</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -253,7 +252,7 @@ export default function AgentClientsPage() {
 
                 {/* Actions */}
                 <div className="flex gap-2">
-                  {selectedClient.role === "prospect" && !selectedClient.verified && (
+                  {!selectedClient.verified && (
                     <Button size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                       disabled={verifyingId === selectedClient.id}
                       onClick={() => handleVerify(selectedClient.id)}

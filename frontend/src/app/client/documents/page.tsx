@@ -9,8 +9,12 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useClientRequests } from "@/hooks/use-api-data";
 import { REQUEST_TYPE_LABELS } from "@/lib/types";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+
 function buildFileUrl(fichier: string): string {
-  return fichier ?? "";
+  if (!fichier) return "";
+  if (fichier.startsWith("http")) return fichier;
+  return `${API_BASE}${fichier.startsWith("/") ? fichier : "/" + fichier}`;
 }
 
 export default function DocumentsPage() {

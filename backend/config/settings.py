@@ -26,7 +26,7 @@ SECRET_KEY = _secret
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = ['*'] if DEBUG else config(
     'ALLOWED_HOSTS',
-    default='127.0.0.1,localhost,localhost:8080,backend',
+    default='127.0.0.1,localhost,localhost:8080,backend,django_backend',
     cast=Csv()
 )
 
@@ -419,6 +419,13 @@ if _celery_broker:
     CELERY_RESULT_SERIALIZER = 'json'
     CELERY_TIMEZONE = TIME_ZONE
     CELERY_TASK_ALWAYS_EAGER = False
+    from celery.schedules import crontab
+    CELERY_BEAT_SCHEDULE = {
+        'rappels-echeance-quotidiens': {
+            'task': 'notifications.send_echeance_reminders',
+            'schedule': crontab(hour=8, minute=0),  # 08h00 chaque matin
+        },
+    }
 else:
     CELERY_TASK_ALWAYS_EAGER = True
 

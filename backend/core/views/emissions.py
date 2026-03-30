@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from io import BytesIO
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db.models import DecimalField, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
@@ -31,10 +32,46 @@ class EmissionPagination(PageNumberPagination):
     max_page_size = 200
 
 
+def _emissions_version_key(user_id: int) -> str:
+    return f"emissions_ver_{user_id}"
+
+
+def _get_emissions_version(user_id: int) -> int:
+    v = cache.get(_emissions_version_key(user_id))
+    if v is None:
+        cache.set(_emissions_version_key(user_id), 1, timeout=None)
+        return 1
+    return v
+
+
+def invalidate_emissions_cache(user_id: int) -> None:
+    """Incrémente la version → toutes les entrées précédentes deviennent orphelines."""
+    key = _emissions_version_key(user_id)
+    try:
+        cache.incr(key)
+    except ValueError:
+        cache.set(key, 1, timeout=None)
+
+
 class EmissionListCreateView(generics.ListCreateAPIView):
     serializer_class = EmissionSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = EmissionPagination
+
+    def list(self, request, *args, **kwargs):
+        ver = _get_emissions_version(request.user.id)
+        params = request.query_params.urlencode()
+        cache_key = f"emissions_{request.user.id}_v{ver}_{params}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=300)
+        return response
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        invalidate_emissions_cache(self.request.user.id)
     filterset_fields = {
         "client": ["exact"],
         "agent": ["exact"],
@@ -102,11 +139,15 @@ class EmissionDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def update(self, request, *args, **kwargs):
         self._check_write_permission()
-        return super().update(request, *args, **kwargs)
+        response = super().update(request, *args, **kwargs)
+        invalidate_emissions_cache(request.user.id)
+        return response
 
     def destroy(self, request, *args, **kwargs):
         self._check_write_permission()
-        return super().destroy(request, *args, **kwargs)
+        response = super().destroy(request, *args, **kwargs)
+        invalidate_emissions_cache(request.user.id)
+        return response
 
 
 class PaiementCreateView(generics.CreateAPIView):

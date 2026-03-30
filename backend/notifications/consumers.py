@@ -2,6 +2,7 @@
 WebSocket consumers for real-time notifications.
 """
 import json
+import time
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
@@ -10,6 +11,31 @@ import logging
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
+ONLINE_KEY = "ws_online_users"
+ONLINE_TTL = 300  # 5 min : purge auto si le serveur redémarre
+
+
+@database_sync_to_async
+def _mark_online(user_id: int) -> None:
+    try:
+        from django.core.cache import cache
+        members = cache.get(ONLINE_KEY) or {}
+        members[str(user_id)] = int(time.time())
+        cache.set(ONLINE_KEY, members, ONLINE_TTL)
+    except Exception:
+        pass
+
+
+@database_sync_to_async
+def _mark_offline(user_id: int) -> None:
+    try:
+        from django.core.cache import cache
+        members = cache.get(ONLINE_KEY) or {}
+        members.pop(str(user_id), None)
+        cache.set(ONLINE_KEY, members, ONLINE_TTL)
+    except Exception:
+        pass
 
 
 @database_sync_to_async
@@ -44,6 +70,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         self.group_name = f"user_{self.user.id}_notifications"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        await _mark_online(self.user.id)
         logger.info("WS connect: user=%s role=%s", self.user.id, self.user.role)
         await self.send(text_data=json.dumps({
             "type": "welcome",
@@ -63,6 +90,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         if self.group_name:
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
+            await _mark_offline(self.user.id)
             logger.info("WS disconnect: user=%s code=%s", self.user.id, close_code)
 
     async def receive(self, text_data=None, bytes_data=None):

@@ -1,6 +1,13 @@
 import { apiFetch } from "./client";
 import type { User } from "@/lib/types";
 
+function normalizeMediaUrl(url: string | null | undefined): string {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  const base = process.env.NEXT_PUBLIC_API_BASE ?? "";
+  return `${base}${url.startsWith("/") ? url : "/" + url}`;
+}
+
 export function mapUser(u: Record<string, unknown>): User {
   return {
     id: String(u.id),
@@ -11,7 +18,7 @@ export function mapUser(u: Record<string, unknown>): User {
     telephone: u.telephone as string,
     telephone2: (u.telephone2 as string) || "",
     email: (u.email as string) || "",
-    photo: (u.photo as string) || "",
+    photo: normalizeMediaUrl(u.photo as string),
     role: u.role as User["role"],
     verified: Boolean(u.verified),
     verifiedAt: (u.verified_at as string) || undefined,
@@ -60,6 +67,16 @@ export const authApi = {
     const raw = await apiFetch<Record<string, unknown>>("/api/auth/register/", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+    return mapUser(raw);
+  },
+
+  async uploadPhoto(file: File): Promise<User> {
+    const formData = new FormData();
+    formData.append("photo", file);
+    const raw = await apiFetch<Record<string, unknown>>("/api/auth/me/", {
+      method: "PATCH",
+      body: formData,
     });
     return mapUser(raw);
   },

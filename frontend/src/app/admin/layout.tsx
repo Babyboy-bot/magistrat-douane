@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   Activity,
+  Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Supervision", href: "/admin/dashboard", icon: LayoutDashboard },
+  { name: "Utilisateurs connectés", href: "/admin/online", icon: Wifi },
   { name: "Gestion des agents", href: "/admin/agents", icon: Users },
   { name: "Journal d'audit", href: "/admin/audit", icon: Shield },
 ];

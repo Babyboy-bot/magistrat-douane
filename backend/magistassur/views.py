@@ -7,7 +7,6 @@ from core.permissions import IsAgentOrAdmin
 from .services import (
     assigner_police_epargne, changer_statut_epargne, ajouter_cotisation_epargne,
     assigner_police_prevoyance, changer_statut_prevoyance,
-    create_contrat_epargne, create_contrat_prevoyance,
 )
 from .exports import (
     export_epargne_excel, export_epargne_pdf,
@@ -19,6 +18,47 @@ from .models import (
     ContratEpargne, ContratPrevoyance,
     CotisationEpargne, QuestionnaireMedical,
 )
+
+
+def _notify_client_epargne(contrat, title, message, notif_type="info"):
+    try:
+        if contrat.client_id:
+            from notifications.models import Notification
+            from notifications.ws import send_notification_to_user
+            notif = Notification.create_notification(
+                user_id=contrat.client_id, title=title, message=message, type=notif_type
+            )
+            try:
+                send_notification_to_user(contrat.client_id, {
+                    "event": "magist_assur", "id": str(notif.id),
+                    "title": title, "message": message, "type": notif_type,
+                })
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+def _notify_agents_epargne(contrat, title, message):
+    try:
+        from accounts.models import User
+        from notifications.models import Notification
+        from notifications.ws import send_notification_to_user
+        agents = User.objects.filter(role__in=("agent", "admin"), is_active=True)
+        for agent in agents:
+            notif = Notification.create_notification(
+                user_id=agent.id, title=title, message=message, type="info"
+            )
+            try:
+                send_notification_to_user(agent.id, {
+                    "event": "magist_assur", "id": str(notif.id),
+                    "title": title, "message": message, "type": "info",
+                })
+            except Exception:
+                pass
+    except Exception:
+        pass
+
 from .serializers import (
     ContratEpargneSerializer, ContratEpargneCreateSerializer,
     ContratPrevoyanceSerializer, ContratPrevoyanceCreateSerializer,
@@ -32,6 +72,11 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAgentOrAdmin]
     pagination_class = None
 
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsAgentOrAdmin()]
+
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):
             return ContratEpargneCreateSerializer
@@ -42,41 +87,40 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         qs = ContratEpargne.objects.select_related("client", "agent").prefetch_related(
             "correspondants", "beneficiaires", "cotisations"
         )
-        # Admin : portefeuille complet du cabinet
-        if user.role == "admin":
-            pass
-        # Agent : uniquement ses propres contrats (isolation RGPD)
-        elif user.role == "agent":
-            qs = qs.filter(agent=user)
-        else:
-            return qs.filter(client=user)
-        client_id = self.request.query_params.get("client_id")
-        statut = self.request.query_params.get("statut")
-        search = self.request.query_params.get("search")
-        if client_id:
-            qs = qs.filter(client_id=client_id)
-        if statut:
-            qs = qs.filter(statut=statut)
-        if search:
-            qs = qs.filter(
-                Q(client__nom__icontains=search) |
-                Q(client__prenoms__icontains=search) |
-                Q(num_police__icontains=search)
-            )
-        return qs
+        if user.role in ("agent", "admin"):
+            client_id = self.request.query_params.get("client_id")
+            statut = self.request.query_params.get("statut")
+            search = self.request.query_params.get("search")
+            if client_id:
+                qs = qs.filter(client_id=client_id)
+            if statut:
+                qs = qs.filter(statut=statut)
+            if search:
+                qs = qs.filter(
+                    Q(client__nom__icontains=search) |
+                    Q(client__prenoms__icontains=search) |
+                    Q(num_police__icontains=search)
+                )
+            return qs
+        return qs.filter(client=user)
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = dict(serializer.validated_data)
-        try:
-            contrat = create_contrat_epargne(
-                validated_data=data,
-                agent=request.user,
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role in ("agent", "admin"):
+            serializer.save(agent=user)
+        else:
+            contrat = serializer.save(client=user)
+            _notify_client_epargne(
+                contrat,
+                "Dossier Magist-Assur reçu",
+                "Votre dossier d'épargne a bien été enregistré. Un agent va l'étudier prochainement.",
+                "info",
             )
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(ContratEpargneSerializer(contrat).data, status=status.HTTP_201_CREATED)
+            _notify_agents_epargne(
+                contrat,
+                "Nouvelle souscription Magist-Assur",
+                f"{contrat.client.full_name} a soumis un dossier épargne Magist-Assur.",
+            )
 
     @action(detail=True, methods=["post"], url_path="assign-police",
             permission_classes=[IsAuthenticated])
@@ -94,6 +138,12 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
             (request.data.get("code_inspection") or "").strip(),
             request.user,
         )
+        _notify_client_epargne(
+            contrat,
+            "Contrat Magist-Assur activé",
+            f"Votre contrat épargne est actif. Police n° {num_police}.",
+            "success",
+        )
         return Response(ContratEpargneSerializer(contrat).data)
 
     @action(detail=True, methods=["post"], url_path="change-statut",
@@ -108,6 +158,12 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
             changer_statut_epargne(contrat, nouveau_statut)
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        _notify_client_epargne(
+            contrat,
+            "Statut de votre contrat mis à jour",
+            f"Votre contrat épargne Magist-Assur est désormais : {nouveau_statut.replace('_', ' ')}.",
+            "info",
+        )
         return Response(ContratEpargneSerializer(contrat).data)
 
     @action(detail=True, methods=["get"], url_path="export-excel",
@@ -143,6 +199,11 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAgentOrAdmin]
     pagination_class = None
 
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsAgentOrAdmin()]
+
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):
             return ContratPrevoyanceCreateSerializer
@@ -153,41 +214,30 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         qs = ContratPrevoyance.objects.select_related("client", "agent").prefetch_related(
             "assures_associes", "beneficiaires"
         )
-        # Admin : portefeuille complet du cabinet
-        if user.role == "admin":
-            pass
-        # Agent : uniquement ses propres contrats (isolation RGPD)
-        elif user.role == "agent":
-            qs = qs.filter(agent=user)
-        else:
-            return qs.filter(client=user)
-        client_id = self.request.query_params.get("client_id")
-        statut = self.request.query_params.get("statut")
-        search = self.request.query_params.get("search")
-        if client_id:
-            qs = qs.filter(client_id=client_id)
-        if statut:
-            qs = qs.filter(statut=statut)
-        if search:
-            qs = qs.filter(
-                Q(client__nom__icontains=search) |
-                Q(client__prenoms__icontains=search) |
-                Q(num_police__icontains=search)
-            )
-        return qs
+        if user.role in ("agent", "admin"):
+            client_id = self.request.query_params.get("client_id")
+            statut = self.request.query_params.get("statut")
+            search = self.request.query_params.get("search")
+            if client_id:
+                qs = qs.filter(client_id=client_id)
+            if statut:
+                qs = qs.filter(statut=statut)
+            if search:
+                qs = qs.filter(
+                    Q(client__nom__icontains=search) |
+                    Q(client__prenoms__icontains=search) |
+                    Q(num_police__icontains=search)
+                )
+            return qs
+        return qs.filter(client=user)
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = dict(serializer.validated_data)
-        try:
-            contrat = create_contrat_prevoyance(
-                validated_data=data,
-                agent=request.user,
-            )
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(ContratPrevoyanceSerializer(contrat).data, status=status.HTTP_201_CREATED)
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role in ("agent", "admin"):
+            serializer.save(agent=user)
+        else:
+            # Forcer client=user, ignorer toute valeur client envoyée dans le body
+            serializer.save(client=user)
 
     @action(detail=True, methods=["post"], url_path="assign-police",
             permission_classes=[IsAuthenticated])

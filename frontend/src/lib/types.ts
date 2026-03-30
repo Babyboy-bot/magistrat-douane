@@ -122,6 +122,7 @@ export interface ClientRequest {
   createdAt: string;
   treatedAt?: string;
   details: Record<string, unknown>;
+  sinistre_note?: string;
 }
 
 export interface Document {
@@ -130,6 +131,7 @@ export interface Document {
   typeFichier: string;
   fichier: string;
   isLivrable: boolean;
+  confirmedAt?: string;
   uploadedBy: string;
   createdAt: string;
 }

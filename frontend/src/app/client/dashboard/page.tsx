@@ -1,13 +1,42 @@
 "use client";
 
-import { Wallet, CreditCard, AlertCircle, FileText, Car, Home, Shield, RefreshCw } from "lucide-react";
+import { Wallet, AlertCircle, FileText, Car, Home, Shield, RefreshCw, AlertTriangle, Download, Eye, Clock, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientStats, useClientRequests } from "@/hooks/use-api-data";
 import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS, Emission, ClientRequest } from "@/lib/types";
+import { downloadFile } from "@/lib/api";
 import Link from "next/link";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+function buildUrl(f: string) {
+  if (!f) return "";
+  if (f.startsWith("http")) return f;
+  return `${API_BASE}${f.startsWith("/") ? f : "/" + f}`;
+}
+
+function daysUntil(dateStr: string): number {
+  const d = new Date(dateStr);
+  return Math.ceil((d.getTime() - Date.now()) / 86400000);
+}
+
+function urgencyClass(days: number): string {
+  if (days <= 0) return "border-l-4 border-gray-400 bg-gray-50";
+  if (days <= 7) return "border-l-4 border-red-500 bg-red-50";
+  if (days <= 15) return "border-l-4 border-orange-400 bg-orange-50";
+  if (days <= 30) return "border-l-4 border-yellow-400 bg-yellow-50";
+  return "border-l-4 border-green-400 bg-green-50";
+}
+
+function urgencyBadge(days: number) {
+  if (days <= 0) return <Badge className="text-xs bg-gray-100 text-gray-600">Expiré</Badge>;
+  if (days <= 7) return <Badge className="text-xs bg-red-100 text-red-700">J-{days}</Badge>;
+  if (days <= 15) return <Badge className="text-xs bg-orange-100 text-orange-700">J-{days}</Badge>;
+  if (days <= 30) return <Badge className="text-xs bg-yellow-100 text-yellow-700">J-{days}</Badge>;
+  return null;
+}
 
 export default function ClientDashboard() {
   const { user } = useAuthStore();
@@ -26,6 +55,24 @@ export default function ClientDashboard() {
       default: return "bg-gray-100 text-gray-800";
     }
   };
+
+  // Contrats triés par échéance croissante, actifs en tête
+  const contratsActifs = [...emissions]
+    .filter((e: Emission) => e.echeance)
+    .sort((a: Emission, b: Emission) => new Date(a.echeance).getTime() - new Date(b.echeance).getTime());
+
+  // Livrables récents (toutes requêtes confondues)
+  const livrablesRecents = requests
+    .flatMap((r: ClientRequest) => r.livrables.map((d) => ({ ...d, requestNumero: r.numero, requestType: r.type })))
+    .slice(0, 5);
+
+  // Sinistres en cours
+  const sinistresEnCours = requests.filter(
+    (r: ClientRequest) => r.type === "declaration_sinistre" && r.status !== "traite"
+  );
+
+  // Urgences : contrats expirant dans 30j
+  const urgences = contratsActifs.filter((e: Emission) => daysUntil(e.echeance) <= 30 && daysUntil(e.echeance) > 0);
 
   return (
     <div className="space-y-6">
@@ -80,6 +127,53 @@ export default function ClientDashboard() {
         </Card>
       )}
 
+      {/* Bannière urgences échéance */}
+      {user?.verified && urgences.length > 0 && (
+        <Card className="border-orange-300 bg-orange-50 border-0 shadow-sm">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-orange-900 text-sm">
+                  {urgences.length} contrat{urgences.length > 1 ? "s" : ""} à renouveler prochainement
+                </p>
+                <div className="mt-1 space-y-0.5">
+                  {urgences.map((e: Emission) => (
+                    <p key={e.id} className="text-xs text-orange-700">
+                      • {e.numPolice || `#${e.id}`} ({e.risque}) — échéance le {e.echeance}
+                    </p>
+                  ))}
+                </div>
+              </div>
+              <Link href="/client/portfolio">
+                <Button size="sm" variant="outline" className="text-xs border-orange-400 text-orange-700 hover:bg-orange-100">
+                  Voir mes contrats
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sinistres en cours */}
+      {user?.verified && sinistresEnCours.length > 0 && (
+        <Card className="border-0 shadow-sm border-l-4 border-blue-500">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-semibold text-blue-800">
+                  {sinistresEnCours.length} dossier{sinistresEnCours.length > 1 ? "s" : ""} sinistre en cours
+                </span>
+              </div>
+              <Link href="/client/sinistres">
+                <Button size="sm" variant="outline" className="text-xs">Suivre mes sinistres</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats cards - seulement pour les vérifiés */}
       {user?.verified && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -109,7 +203,7 @@ export default function ClientDashboard() {
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-xl bg-green-50 flex items-center justify-center">
-                  <CreditCard className="h-6 w-6 text-green-600" />
+                  <Wallet className="h-6 w-6 text-green-600" />
                 </div>
               </div>
             </CardContent>
@@ -140,13 +234,7 @@ export default function ClientDashboard() {
             <CardTitle className="text-lg">Actions rapides</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Link href="/client/payment">
-                <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
-                  <CreditCard className="h-5 w-5 text-blue-600" />
-                  <span className="text-xs font-medium">Payer une prime</span>
-                </Button>
-              </Link>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <Link href="/client/sinistre">
                 <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
                   <AlertCircle className="h-5 w-5 text-red-600" />
@@ -159,7 +247,7 @@ export default function ClientDashboard() {
                   <span className="text-xs font-medium">Incorporation</span>
                 </Button>
               </Link>
-              {(user.professionType === "magistrat" || user.professionType === "douanier") ? (
+              {user.profession?.toLowerCase().includes("magistrat") ? (
                 <Link href="/client/subscribe/magist-assur">
                   <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
                     <Shield className="h-5 w-5 text-purple-600" />
@@ -179,89 +267,139 @@ export default function ClientDashboard() {
         </Card>
       )}
 
-      {/* Recent contracts and requests - seulement pour les vérifiés */}
+      {/* Contrats — échéances & soldes */}
+      {user?.verified && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-lg">Mes contrats</CardTitle>
+            <Link href="/client/portfolio">
+              <Button variant="ghost" size="sm" className="text-xs">Voir tout</Button>
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {contratsActifs.slice(0, 5).map((e: Emission) => {
+              const days = daysUntil(e.echeance);
+              const payPct = e.primeTTC > 0 ? Math.round((e.totalPaye / e.primeTTC) * 100) : 100;
+              return (
+                <div key={e.id} className={`p-3 rounded-lg transition ${urgencyClass(days)}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="h-9 w-9 rounded-lg bg-[hsl(222,47%,20%)] flex items-center justify-center shrink-0">
+                        {e.risque.toLowerCase().includes("auto") ? (
+                          <Car className="h-4 w-4 text-white" />
+                        ) : (
+                          <Home className="h-4 w-4 text-white" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium truncate">{e.risque}</p>
+                          {urgencyBadge(days)}
+                        </div>
+                        <p className="text-xs text-gray-500 truncate">{e.compagnie} • {e.numPolice || `#${e.id}`}</p>
+                        <p className="text-xs text-gray-400">Éch. {e.echeance}</p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-semibold">{formatCurrency(e.primeTTC)}</p>
+                      {e.solde > 0 ? (
+                        <p className="text-xs text-red-600 font-medium">Reste : {formatCurrency(e.solde)}</p>
+                      ) : (
+                        <p className="text-xs text-green-600 font-medium flex items-center justify-end gap-1">
+                          <CheckCircle className="h-3 w-3" /> Soldé
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {/* Barre de progression paiement */}
+                  {e.primeTTC > 0 && (
+                    <div className="mt-2">
+                      <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${payPct >= 100 ? "bg-green-500" : "bg-blue-500"}`}
+                          style={{ width: `${Math.min(payPct, 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5 text-right">{payPct}% réglé</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {contratsActifs.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-4">Aucun contrat pour le moment</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Livrables récents + Requêtes */}
       {user?.verified && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent contracts */}
+
+          {/* Livrables récents */}
           <Card className="border-0 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Mes contrats récents</CardTitle>
-              <Link href="/client/portfolio">
-                <Button variant="ghost" size="sm" className="text-xs">
-                  Voir tout
-                </Button>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg">Documents disponibles</CardTitle>
+              <Link href="/client/history">
+                <Button variant="ghost" size="sm" className="text-xs">Voir tout</Button>
               </Link>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {emissions.slice(0, 3).map((e: Emission) => (
-                  <div
-                    key={e.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-[hsl(222,47%,20%)] flex items-center justify-center">
-                        {e.risque.includes("Auto") ? (
-                          <Car className="h-5 w-5 text-white" />
-                        ) : (
-                          <Home className="h-5 w-5 text-white" />
-                        )}
+              {livrablesRecents.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">Aucun document disponible</p>
+              ) : (
+                <div className="space-y-2">
+                  {livrablesRecents.map((d) => (
+                    <div key={d.id} className="flex items-center justify-between p-2 rounded-lg bg-green-50 hover:bg-green-100 transition">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="h-4 w-4 text-green-600 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-green-800 truncate">{d.nom}</p>
+                          <p className="text-xs text-green-600">{d.requestNumero} — {REQUEST_TYPE_LABELS[d.requestType as keyof typeof REQUEST_TYPE_LABELS]}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">{e.risque}</p>
-                        <p className="text-xs text-gray-500">
-                          {e.compagnie} • {e.numPolice}
-                        </p>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => window.open(buildUrl(d.fichier), "_blank")} className="text-green-600 hover:text-green-800 p-1">
+                          <Eye className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={() => downloadFile(buildUrl(d.fichier), d.nom)} className="text-green-600 hover:text-green-800 p-1">
+                          <Download className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold">{formatCurrency(e.primeTTC)}</p>
-                      <p className="text-xs text-gray-500">Éch. {e.echeance}</p>
-                    </div>
-                  </div>
-                ))}
-                {emissions.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-4">
-                    Aucun contrat pour le moment
-                  </p>
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Recent requests */}
+          {/* Requêtes récentes */}
           <Card className="border-0 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Mes requêtes récentes</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg">Requêtes récentes</CardTitle>
               <Link href="/client/history">
-                <Button variant="ghost" size="sm" className="text-xs">
-                  Voir tout
-                </Button>
+                <Button variant="ghost" size="sm" className="text-xs">Voir tout</Button>
               </Link>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {requests.slice(0, 3).map((r: ClientRequest) => (
-                  <div
-                    key={r.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition"
-                  >
-                    <div>
+              <div className="space-y-2">
+                {requests.filter((r: ClientRequest) => r.type !== "declaration_sinistre").slice(0, 5).map((r: ClientRequest) => (
+                  <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition">
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-gray-400" />
-                        <p className="text-sm font-medium">{REQUEST_TYPE_LABELS[r.type as keyof typeof REQUEST_TYPE_LABELS]}</p>
+                        <FileText className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                        <p className="text-sm font-medium truncate">{REQUEST_TYPE_LABELS[r.type as keyof typeof REQUEST_TYPE_LABELS]}</p>
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">{r.numero} • {r.createdAt}</p>
                     </div>
-                    <Badge className={statusColor(r.status)} variant="secondary">
+                    <Badge className={`${statusColor(r.status)} shrink-0`} variant="secondary">
                       {REQUEST_STATUS_LABELS[r.status as keyof typeof REQUEST_STATUS_LABELS]}
                     </Badge>
                   </div>
                 ))}
-                {requests.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-4">
-                    Aucune requête pour le moment
-                  </p>
+                {requests.filter((r: ClientRequest) => r.type !== "declaration_sinistre").length === 0 && (
+                  <p className="text-sm text-gray-400 text-center py-4">Aucune requête pour le moment</p>
                 )}
               </div>
             </CardContent>

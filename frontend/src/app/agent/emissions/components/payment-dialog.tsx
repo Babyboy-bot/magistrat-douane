@@ -159,7 +159,7 @@ export function PaymentDialog({ emission, formatCurrency, open, onClose, onSucce
             </div>
             <div className="space-y-1.5">
               <Label>Observations</Label>
-              <Input placeholder="Wave, Orange Money, Espèces..." value={paymentObs} onChange={(e) => setPaymentObs(e.target.value)} />
+              <Input placeholder="Virement RIB, Chèque, Espèces..." value={paymentObs} onChange={(e) => setPaymentObs(e.target.value)} />
             </div>
             <Button
               className="w-full bg-green-600 hover:bg-green-700 text-white"

@@ -8,6 +8,27 @@ from core.serializers import ClientRequestSerializer, ClientRequestCreateSeriali
 from core.services import notify_new_request, notify_request_treated
 
 
+def _notify_sinistre_cloture(req: ClientRequest) -> None:
+    """Notifie le client de la clôture de son dossier sinistre avec la note de l'agent."""
+    try:
+        from notifications.service import notification_service
+        nature = req.details.get("nature", "sinistre") if req.details else "sinistre"
+        note = req.sinistre_note
+        message = f"Votre dossier sinistre {req.numero} ({nature}) a été clôturé."
+        if note:
+            message += f"\n\nConclusion de l'agent : {note}"
+        notification_service.send_notification_to_user(
+            user_id=req.client_id,
+            title="Dossier sinistre clôturé",
+            message=message,
+            type="success",
+            priority="high",
+            data={"request_id": req.id, "numero": req.numero, "event": "sinistre_cloture"},
+        )
+    except Exception:
+        pass
+
+
 class ClientRequestListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -21,9 +42,7 @@ class ClientRequestListCreateView(generics.ListCreateAPIView):
         qs = ClientRequest.objects.select_related("client", "agent").prefetch_related("documents")
         if user.role in ("agent", "admin"):
             return qs
-        if user.account_status in ("active", "verified"):
-            return qs.filter(client=user)
-        return ClientRequest.objects.none()
+        return qs.filter(client=user)
 
     def perform_create(self, serializer):
         instance = serializer.save()
@@ -38,9 +57,7 @@ class ClientRequestDetailView(generics.RetrieveUpdateAPIView):
         user = self.request.user
         if user.role in ("agent", "admin"):
             return ClientRequest.objects.all()
-        if user.account_status in ("active", "verified"):
-            return ClientRequest.objects.filter(client=user)
-        return ClientRequest.objects.none()
+        return ClientRequest.objects.filter(client=user)
 
 
 @api_view(["POST"])
@@ -59,8 +76,14 @@ def treat_request_view(request, pk):
     req.status = "traite"
     req.treated_at = timezone.now()
     req.agent = request.user
+    note = (request.data.get("note") or "").strip()
+    if note:
+        req.sinistre_note = note
     req.save()
-    notify_request_treated(req)
+    if req.type == ClientRequest.RequestType.DECLARATION_SINISTRE:
+        _notify_sinistre_cloture(req)
+    else:
+        notify_request_treated(req)
     return Response(ClientRequestSerializer(req).data)
 
 

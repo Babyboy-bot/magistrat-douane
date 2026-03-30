@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Camera, Save, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,19 @@ import { toast } from "sonner";
 export default function ProfilePage() {
   const { user, updateProfile } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const updated = await authApi.uploadPhoto(file);
+      updateProfile(updated);
+      toast.success("Photo de profil mise à jour");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'upload");
+    }
+  };
   const [form, setForm] = useState({
     nom: user?.nom || "",
     prenoms: user?.prenoms || "",
@@ -87,13 +100,21 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4">
             <div className="relative">
               <Avatar className="h-20 w-20">
-                <AvatarFallback className="bg-[hsl(222,47%,20%)] text-white text-xl font-bold">
-                  {initials}
-                </AvatarFallback>
+                {user?.photo ? (
+                  <img src={user.photo} alt="Photo" className="h-20 w-20 rounded-full object-cover" />
+                ) : (
+                  <AvatarFallback className="bg-[hsl(222,47%,20%)] text-white text-xl font-bold">
+                    {initials}
+                  </AvatarFallback>
+                )}
               </Avatar>
-              <button className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-amber-400 flex items-center justify-center text-white shadow-lg hover:bg-amber-500 transition">
+              <button
+                onClick={() => photoInputRef.current?.click()}
+                className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-amber-400 flex items-center justify-center text-white shadow-lg hover:bg-amber-500 transition"
+              >
                 <Camera className="h-3.5 w-3.5" />
               </button>
+              <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
             </div>
             <div>
               <p className="font-semibold text-lg">{user?.nom} {user?.prenoms}</p>

@@ -1,5 +1,6 @@
 from django.conf import settings as conf
 from django.contrib.auth import authenticate, get_user_model
+from django.core.cache import cache
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -15,15 +16,6 @@ import json
 import re
 
 from notifications.emails import send_welcome_email
-from core.permissions import IsAgentOrAdmin, IsAdminOnly as IsAdmin
-from .models import User, UserAuditLog
-from .services import (
-    reset_user_password,
-    verify_prospect,
-    reject_prospect,
-    deactivate_user as deactivate_user_service,
-    toggle_user_active,
-)
 from .serializers import (
     UserSerializer,
     UserCreateSerializer,
@@ -44,6 +36,8 @@ from .audit import (
     log_user_action,
     get_client_ip,
 )
+
+from .models import UserAuditLog
 
 User = get_user_model()
 
@@ -78,6 +72,16 @@ def _clear_auth_cookies(response):
     response.delete_cookie(conf.ACCESS_TOKEN_COOKIE, path=conf.COOKIE_PATH)
     response.delete_cookie(conf.REFRESH_TOKEN_COOKIE, path=conf.COOKIE_PATH)
     return response
+
+
+class IsAgentOrAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role in ("agent", "admin")
+
+
+class IsAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == "admin"
 
 
 # ── Auth views ──
@@ -138,7 +142,6 @@ class CookieLoginView(APIView):
 class CookieRefreshView(APIView):
     """Read refresh token from cookie, rotate it, set new cookies."""
     permission_classes = [permissions.AllowAny]
-    throttle_classes = []  # Pas de throttle : nécessite un cookie valide, pas brute-forçable
 
     def post(self, request):
         # Essayer d'abord le body JSON (pour le frontend)
@@ -227,6 +230,16 @@ class MeView(generics.RetrieveUpdateAPIView):
             return UserUpdateSerializer
         return UserSerializer
 
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", request.method == "PATCH")
+        instance = self.get_object()
+        serializer = UserUpdateSerializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        # Renvoyer le sérialiseur COMPLET pour que le frontend reçoive
+        # verified, role, account_status, photo, etc.
+        return Response(UserSerializer(instance, context={"request": request}).data)
+
     def perform_update(self, serializer):
         old_is_active = serializer.instance.is_active
         instance = serializer.save()
@@ -261,6 +274,16 @@ class UserListView(generics.ListAPIView):
     """Only agents and admins can list users."""
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated, IsAgentOrAdmin]
+
+    def list(self, request, *args, **kwargs):
+        params = request.query_params.urlencode()
+        cache_key = f"user_list_{request.user.id}_{params}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=30)
+        return response
 
     def get_queryset(self):
         user = self.request.user
@@ -357,12 +380,12 @@ class ResetPasswordView(APIView):
                 {"detail": "Aucun compte trouvé avec cet identifiant"},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        temp_pw = reset_user_password(user)
-        return Response({
-            "detail": "Mot de passe temporaire généré.",
-            "temp_password": temp_pw,
-            "instructions": "Communiquez ce mot de passe au client et demandez-lui de le changer à la première connexion.",
-        })
+        import secrets, string
+        temp_pw = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10)) + "A1!"
+        user.set_password(temp_pw)
+        user.save(update_fields=["password"])
+        # In production: send temp_pw via email/SMS
+        return Response({"detail": "Un nouveau mot de passe a été généré. Contactez votre agent ACS pour le récupérer."})
 
 
 class AgentCreateClientView(generics.CreateAPIView):
@@ -407,11 +430,12 @@ def admin_delete_user_view(request, pk):
         return Response({"detail": "Utilisateur introuvable"}, status=status.HTTP_404_NOT_FOUND)
     
     if request.method == "DELETE":
+        if target.role == "admin":
+            return Response({"detail": "Impossible de supprimer un administrateur"}, status=status.HTTP_400_BAD_REQUEST)
         name = target.full_name
-        try:
-            deactivate_user_service(target, request.user)
-        except ValueError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        target.is_active = False
+        target.save(update_fields=["is_active"])
+        log_user_action(request.user, target, "deactivation", {"reason": "admin_delete"})
         return Response({"detail": f"Compte de {name} désactivé"})
     
     elif request.method == "PATCH":
@@ -469,19 +493,14 @@ def verify_user_view(request):
             {"detail": "Utilisateur introuvable"}, status=status.HTTP_404_NOT_FOUND
         )
 
-    # Security: only prospects can be verified
-    if target.role != "prospect":
-        return Response(
-            {"detail": "Seuls les prospects peuvent être vérifiés"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    action_type = serializer.validated_data["action"]
+    action = serializer.validated_data["action"]
     try:
-        if action_type == "verify":
+        if action == "verify":
+            from .services import verify_prospect
             verify_prospect(target, request.user)
             return Response({"detail": f"Compte de {target.full_name} vérifié"})
         else:
+            from .services import reject_prospect
             reject_prospect(target, request.user)
             return Response({"detail": "Compte refusé et désactivé"})
     except ValueError as e:

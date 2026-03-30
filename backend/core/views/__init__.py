@@ -22,6 +22,7 @@ from .documents import (
     RequestLivrablesView,
     DocumentUploadView,
     CarteGriseUploadView,
+    ConfirmLivrableView,
 )
 from .dashboard import (
     CompagnieListView,
@@ -34,7 +35,7 @@ __all__ = [
     "emission_totals_view", "emission_balance_view", "export_emissions", "EmissionImportView",
     "ClientRequestListCreateView", "ClientRequestDetailView",
     "treat_request_view", "claim_request_view", "release_request_view",
-    "RequestLivrablesView", "DocumentUploadView", "CarteGriseUploadView",
+    "RequestLivrablesView", "DocumentUploadView", "CarteGriseUploadView", "ConfirmLivrableView",
     "CompagnieListView", "dashboard_stats_view",
     "AuditEntryListView",
 ]

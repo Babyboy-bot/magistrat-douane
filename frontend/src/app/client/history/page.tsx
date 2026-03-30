@@ -1,7 +1,8 @@
 "use client";
 
-import { FileText, Clock, CheckCircle, AlertCircle, Search, Eye, Download } from "lucide-react";
+import { FileText, Clock, CheckCircle, AlertCircle, Search, Eye, Download, ThumbsUp } from "lucide-react";
 import { downloadFile } from "@/lib/api";
+import { requestsApi } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,11 +10,33 @@ import { useState } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientRequests } from "@/hooks/use-api-data";
 import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS } from "@/lib/types";
+import { toast } from "sonner";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+function buildFileUrl(fichier: string): string {
+  if (!fichier) return "";
+  if (fichier.startsWith("http")) return fichier;
+  return `${API_BASE}${fichier.startsWith("/") ? fichier : "/" + fichier}`;
+}
 
 export default function HistoryPage() {
   const { user } = useAuthStore();
-  const { data: requests } = useClientRequests(user?.id || "");
+  const { data: requests, refetch } = useClientRequests(user?.id || "");
   const [search, setSearch] = useState("");
+  const [confirming, setConfirming] = useState<string | null>(null);
+
+  const handleConfirm = async (documentId: string) => {
+    setConfirming(documentId);
+    try {
+      await requestsApi.confirmLivrable(documentId);
+      toast.success("Réception confirmée — l'agent a été notifié");
+      refetch();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setConfirming(null);
+    }
+  };
 
   const filtered = requests.filter(
     (r) =>
@@ -119,22 +142,37 @@ export default function HistoryPage() {
                   {r.livrables.length > 0 && (
                     <div>
                       <p className="text-xs font-medium text-green-600 mb-1">Livrables disponibles</p>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-col gap-1.5">
                         {r.livrables.map((d) => (
-                          <div key={d.id} className="flex items-center gap-1 bg-green-50 rounded px-2 py-1">
-                            <span className="text-xs text-green-700 mr-1">📄 {d.nom}</span>
-                            <button
-                              onClick={() => window.open(d.fichier, "_blank")}
-                              className="text-green-600 hover:text-green-800" title="Voir"
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              onClick={() => downloadFile(d.fichier, d.nom)}
-                              className="text-green-600 hover:text-green-800" title="Télécharger"
-                            >
-                              <Download className="h-3.5 w-3.5" />
-                            </button>
+                          <div key={d.id} className="flex items-center justify-between gap-2 bg-green-50 rounded px-2 py-1.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <FileText className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                              <span className="text-xs text-green-700 truncate">{d.nom}</span>
+                              {d.confirmedAt && (
+                                <span className="text-xs text-green-500 flex items-center gap-0.5 shrink-0">
+                                  <CheckCircle className="h-3 w-3" /> Reçu
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button onClick={() => window.open(buildFileUrl(d.fichier), "_blank")} className="text-green-600 hover:text-green-800 p-0.5" title="Voir">
+                                <Eye className="h-3.5 w-3.5" />
+                              </button>
+                              <button onClick={() => downloadFile(buildFileUrl(d.fichier), d.nom)} className="text-green-600 hover:text-green-800 p-0.5" title="Télécharger">
+                                <Download className="h-3.5 w-3.5" />
+                              </button>
+                              {!d.confirmedAt && (
+                                <button
+                                  onClick={() => handleConfirm(d.id)}
+                                  disabled={confirming === d.id}
+                                  className="flex items-center gap-0.5 text-xs bg-green-600 text-white px-1.5 py-0.5 rounded hover:bg-green-700 disabled:opacity-50"
+                                  title="Confirmer réception"
+                                >
+                                  <ThumbsUp className="h-3 w-3" />
+                                  {confirming === d.id ? "..." : "Confirmer"}
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>

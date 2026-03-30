@@ -29,7 +29,7 @@ services:
       timeout: 3s
       retries: 10
 
-  # ── Backend Django / Daphne ──
+  # ── Backend Django / Gunicorn+Uvicorn ──
   backend:
     build:
       context: ./backend
@@ -41,6 +41,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       SECURE_SSL_REDIRECT: "False"
       USE_X_FORWARDED_HOST: "True"
+      ALLOWED_HOSTS: "*"
+      WEB_CONCURRENCY: "3"
     volumes:
       - media_files:/app/media
       - static_files:/app/staticfiles

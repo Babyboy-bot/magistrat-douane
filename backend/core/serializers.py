@@ -84,9 +84,15 @@ class DocumentSerializer(serializers.ModelSerializer):
         model = Document
         fields = [
             "id", "request", "nom", "fichier", "type_fichier",
-            "is_livrable", "uploaded_by", "created_at",
+            "is_livrable", "confirmed_at", "uploaded_by", "created_at",
         ]
-        read_only_fields = ["id", "uploaded_by", "created_at"]
+        read_only_fields = ["id", "uploaded_by", "created_at", "confirmed_at"]
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if instance.fichier:
+            ret["fichier"] = instance.fichier.url
+        return ret
 
     def validate_fichier(self, value):
         if value.size > self.MAX_FILE_SIZE:
@@ -112,7 +118,7 @@ class ClientRequestSerializer(serializers.ModelSerializer):
         fields = [
             "id", "numero", "client", "client_nom", "agent", "agent_nom",
             "type", "type_label", "status", "status_label",
-            "details", "documents", "livrables", "treated_at", "created_at",
+            "details", "sinistre_note", "documents", "livrables", "treated_at", "created_at",
         ]
         read_only_fields = ["id", "numero", "created_at"]
 

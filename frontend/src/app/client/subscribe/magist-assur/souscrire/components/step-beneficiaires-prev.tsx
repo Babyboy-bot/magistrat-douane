@@ -12,18 +12,14 @@ interface Props {
   benefConjoint: boolean; setBenefConjoint: (v: boolean) => void;
   benefEnfants: boolean; setBenefEnfants: (v: boolean) => void;
   autresBenef: BeneficiairePrev[]; setAutresBenef: (v: BeneficiairePrev[]) => void;
-  situationMatrimoniale?: string;
 }
 
 const emptyBenef = (): BeneficiairePrev => ({
   nom: "", date_naissance: "", telephone: "", en_qualite_de: "", taux_repartition: "",
 });
 
-export function StepBeneficiairesPrev({ benefConjoint, setBenefConjoint, benefEnfants, setBenefEnfants, autresBenef, setAutresBenef, situationMatrimoniale }: Props) {
-  const hasConjoint = situationMatrimoniale === "marie" || situationMatrimoniale === "concubin";
+export function StepBeneficiairesPrev({ benefConjoint, setBenefConjoint, benefEnfants, setBenefEnfants, autresBenef, setAutresBenef }: Props) {
   const [hasAutres, setHasAutres] = useState(autresBenef.some(b => b.nom !== ""));
-  const totalTaux = autresBenef.filter(b => b.nom).reduce((s, b) => s + (Number(b.taux_repartition) || 0), 0);
-  const taux100 = !hasAutres || totalTaux === 100;
 
   const update = (i: number, field: keyof BeneficiairePrev, val: string) => {
     const arr = [...autresBenef];
@@ -43,12 +39,10 @@ export function StepBeneficiairesPrev({ benefConjoint, setBenefConjoint, benefEn
         <p className="text-sm text-gray-600">L&apos;assuré désigne comme bénéficiaire(s) en cas de décès avant le terme du contrat :</p>
 
         <div className="space-y-2">
-          {hasConjoint && (
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
             <Checkbox checked={benefConjoint} onCheckedChange={c => setBenefConjoint(!!c)} id="bcp" />
             <Label htmlFor="bcp" className="cursor-pointer">Conjoint(e) non séparé(e) de corps</Label>
           </div>
-          )}
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
             <Checkbox checked={benefEnfants} onCheckedChange={c => setBenefEnfants(!!c)} id="bep" />
             <Label htmlFor="bep" className="cursor-pointer">Enfants nés ou à naître</Label>
@@ -60,9 +54,6 @@ export function StepBeneficiairesPrev({ benefConjoint, setBenefConjoint, benefEn
           <Label htmlFor="bap" className="cursor-pointer">Autre(s) bénéficiaire(s)</Label>
         </div>
 
-        {hasAutres && !taux100 && (
-          <p className="text-xs text-orange-600 bg-orange-50 rounded px-3 py-1.5">⚠ Somme des taux : <strong>{totalTaux}%</strong> — doit être 100%.</p>
-        )}
         {hasAutres && (
           <div className="space-y-3">
             {autresBenef.map((b, i) => (
@@ -80,7 +71,7 @@ export function StepBeneficiairesPrev({ benefConjoint, setBenefConjoint, benefEn
                   <div><Label className="text-xs">Date de naissance</Label><Input className="h-8 text-sm" type="date" value={b.date_naissance} onChange={e => update(i, "date_naissance", e.target.value)} /></div>
                   <div><Label className="text-xs">N° téléphone</Label><Input className="h-8 text-sm" value={b.telephone} onChange={e => update(i, "telephone", e.target.value)} /></div>
                   <div><Label className="text-xs">En qualité de</Label><Input className="h-8 text-sm" value={b.en_qualite_de} onChange={e => update(i, "en_qualite_de", e.target.value)} /></div>
-                  <div><Label className="text-xs">Taux répartition (%)</Label><Input className="h-8 text-sm" type="number" min={0} max={100 - (totalTaux - (Number(b.taux_repartition) || 0))} value={b.taux_repartition} onChange={e => { const max = 100 - (totalTaux - (Number(b.taux_repartition) || 0)); update(i, "taux_repartition", String(Math.min(Number(e.target.value), max))); }} /></div>
+                  <div><Label className="text-xs">Taux répartition (%)</Label><Input className="h-8 text-sm" type="number" min={0} max={100} value={b.taux_repartition} onChange={e => update(i, "taux_repartition", e.target.value)} /></div>
                 </div>
               </div>
             ))}

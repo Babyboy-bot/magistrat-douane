@@ -44,6 +44,13 @@ import { useAuthStore } from "@/stores/auth-store";
 import { toast } from "sonner";
 import { PlusCircle } from "lucide-react";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+function buildFileUrl(fichier: string): string {
+  if (!fichier) return "";
+  if (fichier.startsWith("http")) return fichier;
+  return `${API_BASE}${fichier.startsWith("/") ? fichier : "/" + fichier}`;
+}
+
 const EMISSION_RISQUE: Partial<Record<string, string>> = {
   souscription_auto: "Automobile",
   cotation_auto: "Automobile",
@@ -181,23 +188,14 @@ export default function AgentRequestsPage() {
   };
 
   const handleCreateEmission = async () => {
-    if (!selectedRequest || !emissionForm.risque || !emissionForm.compagnie || !emissionForm.numPolice || !emissionForm.effet || !emissionForm.echeance || !emissionForm.primeNette || !emissionForm.primeTtc) {
+    if (!selectedRequest || !emissionForm.compagnie || !emissionForm.numFacture || !emissionForm.numPolice || !emissionForm.echeance || !emissionForm.primeTtc) {
       toast.error("Veuillez remplir tous les champs obligatoires");
-      return;
-    }
-    if (Number(emissionForm.primeNette) > Number(emissionForm.primeTtc)) {
-      toast.error("La prime nette ne peut pas dépasser la prime TTC.");
-      return;
-    }
-    if (emissionForm.echeance <= emissionForm.effet) {
-      toast.error("La date d'échéance doit être postérieure à la date d'effet.");
       return;
     }
     setEmissionLoading(true);
     try {
       await emissionsApi.create({
         clientId: selectedRequest.clientId,
-        agentId: user?.id,
         date: emissionForm.date,
         risque: emissionForm.risque,
         compagnie: emissionForm.compagnie,
@@ -207,15 +205,12 @@ export default function AgentRequestsPage() {
         immatriculation: emissionForm.immatriculation || "-",
         effet: emissionForm.effet,
         echeance: emissionForm.echeance,
-        primeNette: emissionForm.primeNette || emissionForm.primeTtc,
-        primeTtc: emissionForm.primeTtc,
+        primeNette: Number(emissionForm.primeNette) || Number(emissionForm.primeTtc),
+        primeTtc: Number(emissionForm.primeTtc),
         situation: emissionForm.situation,
       });
-      await requestsApi.treat(Number(selectedRequest.id));
-      toast.success("Émission créée et requête marquée comme traitée.");
+      toast.success("Émission créée avec succès — visible dans le portefeuille client");
       setShowEmission(false);
-      setShowDetail(false);
-      refetchRequests();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de la création de l'émission");
     } finally {
@@ -495,10 +490,10 @@ export default function AgentRequestsPage() {
                             <span className="text-xs">{doc.nom}</span>
                           </div>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => window.open(doc.fichier, "_blank")} title="Voir">
+                            <Button variant="ghost" size="sm" onClick={() => window.open(buildFileUrl(doc.fichier), "_blank")} title="Voir">
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => downloadFile(doc.fichier, doc.nom)} title="Télécharger">
+                            <Button variant="ghost" size="sm" onClick={() => downloadFile(buildFileUrl(doc.fichier), doc.nom)} title="Télécharger">
                               <Download className="h-4 w-4" />
                             </Button>
                           </div>
@@ -525,10 +520,10 @@ export default function AgentRequestsPage() {
                             <span className="text-xs text-green-700">{doc.nom}</span>
                           </div>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => window.open(doc.fichier, "_blank")} title="Voir">
+                            <Button variant="ghost" size="sm" onClick={() => window.open(buildFileUrl(doc.fichier), "_blank")} title="Voir">
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => downloadFile(doc.fichier, doc.nom)} title="Télécharger">
+                            <Button variant="ghost" size="sm" onClick={() => downloadFile(buildFileUrl(doc.fichier), doc.nom)} title="Télécharger">
                               <Download className="h-4 w-4" />
                             </Button>
                           </div>

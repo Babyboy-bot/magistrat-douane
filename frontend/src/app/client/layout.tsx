@@ -13,7 +13,6 @@ import {
   Shield,
   RefreshCw,
   Download,
-  CreditCard,
   AlertTriangle,
   User,
   LogOut,
@@ -47,8 +46,7 @@ const verifiedActions = [
   { name: "Souscription MRH", href: "/client/subscribe/habitation", icon: Home },
   { name: "Incorporation", href: "/client/incorporation", icon: FileText },
   { name: "Changement", href: "/client/change", icon: RefreshCw },
-  { name: "Payer en ligne", href: "/client/payment", icon: CreditCard },
-  { name: "Déclarer un sinistre", href: "/client/sinistre", icon: AlertTriangle },
+  { name: "Mes sinistres", href: "/client/sinistres", icon: AlertTriangle },
 ];
 
 const magistratActions = [
@@ -59,8 +57,7 @@ const magistratActions = [
   { name: "Magist-Assur", href: "/client/subscribe/magist-assur", icon: Shield },
   { name: "Incorporation", href: "/client/incorporation", icon: FileText },
   { name: "Changement", href: "/client/change", icon: RefreshCw },
-  { name: "Payer en ligne", href: "/client/payment", icon: CreditCard },
-  { name: "Déclarer un sinistre", href: "/client/sinistre", icon: AlertTriangle },
+  { name: "Mes sinistres", href: "/client/sinistres", icon: AlertTriangle },
 ];
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -82,6 +79,24 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       router.replace("/admin/dashboard");
     }
   }, [initialized, isAuthenticated, user, loading, router]);
+
+  // Rafraîchir fetchMe() sur focus de page + polling 30s si non vérifié
+  const { fetchMe } = useAuthStore();
+  useEffect(() => {
+    const onFocus = () => fetchMe();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") fetchMe();
+    });
+    return () => window.removeEventListener("focus", onFocus);
+  }, [fetchMe]);
+
+  useEffect(() => {
+    if (!user?.verified) {
+      const interval = setInterval(() => fetchMe(), 30_000);
+      return () => clearInterval(interval);
+    }
+  }, [user?.verified, fetchMe]);
 
   if (loading || !initialized || shouldRedirect) return null;
 

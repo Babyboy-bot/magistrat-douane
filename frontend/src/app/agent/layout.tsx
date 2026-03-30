@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   X,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -26,6 +27,7 @@ const navigation = [
   { name: "Assurés / Prospects", href: "/agent/clients", icon: Users },
   { name: "Émissions", href: "/agent/emissions", icon: FileSpreadsheet },
   { name: "Requêtes clients", href: "/agent/requests", icon: ClipboardList },
+  { name: "Sinistres", href: "/agent/sinistres", icon: AlertTriangle },
   { name: "MAGIST'ASSUR", href: "/agent/magistassur", icon: Heart },
 ];
 

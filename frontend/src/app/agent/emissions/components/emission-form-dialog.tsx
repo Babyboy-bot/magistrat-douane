@@ -23,6 +23,7 @@ const defaultFormState = {
   situation: "",
   client: "",
   risque: "",
+  tauxCommission: 0,
   compagnie: "",
   numFacture: "",
   numPolice: "",
@@ -142,7 +143,17 @@ export function EmissionFormDialog({ clients, open, onOpenChange, onCreated, pre
           )}
           <div className="space-y-1.5">
             <Label>Risque *</Label>
-            <Select value={form.risque} onValueChange={(v) => setForm({ ...form, risque: v })}>
+            <Select
+              value={form.risque}
+              onValueChange={(v) => {
+                const taux = RISQUES.find((r) => r.nom === v)?.tauxCommission ?? 0;
+                const nette = Number(form.primeNette);
+                const ttc = taux > 0 && nette > 0
+                  ? Math.round(nette / (1 - taux / 100))
+                  : Number(form.primeTtc) || 0;
+                setForm({ ...form, risque: v, tauxCommission: taux, primeTtc: ttc > 0 ? String(ttc) : form.primeTtc });
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionnez un risque..." />
               </SelectTrigger>
@@ -193,13 +204,42 @@ export function EmissionFormDialog({ clients, open, onOpenChange, onCreated, pre
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Prime nette (FCFA) *</Label>
-              <Input type="number" placeholder="0" value={form.primeNette} onChange={(e) => setForm({ ...form, primeNette: e.target.value })} />
+              <Input
+                type="number" placeholder="0" value={form.primeNette}
+                onChange={(e) => {
+                  const nette = Number(e.target.value);
+                  const taux = form.tauxCommission;
+                  const ttc = taux > 0 && nette > 0 ? Math.round(nette / (1 - taux / 100)) : Number(form.primeTtc) || 0;
+                  setForm({ ...form, primeNette: e.target.value, primeTtc: ttc > 0 ? String(ttc) : form.primeTtc });
+                }}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Prime TTC (FCFA) *</Label>
-              <Input type="number" placeholder="0" value={form.primeTtc} onChange={(e) => setForm({ ...form, primeTtc: e.target.value })} />
+              <Input
+                type="number" placeholder="0" value={form.primeTtc}
+                onChange={(e) => setForm({ ...form, primeTtc: e.target.value })}
+              />
             </div>
           </div>
+          {/* Aperçu commission */}
+          {form.tauxCommission > 0 && Number(form.primeTtc) > 0 && (
+            <div className="rounded-lg bg-purple-50 border border-purple-200 px-3 py-2 text-sm">
+              <span className="text-purple-700">
+                Commission ACS ({form.tauxCommission}%) :{" "}
+                <strong>
+                  {new Intl.NumberFormat("fr-FR").format(
+                    Math.round(Number(form.primeTtc) * form.tauxCommission / 100)
+                  )}{" "}FCFA
+                </strong>
+              </span>
+              {Number(form.primeNette) > 0 && (
+                <span className="text-purple-500 ml-2 text-xs">
+                  (prime nette insur. : {new Intl.NumberFormat("fr-FR").format(Number(form.primeTtc) - Math.round(Number(form.primeTtc) * form.tauxCommission / 100))} FCFA)
+                </span>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Marque</Label>

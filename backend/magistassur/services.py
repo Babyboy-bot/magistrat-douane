@@ -1,72 +1,11 @@
-"""
-Service layer — magistassur
-Toute la logique métier contrats (Épargne / Prévoyance) est ici.
-Les vues délèguent à ces fonctions ; elles ne font que parser la requête HTTP et retourner la réponse.
-"""
 from datetime import date as date_type
-
 from django.db import transaction
 from django.utils import timezone
 
 from .models import ContratEpargne, ContratPrevoyance, CotisationEpargne
 
 
-# ── Helpers internes ────────────────────────────────────────────────────────
-
-
-def _notifier_changement_statut(client_id, num_police: str, type_contrat: str, statut_display: str) -> None:
-    """Envoie une notification WS au client après changement de statut."""
-    try:
-        from notifications.service import notification_service
-        notification_service.send_notification_to_user(
-            user_id=client_id,
-            title="Statut de votre contrat mis à jour",
-            message=(
-                f"Votre contrat {type_contrat} MAGIST\u2019ASSUR "
-                f"({num_police or 'en attente de police'}) "
-                f"est maintenant\u00a0: {statut_display}."
-            ),
-            type="info",
-            priority="medium",
-            data={"type": type_contrat.lower(), "statut": statut_display},
-        )
-    except Exception:
-        pass
-
-
-# ── Création contrats ────────────────────────────────────────────────────────
-
-
-@transaction.atomic
-def create_contrat_epargne(validated_data: dict, agent) -> ContratEpargne:
-    """
-    Crée un contrat épargne avec validation métier.
-    Lève ValueError si les données sont incohérentes.
-    Atomique : rollback complet en cas d'erreur.
-    """
-    duree = validated_data.get("duree_annees")
-    if duree is not None and duree <= 0:
-        raise ValueError("La durée du contrat doit être supérieure à 0 ans.")
-
-    montant = validated_data.get("montant_cotisation")
-    if montant is not None and montant <= 0:
-        raise ValueError("Le montant de cotisation doit être strictement positif.")
-
-    contrat = ContratEpargne.objects.create(**validated_data, agent=agent)
-    return contrat
-
-
-@transaction.atomic
-def create_contrat_prevoyance(validated_data: dict, agent) -> ContratPrevoyance:
-    """
-    Crée un contrat prévoyance avec validation métier.
-    Atomique : rollback complet en cas d'erreur.
-    """
-    contrat = ContratPrevoyance.objects.create(**validated_data, agent=agent)
-    return contrat
-
-
-# ── Requêtes client ─────────────────────────────────────────────────────────
+# ── Requêtes client ──────────────────────────────────────────────────────────
 
 
 def traiter_requete_magist(client_id, agent) -> None:
@@ -78,8 +17,7 @@ def traiter_requete_magist(client_id, agent) -> None:
         from core.models import ClientRequest
         req = (
             ClientRequest.objects
-            .filter(client_id=client_id, type="souscription_magist")
-            .exclude(status=ClientRequest.Status.TRAITE)
+            .filter(client_id=client_id, type="souscription_magist", status="en_attente")
             .order_by("-created_at")
             .first()
         )
@@ -92,7 +30,21 @@ def traiter_requete_magist(client_id, agent) -> None:
         pass
 
 
-# ── Épargne ─────────────────────────────────────────────────────────────────
+# ── Épargne ──────────────────────────────────────────────────────────────────
+
+
+@transaction.atomic
+def create_contrat_epargne(validated_data: dict, agent) -> ContratEpargne:
+    """
+    Crée un contrat épargne avec validation métier.
+    Lève ValueError si les données sont incohérentes.
+    """
+    montant = validated_data.get("montant_cotisation")
+    if montant is not None and montant <= 0:
+        raise ValueError("Le montant de cotisation doit être strictement positif.")
+
+    contrat = ContratEpargne.objects.create(**validated_data, agent=agent)
+    return contrat
 
 
 def assigner_police_epargne(contrat: ContratEpargne, num_police: str, code_inspection: str, agent) -> None:
@@ -106,47 +58,46 @@ def assigner_police_epargne(contrat: ContratEpargne, num_police: str, code_inspe
 
 
 def changer_statut_epargne(contrat: ContratEpargne, nouveau_statut: str) -> None:
-    """
-    Change le statut d'un contrat Épargne.
-    Lève ValueError si la transition est invalide.
-    """
+    """Change le statut d'un contrat épargne avec validation métier."""
     statuts_valides = [s.value for s in ContratEpargne.Statut]
     if nouveau_statut not in statuts_valides:
-        raise ValueError(f"Statut invalide. Valeurs acceptées\u00a0: {statuts_valides}")
+        raise ValueError(f"Statut invalide : {nouveau_statut}. Valeurs acceptées : {statuts_valides}")
     if nouveau_statut == ContratEpargne.Statut.EN_COURS and not contrat.num_police:
-        raise ValueError(
-            "Impossible de passer en 'En cours' sans numéro de police. "
-            "Utilisez 'Assigner N° police'."
-        )
+        raise ValueError("Impossible de passer en cours sans numéro de police.")
     contrat.statut = nouveau_statut
     contrat.save(update_fields=["statut"])
-    _notifier_changement_statut(
-        contrat.client_id,
-        contrat.num_police,
-        "Épargne",
-        contrat.get_statut_display(),
-    )
 
 
 def ajouter_cotisation_epargne(contrat: ContratEpargne, data: dict) -> CotisationEpargne:
-    """
-    Enregistre une cotisation sur un contrat Épargne actif.
-    Lève ValueError si le contrat n'est pas éligible.
-    """
-    from .serializers import CotisationEpargneSerializer
+    """Ajoute une cotisation à un contrat épargne actif."""
     if contrat.statut != ContratEpargne.Statut.EN_COURS:
-        raise ValueError(f"Cotisation impossible : le contrat est '{contrat.get_statut_display()}'.")
+        raise ValueError("Cotisation impossible : le contrat n'est pas en cours.")
     if not contrat.num_police:
-        raise ValueError("Cotisation impossible : le contrat n'a pas encore de numéro de police.")
-    serializer = CotisationEpargneSerializer(data=data)
-    serializer.is_valid(raise_exception=True)
-    cotisation = serializer.save(contrat=contrat)
-    contrat.capital_constitue += cotisation.montant
+        raise ValueError("Cotisation impossible : numéro de police manquant.")
+    montant = data.get("montant", 0)
+    date_echeance = data.get("date_echeance")
+    cotisation = CotisationEpargne.objects.create(
+        contrat=contrat,
+        montant=montant,
+        date_echeance=date_echeance,
+        statut=CotisationEpargne.Statut.PAYEE,
+    )
+    contrat.capital_constitue = (contrat.capital_constitue or 0) + montant
     contrat.save(update_fields=["capital_constitue"])
     return cotisation
 
 
 # ── Prévoyance ───────────────────────────────────────────────────────────────
+
+
+@transaction.atomic
+def create_contrat_prevoyance(validated_data: dict, agent) -> ContratPrevoyance:
+    """
+    Crée un contrat prévoyance avec validation métier.
+    Atomique : rollback complet en cas d'erreur.
+    """
+    contrat = ContratPrevoyance.objects.create(**validated_data, agent=agent)
+    return contrat
 
 
 def assigner_police_prevoyance(
@@ -173,23 +124,11 @@ def assigner_police_prevoyance(
 
 
 def changer_statut_prevoyance(contrat: ContratPrevoyance, nouveau_statut: str) -> None:
-    """
-    Change le statut d'un contrat Prévoyance.
-    Lève ValueError si la transition est invalide.
-    """
+    """Change le statut d'un contrat prévoyance avec validation métier."""
     statuts_valides = [s.value for s in ContratPrevoyance.Statut]
     if nouveau_statut not in statuts_valides:
-        raise ValueError(f"Statut invalide. Valeurs acceptées\u00a0: {statuts_valides}")
+        raise ValueError(f"Statut invalide : {nouveau_statut}. Valeurs acceptées : {statuts_valides}")
     if nouveau_statut == ContratPrevoyance.Statut.EN_COURS and not contrat.num_police:
-        raise ValueError(
-            "Impossible de passer en 'En cours' sans numéro de police. "
-            "Utilisez 'Assigner N° police'."
-        )
+        raise ValueError("Impossible de passer en cours sans numéro de police.")
     contrat.statut = nouveau_statut
     contrat.save(update_fields=["statut"])
-    _notifier_changement_statut(
-        contrat.client_id,
-        contrat.num_police,
-        "Prévoyance",
-        contrat.get_statut_display(),
-    )

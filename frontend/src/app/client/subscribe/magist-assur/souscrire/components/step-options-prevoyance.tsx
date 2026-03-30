@@ -9,11 +9,9 @@ interface Props {
   garantieDeces: boolean; setGarantieDeces: (v: boolean) => void;
   garantieFuneraires: boolean; setGarantieFuneraires: (v: boolean) => void;
   cot: CotisationState;
-  situationMatrimoniale?: string;
 }
 
-export function StepOptionsPrevoyance({ garantieDeces, setGarantieDeces, garantieFuneraires, setGarantieFuneraires, cot, situationMatrimoniale }: Props) {
-  const hasConjoint = situationMatrimoniale === "marie" || situationMatrimoniale === "concubin";
+export function StepOptionsPrevoyance({ garantieDeces, setGarantieDeces, garantieFuneraires, setGarantieFuneraires, cot }: Props) {
   const montantEpargne = Number(cot.montant_cotisation) || 0;
   const primePrevoAnnuelle = (garantieDeces ? 45_000 : 0) + (garantieFuneraires ? 58_000 : 0);
   const periodeLabel = (PERIODICITE_LABELS[cot.periodicite] || "").toLowerCase();
@@ -53,7 +51,7 @@ export function StepOptionsPrevoyance({ garantieDeces, setGarantieDeces, garanti
               <div className="mt-1.5 space-y-0.5 text-xs text-gray-600">
                 <p>Capital en cas de décès : <strong className="text-amber-700">{formatCFA(10_000_000)}</strong></p>
                 <p>dont indemnité Magistrat : {formatCFA(1_000_000)}</p>
-                {hasConjoint && <p>dont indemnité Conjoint : {formatCFA(1_000_000)}</p>}
+                <p>dont indemnité Conjoint : {formatCFA(1_000_000)}</p>
               </div>
             </div>
           </div>
@@ -80,7 +78,7 @@ export function StepOptionsPrevoyance({ garantieDeces, setGarantieDeces, garanti
               <p className="font-semibold text-gray-900 text-sm">Frais Funéraires — Magistrat &amp; Famille</p>
               <div className="mt-1.5 space-y-0.5 text-xs text-gray-600">
                 <p>Magistrat : <strong className="text-amber-700">{formatCFA(1_000_000)}</strong></p>
-                {hasConjoint && <p>Conjoint(e) : {formatCFA(1_000_000)}</p>}
+                <p>Conjoint(e) : {formatCFA(1_000_000)}</p>
                 <p>Enfants (max 4) : {formatCFA(500_000)} / enfant</p>
                 <p>Père &amp; Mère : {formatCFA(750_000)} / ascendant</p>
               </div>

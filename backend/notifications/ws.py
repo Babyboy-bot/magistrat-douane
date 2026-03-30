@@ -25,6 +25,11 @@ def _send(group: str, payload: dict) -> None:
 
 # ── Helpers métier ──────────────────────────────────────────────────────────
 
+def send_notification_to_user(user_id: int, payload: dict) -> None:
+    """Envoie une notification WS à un utilisateur spécifique."""
+    _send(f"user_{user_id}_notifications", payload)
+
+
 def notify_agents_new_request(request_obj) -> None:
     """Notifie tous les agents connectés qu'une nouvelle requête a été soumise."""
     from django.contrib.auth import get_user_model
@@ -52,6 +57,32 @@ def notify_client_request_treated(request_obj) -> None:
         "treated_at": request_obj.treated_at.isoformat() if request_obj.treated_at else None,
     }
     _send(f"user_{request_obj.client_id}_notifications", payload)
+
+
+def notify_client_paiement(emission, montant_regle, solde_restant) -> None:
+    """Notifie le client qu'un paiement a été enregistré sur son émission."""
+    if not emission.client_id:
+        return
+    is_solde = solde_restant <= 0
+    if is_solde:
+        payload = {
+            "event": "emission_paiement",
+            "emission_id": emission.id,
+            "num_police": emission.num_police or str(emission.id),
+            "montant_regle": float(montant_regle),
+            "solde_restant": 0,
+            "is_solde": True,
+        }
+    else:
+        payload = {
+            "event": "emission_paiement",
+            "emission_id": emission.id,
+            "num_police": emission.num_police or str(emission.id),
+            "montant_regle": float(montant_regle),
+            "solde_restant": float(solde_restant),
+            "is_solde": False,
+        }
+    _send(f"user_{emission.client_id}_notifications", payload)
 
 
 def notify_client_livrable_added(request_obj, document_obj) -> None:

@@ -48,6 +48,41 @@ class DocumentUploadView(generics.CreateAPIView):
         serializer.save(uploaded_by=self.request.user)
 
 
+class ConfirmLivrableView(APIView):
+    """Le client confirme la réception d'un livrable."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        from django.utils import timezone
+        doc = get_object_or_404(Document, pk=pk, is_livrable=True)
+        if request.user.role not in ("agent", "admin") and (
+            not doc.request or doc.request.client_id != request.user.id
+        ):
+            return Response({"detail": "Permission refusée"}, status=status.HTTP_403_FORBIDDEN)
+        if doc.confirmed_at:
+            return Response({"detail": "Déjà confirmé"}, status=status.HTTP_200_OK)
+        doc.confirmed_at = timezone.now()
+        doc.save(update_fields=["confirmed_at"])
+        # Notifier l'agent
+        if doc.request and doc.request.agent_id:
+            try:
+                from notifications.service import notification_service
+                notification_service.send_notification_to_user(
+                    user_id=doc.request.agent_id,
+                    title="Livrable confirmé reçu",
+                    message=(
+                        f"{request.user.full_name} a confirmé la réception de «{doc.nom}» "
+                        f"(requête {doc.request.numero})."
+                    ),
+                    type="success",
+                    priority="low",
+                    data={"document_id": doc.id, "request_id": doc.request_id, "event": "livrable_confirmed"},
+                )
+            except Exception:
+                pass
+        return Response(DocumentSerializer(doc, context={"request": request}).data)
+
+
 class CarteGriseUploadView(generics.CreateAPIView):
     serializer_class = DocumentSerializer
     permission_classes = [permissions.IsAuthenticated]

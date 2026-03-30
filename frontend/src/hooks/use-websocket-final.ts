@@ -69,6 +69,45 @@ function eventToNotification(raw: Record<string, unknown>): AppNotification {
         created_at: new Date().toISOString(),
         data: raw,
       };
+    case "echeance_reminder": {
+      const police = raw.num_police as string;
+      const echeance = raw.echeance as string;
+      const days = Number(raw.days_remaining);
+      return {
+        id,
+        title: `Contrat à renouveler dans ${days} jours`,
+        message: `Votre contrat ${police} arrive à échéance le ${new Date(echeance).toLocaleDateString("fr-FR")}. Contactez votre agent.`,
+        type: "warning",
+        created_at: new Date().toISOString(),
+        data: raw,
+      };
+    }
+    case "emission_paiement": {
+      const police = raw.num_police as string;
+      const montant = Number(raw.montant_regle);
+      const solde = Number(raw.solde_restant);
+      const isSolde = Boolean(raw.is_solde);
+      const fmt = (v: number) => new Intl.NumberFormat("fr-FR").format(v);
+      return {
+        id,
+        title: isSolde ? "Contrat entièrement soldé 🎉" : "Paiement enregistré",
+        message: isSolde
+          ? `Félicitations ! Votre contrat ${police} est entièrement réglé.`
+          : `Règlement de ${fmt(montant)} FCFA enregistré — contrat ${police}. Solde restant : ${fmt(solde)} FCFA.`,
+        type: isSolde ? "success" : "info",
+        created_at: new Date().toISOString(),
+        data: raw,
+      };
+    }
+    case "magist_assur":
+      return {
+        id: raw.id ? String(raw.id) : id,
+        title: raw.title as string ?? "Magist-Assur",
+        message: raw.message as string ?? "",
+        type: (raw.type as AppNotification["type"]) ?? "info",
+        created_at: new Date().toISOString(),
+        data: raw,
+      };
     default:
       return {
         id: `unknown-${Date.now()}`,
@@ -82,6 +121,37 @@ function eventToNotification(raw: Record<string, unknown>): AppNotification {
 }
 
 const STORAGE_KEY = (uid: string) => `read_notif_ids_${uid}`;
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+
+async function fetchNotificationsApi(): Promise<AppNotification[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/notifications/`, { credentials: "include" });
+    if (!res.ok) return [];
+    const data = await res.json() as Record<string, unknown>[];
+    return data.map((n) => ({
+      id: String(n.id),
+      title: n.title as string,
+      message: n.message as string,
+      type: n.type as AppNotification["type"],
+      created_at: n.created_at as string,
+      read_at: n.read_at as string | undefined,
+      data: (n.data ?? {}) as Record<string, unknown>,
+    }));
+  } catch { return []; }
+}
+
+async function apiMarkRead(id: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/api/notifications/${id}/read/`, { method: "POST", credentials: "include" });
+  } catch { /* ignore */ }
+}
+
+async function apiMarkAllRead(): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/api/notifications/read-all/`, { method: "POST", credentials: "include" });
+  } catch { /* ignore */ }
+}
 
 function loadReadIds(uid: string): Set<string> {
   try {
@@ -119,6 +189,7 @@ function playNotificationSound(type: "info" | "success" | "warning" | "error") {
 
 export function useWebSocket(userId?: string): UseWebSocketReturn {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const initialLoadedRef = useRef(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
@@ -200,6 +271,12 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
           if (notif.type === "success") toast.success(notif.title, { description: notif.message });
           else if (notif.type === "error") toast.error(notif.title, { description: notif.message });
           else toast.info(notif.title, { description: notif.message });
+          // Rafraîchir le profil si le compte vient d'être vérifié
+          if ((data.data as Record<string, unknown>).event === "account_verified") {
+            import("@/stores/auth-store").then(({ useAuthStore }) => {
+              useAuthStore.getState().fetchMe();
+            });
+          }
         }
       } catch {
         // ignore malformed messages
@@ -230,6 +307,14 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
   useEffect(() => {
     if (userId) readIdsRef.current = loadReadIds(userId);
     mountedRef.current = true;
+    if (userId && !initialLoadedRef.current) {
+      initialLoadedRef.current = true;
+      fetchNotificationsApi().then((fetched) => {
+        if (!mountedRef.current) return;
+        const unread = fetched.filter((n) => !n.read_at);
+        setNotifications(unread.slice(0, 50));
+      });
+    }
     connect();
 
     // Reconnecter quand l'onglet redevient visible (après mise en veille, changement d'onglet…)
@@ -254,6 +339,7 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
     if (userId) {
       readIdsRef.current.add(id);
       saveReadIds(userId, readIdsRef.current);
+      apiMarkRead(id);
     }
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, [userId]);
@@ -263,6 +349,7 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
       if (userId) {
         prev.forEach((n) => readIdsRef.current.add(n.id));
         saveReadIds(userId, readIdsRef.current);
+        apiMarkAllRead();
       }
       return [];
     });

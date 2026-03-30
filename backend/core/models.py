@@ -110,6 +110,13 @@ class Emission(models.Model):
 
     @property
     def montant_commission(self):
+        """Commission ACS = prime_ttc × taux_commission / 100.
+        Fallback sur la différence si le taux n'est pas renseigné."""
+        if self.taux_commission:
+            from decimal import Decimal, ROUND_HALF_UP
+            return (Decimal(str(self.prime_ttc)) * self.taux_commission / 100).quantize(
+                Decimal("1"), rounding=ROUND_HALF_UP
+            )
         return self.prime_ttc - self.prime_nette
 
 
@@ -181,6 +188,7 @@ class ClientRequest(models.Model):
         "Statut", max_length=20, choices=Status.choices, default=Status.EN_ATTENTE
     )
     details = models.JSONField("Détails", default=dict, blank=True)
+    sinistre_note = models.TextField("Note de clôture (sinistre)", blank=True, default="")
     treated_at = models.DateTimeField("Date de traitement", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -237,6 +245,7 @@ class Document(models.Model):
     fichier = models.FileField("Fichier", upload_to="documents/%Y/%m/")
     type_fichier = models.CharField("Type MIME", max_length=100, blank=True)
     is_livrable = models.BooleanField("Est un livrable", default=False)
+    confirmed_at = models.DateTimeField("Confirmé reçu le", null=True, blank=True)
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

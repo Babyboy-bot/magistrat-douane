@@ -1,33 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Car, Home, Eye, EyeOff, Search, Shield, Heart } from "lucide-react";
+import { Car, Home, Eye, EyeOff, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth-store";
-import { useClientEmissions, useClientEpargne, useClientPrevoyance } from "@/hooks/use-api-data";
-
-const STATUT_COLORS: Record<string, string> = {
-  en_cours: "bg-green-100 text-green-700",
-  rachete: "bg-orange-100 text-orange-700",
-  arrive_terme: "bg-blue-100 text-blue-700",
-  suspendu: "bg-yellow-100 text-yellow-700",
-  resilie: "bg-red-100 text-red-700",
-  sinistre: "bg-red-100 text-red-700",
-  expire: "bg-gray-100 text-gray-600",
-};
-const STATUT_LABELS: Record<string, string> = {
-  en_cours: "En cours", rachete: "Racheté", arrive_terme: "Arrivé à terme",
-  suspendu: "Suspendu", resilie: "Résilié", sinistre: "Sinistre", expire: "Expiré",
-};
+import { useClientEmissions } from "@/hooks/use-api-data";
 
 export default function PortfolioPage() {
   const { user } = useAuthStore();
   const { data: emissions } = useClientEmissions(user?.id || "");
-  const { data: epargnes } = useClientEpargne(user?.id || "");
-  const { data: prevoyances } = useClientPrevoyance(user?.id || "");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
@@ -237,69 +221,6 @@ export default function PortfolioPage() {
       {filtered.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-400">Aucun contrat trouvé</p>
-        </div>
-      )}
-
-      {/* ── MAGIST'ASSUR ── */}
-      {(epargnes.length > 0 || prevoyances.length > 0) && (
-        <div className="space-y-3 pt-2">
-          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <Shield className="h-5 w-5 text-amber-600" />
-            MAGIST&apos;ASSUR — NSIA Vie
-          </h2>
-
-          {epargnes.map((e) => (
-            <Card key={`ep-${e.id}`} className="border-0 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                      <Shield className="h-5 w-5 text-amber-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">Épargne Retraite</p>
-                      <p className="text-xs text-gray-500">{e.numPolice || "N° police en attente"} · {e.periodicite}</p>
-                      <p className="text-xs text-gray-400">{e.dureeAnnees} ans · {formatCurrency(e.montantCotisation)}/période</p>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <Badge className={`text-xs ${STATUT_COLORS[e.statut] || "bg-gray-100 text-gray-600"}`} variant="secondary">
-                      {STATUT_LABELS[e.statut] || e.statut}
-                    </Badge>
-                    <p className="text-xs text-gray-400 mt-1">Capital : {formatCurrency(e.capitalConstitue)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {prevoyances.map((p) => (
-            <Card key={`pr-${p.id}`} className="border-0 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
-                      <Heart className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">Prévoyance</p>
-                      <p className="text-xs text-gray-500">{p.numPolice || "N° police en attente"}</p>
-                      <div className="flex gap-2 mt-0.5">
-                        {p.garantiePrevoyanceDeces && <span className="text-xs bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded">Décès</span>}
-                        {p.garantiefraisFuneraires && <span className="text-xs bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded">Funéraires</span>}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <Badge className={`text-xs ${STATUT_COLORS[p.statut] || "bg-gray-100 text-gray-600"}`} variant="secondary">
-                      {STATUT_LABELS[p.statut] || p.statut}
-                    </Badge>
-                    <p className="text-xs text-gray-400 mt-1">{formatCurrency(p.primeAnnuelle)}/an</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
         </div>
       )}
     </div>

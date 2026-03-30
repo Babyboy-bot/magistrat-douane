@@ -13,6 +13,7 @@ urlpatterns = [
     path("requests/<int:pk>/release/", views.release_request_view, name="request_release"),
     path("requests/<int:pk>/livrables/", views.RequestLivrablesView.as_view(), name="request_livrables"),
     path("documents/", views.DocumentUploadView.as_view(), name="document_upload"),
+    path("documents/<int:pk>/confirm/", views.ConfirmLivrableView.as_view(), name="document_confirm"),
     path("carte-grise/", views.CarteGriseUploadView.as_view(), name="carte_grise_upload"),
     path("dashboard/stats/", views.dashboard_stats_view, name="dashboard_stats"),
     path("emissions/totals/", views.emission_totals_view, name="emission_totals"),

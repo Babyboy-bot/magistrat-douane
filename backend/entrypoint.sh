@@ -13,5 +13,11 @@ python manage.py migrate --noinput
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
-echo "Starting Daphne..."
-exec daphne -b 0.0.0.0 -p 8000 config.asgi:application
+echo "Starting Gunicorn (${WEB_CONCURRENCY:-3} workers)..."
+exec gunicorn config.asgi:application \
+    -k uvicorn.workers.UvicornWorker \
+    --workers ${WEB_CONCURRENCY:-3} \
+    --bind 0.0.0.0:8000 \
+    --timeout 60 \
+    --keep-alive 5 \
+    --access-logfile -

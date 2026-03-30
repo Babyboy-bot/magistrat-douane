@@ -15,7 +15,6 @@ class ContratEpargne(models.Model):
         RACHETÉ = "rachete", "Racheté"
         ARRIVE_TERME = "arrive_terme", "Arrivé à terme"
         SUSPENDU = "suspendu", "Suspendu"
-        RESILIE = "resilie", "Résilié"
 
     class SituationMatrimoniale(models.TextChoices):
         CELIBATAIRE = "celibataire", "Célibataire"

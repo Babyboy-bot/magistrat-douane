@@ -5,7 +5,9 @@ import type { ClientRequest, Document, RequestType, RequestStatus } from "@/lib/
 
 function normalizeFileUrl(url: string | null | undefined): string {
   if (!url) return "";
-  try { return new URL(url).pathname; } catch { return url; }
+  if (url.startsWith("http")) return url;
+  const base = process.env.NEXT_PUBLIC_API_BASE ?? "";
+  return `${base}${url.startsWith("/") ? url : "/" + url}`;
 }
 
 export function mapDocument(d: Record<string, unknown>): Document {
@@ -15,6 +17,7 @@ export function mapDocument(d: Record<string, unknown>): Document {
     typeFichier: (d.type_fichier as string) ?? "",
     fichier: normalizeFileUrl(d.fichier as string),
     isLivrable: Boolean(d.is_livrable),
+    confirmedAt: (d.confirmed_at as string) || undefined,
     uploadedBy: d.uploaded_by ? String(d.uploaded_by) : "",
     createdAt: (d.created_at as string) ?? "",
   };
@@ -37,6 +40,7 @@ export function mapRequest(r: Record<string, unknown>): ClientRequest {
     createdAt: fmtDate(r.created_at),
     treatedAt: r.treated_at ? fmtDate(r.treated_at) : undefined,
     details: r.details as Record<string, unknown>,
+    sinistre_note: (r.sinistre_note as string) || undefined,
   };
 }
 
@@ -70,8 +74,11 @@ export const requestsApi = {
     return mapRequest(raw);
   },
 
-  async treat(id: string | number): Promise<ClientRequest> {
-    const raw = await apiFetch<Record<string, unknown>>(`/api/requests/${id}/treat/`, { method: "POST" });
+  async treat(id: string | number, note?: string): Promise<ClientRequest> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/requests/${id}/treat/`, {
+      method: "POST",
+      body: note ? JSON.stringify({ note }) : undefined,
+    });
     return mapRequest(raw);
   },
 
@@ -83,6 +90,11 @@ export const requestsApi = {
   async release(id: string | number): Promise<ClientRequest> {
     const raw = await apiFetch<Record<string, unknown>>(`/api/requests/${id}/release/`, { method: "POST" });
     return mapRequest(raw);
+  },
+
+  async confirmLivrable(documentId: string | number): Promise<Document> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/documents/${documentId}/confirm/`, { method: "POST" });
+    return mapDocument(raw);
   },
 
   async getLivrables(id: string | number): Promise<Document[]> {

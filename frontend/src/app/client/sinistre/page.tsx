@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Upload, ArrowLeft, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -18,9 +18,9 @@ export default function SinistrePage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { data: emissions } = useClientEmissions(user?.id || "");
-
   const [photosCount, setPhotosCount] = useState(0);
   const [loading, setLoading] = useState(false);
+
   const [form, setForm] = useState({
     contratId: "",
     dateSinistre: "",
@@ -35,15 +35,6 @@ export default function SinistrePage() {
     pvPolice: "",
     observations: "",
   });
-
-  useEffect(() => {
-    if (user && !user.verified) {
-      toast.error("Compte non vérifié — accès restreint.");
-      router.replace("/client/dashboard");
-    }
-  }, [user, router]);
-
-  if (!user?.verified) return null;
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));

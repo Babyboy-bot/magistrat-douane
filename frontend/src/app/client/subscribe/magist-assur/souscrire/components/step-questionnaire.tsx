@@ -9,17 +9,9 @@ interface Props {
   q: QuestionnaireState; setQ: (v: QuestionnaireState) => void;
   antecedents: Record<string, Record<string, string>>;
   setAntecedents: (v: Record<string, Record<string, string>>) => void;
-  situationMatrimoniale?: string;
 }
 
-export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents, situationMatrimoniale }: Props) {
-  const hasConjoint = situationMatrimoniale === "marie" || situationMatrimoniale === "concubin";
-  const filteredLabels = MEMBRES_LABELS.filter((_, i) => {
-    const key = MEMBRES_KEYS[i];
-    if (!hasConjoint && (key === "conjoint" || key === "beau_pere" || key === "belle_mere")) return false;
-    return true;
-  });
-  const filteredKeys = MEMBRES_KEYS.filter(k => hasConjoint || (k !== "conjoint" && k !== "beau_pere" && k !== "belle_mere"));
+export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Props) {
   const s = (field: keyof QuestionnaireState, val: string | boolean) => setQ({ ...q, [field]: val });
   const setAnt = (pathologie: string, membre: string, value: string) =>
     setAntecedents({ ...antecedents, [pathologie]: { ...(antecedents[pathologie] || {}), [membre]: value } });
@@ -114,7 +106,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents, situat
               <thead>
                 <tr className="bg-gray-100">
                   <th className="text-left p-2 font-semibold w-44">Affections</th>
-                  {filteredLabels.map(m => <th key={m} className="p-1 text-center font-semibold text-[10px] leading-tight">{m}</th>)}
+                  {MEMBRES_LABELS.map(m => <th key={m} className="p-1 text-center font-semibold text-[10px] leading-tight">{m}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -124,7 +116,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents, situat
                       {idx === 0 && <span className="text-[9px] text-gray-400 block font-semibold">{cat.categorie}</span>}
                       {item}
                     </td>
-                    {filteredKeys.map(mk => (
+                    {MEMBRES_KEYS.map(mk => (
                       <td key={mk} className="p-1 text-center align-middle">
                         <select className="text-xs border rounded px-1 py-0.5 w-12"
                           value={antecedents[item]?.[mk] || ""}

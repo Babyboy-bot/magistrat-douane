@@ -60,6 +60,39 @@ def notify_request_treated(request_obj: ClientRequest) -> None:
         pass
 
 
+def notify_paiement(emission: Emission, montant_regle, solde_restant) -> None:
+    """Notifie le client d'un paiement enregistré sur son émission."""
+    if not emission.client_id:
+        return
+    is_solde = solde_restant <= 0
+    try:
+        from notifications.models import Notification
+        fmt = lambda v: f"{v:,.0f}".replace(",", " ")
+        police = emission.num_police or f"#{emission.id}"
+        if is_solde:
+            title = "Contrat entièrement soldé 🎉"
+            message = f"Félicitations ! Votre contrat {police} est entièrement réglé."
+            notif_type = "success"
+        else:
+            title = "Paiement enregistré"
+            message = (
+                f"Un règlement de {fmt(montant_regle)} FCFA a été enregistré sur votre contrat {police}. "
+                f"Solde restant : {fmt(solde_restant)} FCFA."
+            )
+            notif_type = "info"
+        Notification.create_notification(
+            user_id=emission.client_id,
+            title=title,
+            message=message,
+            type=notif_type,
+            priority="high" if is_solde else "medium",
+        )
+        from notifications.ws import notify_client_paiement
+        notify_client_paiement(emission, montant_regle, solde_restant)
+    except Exception:
+        pass
+
+
 def notify_livrable_added(request_obj: ClientRequest) -> None:
     """Notifie le client qu'un livrable a été ajouté à sa requête."""
     from notifications.tasks import send_livrable_notification_async
@@ -124,6 +157,8 @@ def create_paiement(validated_data: dict, agent, emission: Emission) -> Paiement
         emission=emission,
         created_by=agent,
     )
+    solde_apres = solde - montant
+    notify_paiement(emission, montant, solde_apres)
     return paiement
 
 
