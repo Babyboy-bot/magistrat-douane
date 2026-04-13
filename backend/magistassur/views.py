@@ -122,6 +122,42 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
                 f"{contrat.client.full_name} a soumis un dossier épargne Magist-Assur.",
             )
 
+    @action(detail=True, methods=["post"], url_path="prise-en-charge",
+            permission_classes=[IsAuthenticated])
+    def prise_en_charge(self, request, pk=None):
+        """Marque le contrat comme étant traité par cet agent."""
+        if request.user.role not in ("agent", "admin"):
+            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
+        contrat = self.get_object()
+        contrat.pris_en_charge_par = request.user
+        contrat.save(update_fields=["pris_en_charge_par"])
+        return Response(ContratEpargneSerializer(contrat).data)
+
+    @action(detail=True, methods=["post"], url_path="liberer",
+            permission_classes=[IsAuthenticated])
+    def liberer(self, request, pk=None):
+        """Libère le contrat (supprime la prise en charge)."""
+        if request.user.role not in ("agent", "admin"):
+            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
+        contrat = self.get_object()
+        if contrat.statut == "cloture":
+            return Response({"detail": "Un contrat clôturé ne peut pas être libéré."}, status=status.HTTP_400_BAD_REQUEST)
+        contrat.pris_en_charge_par = None
+        contrat.save(update_fields=["pris_en_charge_par"])
+        return Response(ContratEpargneSerializer(contrat).data)
+
+    @action(detail=True, methods=["post"], url_path="upload-documents",
+            permission_classes=[IsAuthenticated])
+    def upload_documents(self, request, pk=None):
+        """Upload pièce d'identité et/ou RIB pour un contrat épargne."""
+        contrat = self.get_object()
+        if "piece_identite" in request.FILES:
+            contrat.piece_identite = request.FILES["piece_identite"]
+        if "rib_document" in request.FILES:
+            contrat.rib_document = request.FILES["rib_document"]
+        contrat.save()
+        return Response(ContratEpargneSerializer(contrat).data)
+
     @action(detail=True, methods=["post"], url_path="assign-police",
             permission_classes=[IsAuthenticated])
     def assign_police(self, request, pk=None):
@@ -238,6 +274,30 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         else:
             # Forcer client=user, ignorer toute valeur client envoyée dans le body
             serializer.save(client=user)
+
+    @action(detail=True, methods=["post"], url_path="prise-en-charge",
+            permission_classes=[IsAuthenticated])
+    def prise_en_charge(self, request, pk=None):
+        """Marque le contrat comme étant traité par cet agent."""
+        if request.user.role not in ("agent", "admin"):
+            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
+        contrat = self.get_object()
+        contrat.pris_en_charge_par = request.user
+        contrat.save(update_fields=["pris_en_charge_par"])
+        return Response(ContratPrevoyanceSerializer(contrat).data)
+
+    @action(detail=True, methods=["post"], url_path="liberer",
+            permission_classes=[IsAuthenticated])
+    def liberer(self, request, pk=None):
+        """Libère le contrat (supprime la prise en charge)."""
+        if request.user.role not in ("agent", "admin"):
+            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
+        contrat = self.get_object()
+        if contrat.statut == "cloture":
+            return Response({"detail": "Un contrat clôturé ne peut pas être libéré."}, status=status.HTTP_400_BAD_REQUEST)
+        contrat.pris_en_charge_par = None
+        contrat.save(update_fields=["pris_en_charge_par"])
+        return Response(ContratPrevoyanceSerializer(contrat).data)
 
     @action(detail=True, methods=["post"], url_path="assign-police",
             permission_classes=[IsAuthenticated])

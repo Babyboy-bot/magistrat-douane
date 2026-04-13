@@ -34,6 +34,9 @@ class ContratEpargneSerializer(serializers.ModelSerializer):
     frais_accessoires = serializers.ReadOnlyField()
     cout_police = serializers.ReadOnlyField()
     taux_interet = serializers.ReadOnlyField()
+    pris_en_charge_nom = serializers.SerializerMethodField()
+    piece_identite_url = serializers.SerializerMethodField()
+    rib_document_url = serializers.SerializerMethodField()
 
     class Meta:
         model = ContratEpargne
@@ -41,6 +44,23 @@ class ContratEpargneSerializer(serializers.ModelSerializer):
 
     def get_client_nom(self, obj):
         return f"{obj.client.nom} {obj.client.prenoms}"
+
+    def get_pris_en_charge_nom(self, obj):
+        if obj.pris_en_charge_par:
+            return f"{obj.pris_en_charge_par.nom} {obj.pris_en_charge_par.prenoms}"
+        return None
+
+    def get_piece_identite_url(self, obj):
+        if obj.piece_identite:
+            request = self.context.get("request")
+            return request.build_absolute_uri(obj.piece_identite.url) if request else obj.piece_identite.url
+        return None
+
+    def get_rib_document_url(self, obj):
+        if obj.rib_document:
+            request = self.context.get("request")
+            return request.build_absolute_uri(obj.rib_document.url) if request else obj.rib_document.url
+        return None
 
     def get_prime_annuelle(self, obj):
         p = obj.periodicite
@@ -99,6 +119,7 @@ class ContratPrevoyanceSerializer(serializers.ModelSerializer):
     client_nom = serializers.SerializerMethodField()
     prime_annuelle = serializers.ReadOnlyField()
     frais_fixes = serializers.ReadOnlyField()
+    pris_en_charge_nom = serializers.SerializerMethodField()
 
     class Meta:
         model = ContratPrevoyance
@@ -106,6 +127,11 @@ class ContratPrevoyanceSerializer(serializers.ModelSerializer):
 
     def get_client_nom(self, obj):
         return f"{obj.client.nom} {obj.client.prenoms}"
+
+    def get_pris_en_charge_nom(self, obj):
+        if obj.pris_en_charge_par:
+            return f"{obj.pris_en_charge_par.nom} {obj.pris_en_charge_par.prenoms}"
+        return None
 
 
 class ContratPrevoyanceCreateSerializer(serializers.ModelSerializer):

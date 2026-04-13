@@ -15,6 +15,7 @@ class ContratEpargne(models.Model):
         RACHETÉ = "rachete", "Racheté"
         ARRIVE_TERME = "arrive_terme", "Arrivé à terme"
         SUSPENDU = "suspendu", "Suspendu"
+        CLOTURE = "cloture", "Clôturé"
 
     class SituationMatrimoniale(models.TextChoices):
         CELIBATAIRE = "celibataire", "Célibataire"
@@ -56,6 +57,25 @@ class ContratEpargne(models.Model):
         null=True, blank=True,
         related_name="epargnes_gerees",
         verbose_name="Conseiller",
+    )
+    pris_en_charge_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="epargnes_en_traitement",
+        verbose_name="En traitement par",
+    )
+
+    # Documents
+    piece_identite = models.FileField(
+        upload_to="magistassur/pieces_identite/",
+        null=True, blank=True,
+        verbose_name="Pièce d'identité",
+    )
+    rib_document = models.FileField(
+        upload_to="magistassur/ribs/",
+        null=True, blank=True,
+        verbose_name="RIB",
     )
 
     # Souscripteur — données supplémentaires
@@ -227,6 +247,7 @@ class ContratPrevoyance(models.Model):
         SINISTRE = "sinistre", "Sinistre déclaré"
         EXPIRE = "expire", "Expiré"
         RESILIE = "resilie", "Résilié"
+        CLOTURE = "cloture", "Clôturé"
 
     class SituationMatrimoniale(models.TextChoices):
         CELIBATAIRE = "celibataire", "Célibataire"
@@ -258,6 +279,13 @@ class ContratPrevoyance(models.Model):
         null=True, blank=True,
         related_name="prevoyances_gerees",
         verbose_name="Conseiller",
+    )
+    pris_en_charge_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="prevoyances_en_traitement",
+        verbose_name="En traitement par",
     )
 
     # Souscripteur — données supplémentaires
