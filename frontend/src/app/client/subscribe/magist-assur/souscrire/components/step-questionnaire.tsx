@@ -5,6 +5,9 @@ import { Label } from "@/components/ui/label";
 import { PATHOLOGIES, MEMBRES_LABELS, MEMBRES_KEYS } from "./types";
 import type { QuestionnaireState } from "./types";
 
+const isAutresItem = (item: string) =>
+  item.toLowerCase().includes("autres") || item.toLowerCase().includes("préciser");
+
 interface Props {
   q: QuestionnaireState; setQ: (v: QuestionnaireState) => void;
   antecedents: Record<string, Record<string, string>>;
@@ -31,8 +34,8 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>1. Taille (cm)</Label><Input type="number" value={q.taille_cm} onChange={e => s("taille_cm", e.target.value)} placeholder="ex: 175" /></div>
-            <div><Label>2. Poids (kg)</Label><Input type="number" value={q.poids_kg} onChange={e => s("poids_kg", e.target.value)} placeholder="ex: 70" /></div>
+            <div><Label>1. Taille (cm)</Label><Input type="number" min={0} value={q.taille_cm} onChange={e => s("taille_cm", e.target.value)} placeholder="ex: 175" /></div>
+            <div><Label>2. Poids (kg)</Label><Input type="number" min={0} value={q.poids_kg} onChange={e => s("poids_kg", e.target.value)} placeholder="ex: 70" /></div>
             <div><Label>3. Tension artérielle</Label><Input value={q.tension_arterielle} onChange={e => s("tension_arterielle", e.target.value)} placeholder="ex: 12/8" /></div>
           </div>
 
@@ -46,7 +49,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
               {q.fumeur && (
                 <div className="mt-2">
                   <Label className="text-xs">Nb cigarettes/jour</Label>
-                  <Input type="number" className="mt-1" value={q.cigarettes_par_jour} onChange={e => s("cigarettes_par_jour", e.target.value)} />
+                  <Input type="number" min={0} className="mt-1" value={q.cigarettes_par_jour} onChange={e => s("cigarettes_par_jour", e.target.value)} />
                 </div>
               )}
             </div>
@@ -99,7 +102,25 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
       </Card>
 
       <Card className="border-0 shadow-sm">
-        <CardHeader><CardTitle className="text-sm">Antécédents médicaux — Avez-vous été diagnostiqué et traité pour :</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-sm">Antécédents médicaux — Avez-vous été diagnostiqué et traité pour :</CardTitle>
+          <button
+            type="button"
+            onClick={() => {
+              const next: Record<string, Record<string, string>> = { ...antecedents };
+              PATHOLOGIES.forEach(cat => cat.items.forEach(item => {
+                if (!isAutresItem(item)) {
+                  next[item] = {};
+                  MEMBRES_KEYS.forEach(mk => { next[item][mk] = "Non"; });
+                }
+              }));
+              setAntecedents(next);
+            }}
+            className="mt-2 text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg px-3 py-1.5 font-medium text-gray-700 transition self-start"
+          >
+            ✗ Mettre &quot;Non&quot; partout
+          </button>
+        </CardHeader>
         <CardContent>
           <div className="overflow-x-auto -mx-2">
             <table className="w-full text-xs min-w-[600px]">
@@ -116,22 +137,37 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
                       {idx === 0 && <span className="text-[9px] text-gray-400 block font-semibold">{cat.categorie}</span>}
                       {item}
                     </td>
-                    {MEMBRES_KEYS.map(mk => (
-                      <td key={mk} className="p-1 text-center align-middle">
-                        <select className="text-xs border rounded px-1 py-0.5 w-12"
-                          value={antecedents[item]?.[mk] || ""}
-                          onChange={e => setAnt(item, mk, e.target.value)}>
-                          <option value="">—</option>
-                          <option value="Oui">Oui</option>
-                          <option value="Non">Non</option>
-                        </select>
+                    {isAutresItem(item) ? (
+                      <td colSpan={MEMBRES_KEYS.length} className="p-1 align-middle">
+                        <input
+                          type="text"
+                          placeholder="Précisez si applicable…"
+                          className="w-full text-xs border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                          value={antecedents[item]?.["texte"] || ""}
+                          onChange={e => setAnt(item, "texte", e.target.value)}
+                        />
                       </td>
-                    ))}
+                    ) : (
+                      MEMBRES_KEYS.map(mk => (
+                        <td key={mk} className="p-1 text-center align-middle">
+                          <select
+                            className={`text-xs border rounded px-1 py-0.5 w-12 ${!antecedents[item]?.[mk] ? "border-red-200 bg-red-50" : "border-gray-200"}`}
+                            value={antecedents[item]?.[mk] || ""}
+                            onChange={e => setAnt(item, mk, e.target.value)}
+                          >
+                            <option value="">—</option>
+                            <option value="Oui">Oui</option>
+                            <option value="Non">Non</option>
+                          </select>
+                        </td>
+                      ))
+                    )}
                   </tr>
                 )))}
               </tbody>
             </table>
           </div>
+          <p className="text-xs text-gray-400 mt-2">Les cellules en rouge doivent être remplies (Oui ou Non).</p>
         </CardContent>
       </Card>
     </div>

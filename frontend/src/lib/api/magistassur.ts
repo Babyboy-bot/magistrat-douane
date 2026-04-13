@@ -58,6 +58,7 @@ function mapContratEpargne(r: Record<string, unknown>): ContratEpargne {
       reference: (c.reference as string) || "",
     })),
     createdAt: (r.created_at as string) || "",
+    prisEnChargeNom: (r.pris_en_charge_nom as string) || undefined,
     civilite: (r.civilite as string) || undefined,
     situationMatrimoniale: (r.situation_matrimoniale as string) || undefined,
     dateNaissance: (r.date_naissance as string) || undefined,
@@ -124,6 +125,7 @@ function mapContratPrevoyance(r: Record<string, unknown>): ContratPrevoyance {
         })()
       : undefined,
     createdAt: (r.created_at as string) || "",
+    prisEnChargeNom: (r.pris_en_charge_nom as string) || undefined,
     civilite: (r.civilite as string) || undefined,
     situationMatrimoniale: (r.situation_matrimoniale as string) || undefined,
     dateNaissance: (r.date_naissance as string) || undefined,
@@ -195,6 +197,34 @@ export const magistassurApi = {
   async changeStatutPrevoyance(id: string, statut: string): Promise<ContratPrevoyance> {
     const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/prevoyance/${id}/change-statut/`, { method: "POST", body: JSON.stringify({ statut }) });
     return mapContratPrevoyance(raw);
+  },
+
+  async priseEnChargeEpargne(id: string): Promise<ContratEpargne> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/epargne/${id}/prise-en-charge/`, { method: "POST" });
+    return mapContratEpargne(raw);
+  },
+
+  async libererEpargne(id: string): Promise<ContratEpargne> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/epargne/${id}/liberer/`, { method: "POST" });
+    return mapContratEpargne(raw);
+  },
+
+  async priseEnChargePrevoyance(id: string): Promise<ContratPrevoyance> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/prevoyance/${id}/prise-en-charge/`, { method: "POST" });
+    return mapContratPrevoyance(raw);
+  },
+
+  async libererPrevoyance(id: string): Promise<ContratPrevoyance> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/prevoyance/${id}/liberer/`, { method: "POST" });
+    return mapContratPrevoyance(raw);
+  },
+
+  async uploadDocumentsEpargne(id: string, files: { pieceIdentite?: File; ribDocument?: File }): Promise<ContratEpargne> {
+    const fd = new FormData();
+    if (files.pieceIdentite) fd.append("piece_identite", files.pieceIdentite);
+    if (files.ribDocument) fd.append("rib_document", files.ribDocument);
+    const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/epargne/${id}/upload-documents/`, { method: "POST", body: fd });
+    return mapContratEpargne(raw);
   },
 
   async assignPoliceEpargne(id: string, numPolice: string, codeInspection?: string): Promise<ContratEpargne> {

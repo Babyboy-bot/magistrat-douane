@@ -5,13 +5,30 @@ import { Label } from "@/components/ui/label";
 import { PERIODICITE_LABELS, formatCFA } from "./types";
 import type { CotisationState } from "./types";
 
-interface Props { cot: CotisationState; setCot: (v: CotisationState) => void; }
+interface Props {
+  cot: CotisationState;
+  setCot: (v: CotisationState) => void;
+  dateNaissance?: string;
+  ribFile?: File | null;
+  setRibFile?: (f: File | null) => void;
+}
 
-export function StepCotisation({ cot, setCot }: Props) {
+function calcMaxAnnees(dateNaissance?: string): number | null {
+  if (!dateNaissance) return null;
+  const birth = new Date(dateNaissance);
+  if (isNaN(birth.getTime())) return null;
+  const today = new Date();
+  const age = today.getFullYear() - birth.getFullYear()
+    - (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0);
+  return Math.max(1, 65 - age);
+}
+
+export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile }: Props) {
   const s = (field: keyof CotisationState, val: string) => setCot({ ...cot, [field]: val });
   const montant = Number(cot.montant_cotisation) || 0;
   const total = montant + 1000;
   const periodeLabel = PERIODICITE_LABELS[cot.periodicite] || cot.periodicite;
+  const maxAnnees = calcMaxAnnees(dateNaissance);
 
   return (
     <Card className="border-0 shadow-sm">
@@ -20,9 +37,22 @@ export function StepCotisation({ cot, setCot }: Props) {
 
         <div>
           <Label>1. Durée de cotisation *</Label>
+          {maxAnnees !== null && (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1 mt-1">
+              Retraite à 65 ans — durée maximale : <strong>{maxAnnees} an{maxAnnees > 1 ? "s" : ""}</strong>
+            </p>
+          )}
           <div className="flex items-center gap-2 mt-1">
-            <Input type="number" min={1} className="w-24" value={cot.duree_annees} onChange={e => s("duree_annees", e.target.value)} />
-            <span className="text-sm text-gray-500">ans</span>
+            <Input
+              type="number" min={1} max={maxAnnees ?? undefined}
+              className="w-24" value={cot.duree_annees}
+              onChange={e => {
+                const val = e.target.value;
+                if (maxAnnees !== null && Number(val) > maxAnnees) return;
+                s("duree_annees", val);
+              }}
+            />
+            <span className="text-sm text-gray-500">ans{maxAnnees !== null ? ` (max ${maxAnnees})` : ""}</span>
           </div>
         </div>
 
@@ -71,7 +101,22 @@ export function StepCotisation({ cot, setCot }: Props) {
               <span className="ml-auto text-xs bg-amber-200 text-amber-700 px-2 py-0.5 rounded-full">Uniquement disponible</span>
             </div>
           </div>
-          <div><Label>N° de compte (joindre RIB)</Label><Input className="mt-1" placeholder="ex: CI093 00001 000000000001 12" value={cot.numero_compte} onChange={e => s("numero_compte", e.target.value)} /></div>
+          <div>
+            <Label>N° de compte (joindre RIB)</Label>
+            <Input className="mt-1" placeholder="ex: CI093 00001 000000000001 12" value={cot.numero_compte} onChange={e => s("numero_compte", e.target.value)} />
+            <div className="mt-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Importer le RIB *</label>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                className="block w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-amber-600 file:text-white hover:file:bg-amber-700 cursor-pointer"
+                onChange={e => setRibFile?.(e.target.files?.[0] ?? null)}
+              />
+              {ribFile && (
+                <p className="text-xs text-green-700 mt-1">✓ {ribFile.name}</p>
+              )}
+            </div>
+          </div>
         </div>
 
         <p className="text-xs text-gray-400 italic">Contrat valide sous réserve d&apos;acceptation du risque par NSIA Vie et paiement de la 1ère cotisation.</p>

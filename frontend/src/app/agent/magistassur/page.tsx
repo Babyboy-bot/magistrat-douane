@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Shield, Search, TrendingUp, Heart, RefreshCw, ChevronDown, ChevronRight, Clock, CheckCircle2, KeyRound, Settings2, FileSpreadsheet, FileDown } from "lucide-react";
+import { fmtDate } from "@/lib/utils";
+import { Shield, Search, TrendingUp, Heart, RefreshCw, ChevronDown, ChevronRight, Clock, CheckCircle2, KeyRound, Settings2, FileSpreadsheet, FileDown, Lock as LockIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import type { ContratEpargne, ContratPrevoyance } from "@/lib/types";
 import { toast } from "sonner";
 
 const formatCFA = (n: number) => new Intl.NumberFormat("fr-FR").format(n) + " FCFA";
-const formatDate = (d?: string) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+const formatDate = (d?: string) => d ? fmtDate(d) : "—";
 
 const STATUT_COLORS: Record<string, string> = {
   en_cours: "bg-green-100 text-green-700",
@@ -25,6 +26,7 @@ const STATUT_COLORS: Record<string, string> = {
   sinistre: "bg-red-100 text-red-700",
   expire: "bg-gray-100 text-gray-600",
   resilie: "bg-red-100 text-red-700",
+  cloture: "bg-slate-200 text-slate-700",
 };
 
 const STATUT_LABELS: Record<string, string> = {
@@ -35,6 +37,7 @@ const STATUT_LABELS: Record<string, string> = {
   sinistre: "Sinistre",
   expire: "Expiré",
   resilie: "Résilié",
+  cloture: "Clôturé",
 };
 
 const MODE_LABELS: Record<string, string> = {
@@ -47,7 +50,7 @@ const MODE_LABELS: Record<string, string> = {
 type PoliceForm = { numPolice: string; codeInspection: string; dateEffet: string; loading: boolean };
 
 export default function AgentMagistAssurPage() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const [tab, setTab] = useState<"attente" | "epargne" | "prevoyance">("attente");
   const [search, setSearch] = useState("");
   const [loadingEpargne, setLoadingEpargne] = useState(false);
@@ -59,6 +62,7 @@ export default function AgentMagistAssurPage() {
   const [pendingStatuts, setPendingStatuts] = useState<Record<string, string>>({});
   const [statutLoading, setStatutLoading] = useState<string | null>(null);
   const [exportLoading, setExportLoading] = useState<string | null>(null);
+  const [priseEnChargeLoading, setPriseEnChargeLoading] = useState<string | null>(null);
 
   const handleExportEpargne = async (id: string, format: "excel" | "pdf") => {
     setExportLoading(`${id}-${format}`);
@@ -104,7 +108,7 @@ export default function AgentMagistAssurPage() {
   const setForm = (id: string, patch: Partial<PoliceForm>) =>
     setPoliceForms(f => ({ ...f, [id]: { ...getForm(id), ...patch } }));
 
-  const STATUTS_DESTRUCTIFS = ["resilie", "rachete"];
+  const STATUTS_DESTRUCTIFS = ["resilie", "rachete", "cloture"];
 
   const handleChangeStatutEpargne = async (e: ContratEpargne) => {
     const newStatut = pendingStatuts[e.id];
@@ -142,6 +146,46 @@ export default function AgentMagistAssurPage() {
     } finally {
       setStatutLoading(null);
     }
+  };
+
+  const handlePriseEnChargeEpargne = async (e: ContratEpargne) => {
+    setPriseEnChargeLoading("e-" + e.id);
+    try {
+      const updated = await magistassurApi.priseEnChargeEpargne(e.id);
+      setEpargnes(prev => prev.map(x => x.id === e.id ? updated : x));
+      toast.success(`Dossier pris en charge.`);
+    } catch { toast.error("Erreur prise en charge"); }
+    finally { setPriseEnChargeLoading(null); }
+  };
+
+  const handleLibererEpargne = async (e: ContratEpargne) => {
+    setPriseEnChargeLoading("e-" + e.id);
+    try {
+      const updated = await magistassurApi.libererEpargne(e.id);
+      setEpargnes(prev => prev.map(x => x.id === e.id ? updated : x));
+      toast.success("Dossier libéré.");
+    } catch { toast.error("Erreur libération"); }
+    finally { setPriseEnChargeLoading(null); }
+  };
+
+  const handlePriseEnChargePrevoyance = async (p: ContratPrevoyance) => {
+    setPriseEnChargeLoading("p-" + p.id);
+    try {
+      const updated = await magistassurApi.priseEnChargePrevoyance(p.id);
+      setPrevoyances(prev => prev.map(x => x.id === p.id ? updated : x));
+      toast.success(`Dossier pris en charge.`);
+    } catch { toast.error("Erreur prise en charge"); }
+    finally { setPriseEnChargeLoading(null); }
+  };
+
+  const handleLibererPrevoyance = async (p: ContratPrevoyance) => {
+    setPriseEnChargeLoading("p-" + p.id);
+    try {
+      const updated = await magistassurApi.libererPrevoyance(p.id);
+      setPrevoyances(prev => prev.map(x => x.id === p.id ? updated : x));
+      toast.success("Dossier libéré.");
+    } catch { toast.error("Erreur libération"); }
+    finally { setPriseEnChargeLoading(null); }
   };
 
   const handleAssignEpargne = async (e: ContratEpargne) => {
@@ -279,7 +323,7 @@ export default function AgentMagistAssurPage() {
                       {enAttenteE.map(e => (
                         <div key={e.id} className="border border-orange-200 rounded-lg overflow-hidden">
                           <button className="w-full text-left p-4 hover:bg-orange-50 transition flex items-center justify-between"
-                            onClick={() => setExpandedId(expandedId === e.id ? null : e.id)}>
+                            onClick={() => setExpandedId(expandedId === "e-" + e.id ? null : "e-" + e.id)}>
                             <div className="flex items-center gap-3">
                               <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center">
                                 <Clock className="h-4 w-4 text-orange-500" />
@@ -291,10 +335,20 @@ export default function AgentMagistAssurPage() {
                             </div>
                             <div className="flex items-center gap-2">
                               <Badge className="text-xs bg-orange-100 text-orange-700">N° police manquant</Badge>
-                              {expandedId === e.id ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+                              {expandedId === "e-" + e.id ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
                             </div>
                           </button>
-                          {expandedId === e.id && (
+                          <div className="flex items-center justify-between px-4 py-2 border-t border-orange-100 bg-orange-50/50 text-xs">
+                            {e.prisEnChargeNom ? (
+                              <>
+                                <span className="text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">En traitement par <strong>{e.prisEnChargeNom}</strong></span>
+                                {e.statut !== "cloture" && <button className="text-red-500 hover:underline disabled:opacity-50" disabled={priseEnChargeLoading === "e-" + e.id} onClick={() => handleLibererEpargne(e)}>{priseEnChargeLoading === "e-" + e.id ? "..." : "Libérer"}</button>}
+                              </>
+                            ) : (
+                              <button className="text-blue-700 font-medium hover:underline disabled:opacity-50" disabled={priseEnChargeLoading === "e-" + e.id} onClick={() => handlePriseEnChargeEpargne(e)}>{priseEnChargeLoading === "e-" + e.id ? "..." : "Prendre en charge"}</button>
+                            )}
+                          </div>
+                          {expandedId === "e-" + e.id && (
                             <div className="border-t bg-orange-50 p-4 space-y-4">
                               {/* Souscripteur */}
                               <div>
@@ -391,7 +445,7 @@ export default function AgentMagistAssurPage() {
                       {enAttenteP.map(p => (
                         <div key={p.id} className="border border-orange-200 rounded-lg overflow-hidden">
                           <button className="w-full text-left p-4 hover:bg-orange-50 transition flex items-center justify-between"
-                            onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}>
+                            onClick={() => setExpandedId(expandedId === "p-" + p.id ? null : "p-" + p.id)}>
                             <div className="flex items-center gap-3">
                               <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center">
                                 <Clock className="h-4 w-4 text-orange-500" />
@@ -407,10 +461,20 @@ export default function AgentMagistAssurPage() {
                             </div>
                             <div className="flex items-center gap-2">
                               <Badge className="text-xs bg-orange-100 text-orange-700">N° police manquant</Badge>
-                              {expandedId === p.id ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+                              {expandedId === "p-" + p.id ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
                             </div>
                           </button>
-                          {expandedId === p.id && (
+                          <div className="flex items-center justify-between px-4 py-2 border-t border-orange-100 bg-orange-50/50 text-xs">
+                            {p.prisEnChargeNom ? (
+                              <>
+                                <span className="text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">En traitement par <strong>{p.prisEnChargeNom}</strong></span>
+                                {p.statut !== "cloture" && <button className="text-red-500 hover:underline disabled:opacity-50" disabled={priseEnChargeLoading === "p-" + p.id} onClick={() => handleLibererPrevoyance(p)}>{priseEnChargeLoading === "p-" + p.id ? "..." : "Libérer"}</button>}
+                              </>
+                            ) : (
+                              <button className="text-blue-700 font-medium hover:underline disabled:opacity-50" disabled={priseEnChargeLoading === "p-" + p.id} onClick={() => handlePriseEnChargePrevoyance(p)}>{priseEnChargeLoading === "p-" + p.id ? "..." : "Prendre en charge"}</button>
+                            )}
+                          </div>
+                          {expandedId === "p-" + p.id && (
                             <div className="border-t bg-orange-50 p-4 space-y-4">
                               {/* Souscripteur */}
                               <div>
@@ -497,7 +561,7 @@ export default function AgentMagistAssurPage() {
               {filteredEpargnes.map(e => (
                 <div key={e.id} className="border rounded-lg overflow-hidden">
                   <button className="w-full text-left p-4 hover:bg-gray-50 transition flex items-center justify-between"
-                    onClick={() => setExpandedId(expandedId === e.id ? null : e.id)}>
+                    onClick={() => setExpandedId(expandedId === "e-" + e.id ? null : "e-" + e.id)}>
                     <div className="flex items-center gap-3">
                       <div className="h-9 w-9 rounded-lg bg-purple-100 flex items-center justify-center">
                         <TrendingUp className="h-4 w-4 text-purple-600" />
@@ -515,10 +579,20 @@ export default function AgentMagistAssurPage() {
                       <Badge className={`text-xs ${e.numPolice ? STATUT_COLORS[e.statut] || "bg-gray-100 text-gray-600" : "bg-orange-100 text-orange-700"}`}>
                         {e.numPolice ? (STATUT_LABELS[e.statut] || e.statut) : "En attente"}
                       </Badge>
-                      {expandedId === e.id ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+                      {expandedId === "e-" + e.id ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
                     </div>
                   </button>
-                  {expandedId === e.id && (
+                  <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100 bg-gray-50/70 text-xs">
+                    {e.prisEnChargeNom ? (
+                      <>
+                        <span className="text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">En traitement par <strong>{e.prisEnChargeNom}</strong></span>
+                        {e.statut !== "cloture" && <button className="text-red-500 hover:underline disabled:opacity-50" disabled={priseEnChargeLoading === "e-" + e.id} onClick={() => handleLibererEpargne(e)}>{priseEnChargeLoading === "e-" + e.id ? "..." : "Libérer"}</button>}
+                      </>
+                    ) : (
+                      <button className="text-blue-700 font-medium hover:underline disabled:opacity-50" disabled={priseEnChargeLoading === "e-" + e.id} onClick={() => handlePriseEnChargeEpargne(e)}>{priseEnChargeLoading === "e-" + e.id ? "..." : "Prendre en charge"}</button>
+                    )}
+                  </div>
+                  {expandedId === "e-" + e.id && (
                     <div className="border-t bg-gray-50 p-4 space-y-3">
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
                         <div><p className="text-xs text-gray-400">Durée</p><p className="font-medium">{e.dureeAnnees} ans</p></div>
@@ -564,29 +638,40 @@ export default function AgentMagistAssurPage() {
                       </div>
                       {e.numPolice && (
                         <div className="bg-white rounded-lg p-3 border space-y-2">
-                          <p className="text-xs font-semibold text-gray-700 flex items-center gap-1"><Settings2 className="h-3 w-3" /> Gérer le statut du contrat</p>
-                          <div className="flex gap-2">
-                            <Select
-                              value={pendingStatuts[e.id] ?? e.statut}
-                              onValueChange={v => setPendingStatuts(s => ({ ...s, [e.id]: v }))}
-                            >
-                              <SelectTrigger className="h-8 text-sm flex-1">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="en_cours">En cours</SelectItem>
-                                <SelectItem value="arrive_terme">Arrivé à terme</SelectItem>
-                                <SelectItem value="rachete">Racheté</SelectItem>
-                                <SelectItem value="suspendu">Suspendu</SelectItem>
-                                <SelectItem value="resilie">Résilié</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button size="sm" className="h-8 bg-gray-700 hover:bg-gray-800"
-                              disabled={statutLoading === e.id || (pendingStatuts[e.id] ?? e.statut) === e.statut}
-                              onClick={() => handleChangeStatutEpargne(e)}>
-                              {statutLoading === e.id ? "..." : "Appliquer"}
-                            </Button>
-                          </div>
+                          {e.statut === "cloture" ? (
+                            <div className="flex items-center gap-2 text-slate-600 text-xs">
+                              <LockIcon className="h-3.5 w-3.5 shrink-0" />
+                              <span className="font-semibold">Contrat clôturé</span>
+                              <span className="text-slate-400">— aucune modification possible</span>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-xs font-semibold text-gray-700 flex items-center gap-1"><Settings2 className="h-3 w-3" /> Gérer le statut du contrat</p>
+                              <div className="flex gap-2">
+                                <Select
+                                  value={pendingStatuts[e.id] ?? e.statut}
+                                  onValueChange={v => setPendingStatuts(s => ({ ...s, [e.id]: v }))}
+                                >
+                                  <SelectTrigger className="h-8 text-sm flex-1">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="en_cours">En cours</SelectItem>
+                                    <SelectItem value="arrive_terme">Arrivé à terme</SelectItem>
+                                    <SelectItem value="rachete">Racheté</SelectItem>
+                                    <SelectItem value="suspendu">Suspendu</SelectItem>
+                                    <SelectItem value="resilie">Résilié</SelectItem>
+                                    <SelectItem value="cloture">Clôturé (définitif)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button size="sm" className="h-8 bg-gray-700 hover:bg-gray-800"
+                                  disabled={statutLoading === e.id || (pendingStatuts[e.id] ?? e.statut) === e.statut}
+                                  onClick={() => handleChangeStatutEpargne(e)}>
+                                  {statutLoading === e.id ? "..." : "Appliquer"}
+                                </Button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -604,7 +689,7 @@ export default function AgentMagistAssurPage() {
               {filteredPrevoyances.map(p => (
                 <div key={p.id} className="border rounded-lg overflow-hidden">
                   <button className="w-full text-left p-4 hover:bg-gray-50 transition flex items-center justify-between"
-                    onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}>
+                    onClick={() => setExpandedId(expandedId === "p-" + p.id ? null : "p-" + p.id)}>
                     <div className="flex items-center gap-3">
                       <div className="h-9 w-9 rounded-lg bg-amber-100 flex items-center justify-center">
                         <Heart className="h-4 w-4 text-amber-600" />
@@ -625,10 +710,20 @@ export default function AgentMagistAssurPage() {
                       <Badge className={`text-xs ${p.numPolice ? STATUT_COLORS[p.statut] || "bg-gray-100 text-gray-600" : "bg-orange-100 text-orange-700"}`}>
                         {p.numPolice ? (STATUT_LABELS[p.statut] || p.statut) : "En attente"}
                       </Badge>
-                      {expandedId === p.id ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+                      {expandedId === "p-" + p.id ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
                     </div>
                   </button>
-                  {expandedId === p.id && (
+                  <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100 bg-gray-50/70 text-xs">
+                    {p.prisEnChargeNom ? (
+                      <>
+                        <span className="text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">En traitement par <strong>{p.prisEnChargeNom}</strong></span>
+                        {p.statut !== "cloture" && <button className="text-red-500 hover:underline disabled:opacity-50" disabled={priseEnChargeLoading === "p-" + p.id} onClick={() => handleLibererPrevoyance(p)}>{priseEnChargeLoading === "p-" + p.id ? "..." : "Libérer"}</button>}
+                      </>
+                    ) : (
+                      <button className="text-blue-700 font-medium hover:underline disabled:opacity-50" disabled={priseEnChargeLoading === "p-" + p.id} onClick={() => handlePriseEnChargePrevoyance(p)}>{priseEnChargeLoading === "p-" + p.id ? "..." : "Prendre en charge"}</button>
+                    )}
+                  </div>
+                  {expandedId === "p-" + p.id && (
                     <div className="border-t bg-gray-50 p-4 space-y-3 text-sm">
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         <div><p className="text-xs text-gray-400">Date d&apos;effet</p><p className="font-medium">{formatDate(p.dateEffet)}</p></div>
@@ -678,28 +773,39 @@ export default function AgentMagistAssurPage() {
                       </div>
                       {p.numPolice && (
                         <div className="bg-white rounded-lg p-3 border space-y-2">
-                          <p className="text-xs font-semibold text-gray-700 flex items-center gap-1"><Settings2 className="h-3 w-3" /> Gérer le statut du contrat</p>
-                          <div className="flex gap-2">
-                            <Select
-                              value={pendingStatuts[p.id] ?? p.statut}
-                              onValueChange={v => setPendingStatuts(s => ({ ...s, [p.id]: v }))}
-                            >
-                              <SelectTrigger className="h-8 text-sm flex-1">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="en_cours">En cours</SelectItem>
-                                <SelectItem value="sinistre">Sinistre</SelectItem>
-                                <SelectItem value="expire">Expiré</SelectItem>
-                                <SelectItem value="resilie">Résilié</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button size="sm" className="h-8 bg-gray-700 hover:bg-gray-800"
-                              disabled={statutLoading === p.id || (pendingStatuts[p.id] ?? p.statut) === p.statut}
-                              onClick={() => handleChangeStatutPrevoyance(p)}>
-                              {statutLoading === p.id ? "..." : "Appliquer"}
-                            </Button>
-                          </div>
+                          {p.statut === "cloture" ? (
+                            <div className="flex items-center gap-2 text-slate-600 text-xs">
+                              <LockIcon className="h-3.5 w-3.5 shrink-0" />
+                              <span className="font-semibold">Contrat clôturé</span>
+                              <span className="text-slate-400">— aucune modification possible</span>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-xs font-semibold text-gray-700 flex items-center gap-1"><Settings2 className="h-3 w-3" /> Gérer le statut du contrat</p>
+                              <div className="flex gap-2">
+                                <Select
+                                  value={pendingStatuts[p.id] ?? p.statut}
+                                  onValueChange={v => setPendingStatuts(s => ({ ...s, [p.id]: v }))}
+                                >
+                                  <SelectTrigger className="h-8 text-sm flex-1">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="en_cours">En cours</SelectItem>
+                                    <SelectItem value="sinistre">Sinistre</SelectItem>
+                                    <SelectItem value="expire">Expiré</SelectItem>
+                                    <SelectItem value="resilie">Résilié</SelectItem>
+                                    <SelectItem value="cloture">Clôturé (définitif)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button size="sm" className="h-8 bg-gray-700 hover:bg-gray-800"
+                                  disabled={statutLoading === p.id || (pendingStatuts[p.id] ?? p.statut) === p.statut}
+                                  onClick={() => handleChangeStatutPrevoyance(p)}>
+                                  {statutLoading === p.id ? "..." : "Appliquer"}
+                                </Button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>

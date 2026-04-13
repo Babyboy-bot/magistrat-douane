@@ -4,9 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { IdentiteState } from "./types";
 
-interface Props { id: IdentiteState; setId: (v: IdentiteState) => void; }
+interface Props {
+  id: IdentiteState;
+  setId: (v: IdentiteState) => void;
+  pieceIdentiteFile?: File | null;
+  setPieceIdentiteFile?: (f: File | null) => void;
+}
 
-export function StepIdentite({ id, setId }: Props) {
+export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFile }: Props) {
   const s = (field: keyof IdentiteState, val: string) => setId({ ...id, [field]: val });
   const btn = (field: keyof IdentiteState, val: string) =>
     `border rounded-lg py-2 text-sm font-medium transition ${id[field] === val ? "bg-amber-600 text-white border-amber-600" : "border-gray-300 hover:border-amber-400"}`;
@@ -93,7 +98,7 @@ export function StepIdentite({ id, setId }: Props) {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Revenus mensuels (FCFA)</Label><Input type="number" value={id.revenu_mensuel} onChange={e => s("revenu_mensuel", e.target.value)} /></div>
+          <div><Label>Revenus mensuels (FCFA)</Label><Input type="number" min={0} value={id.revenu_mensuel} onChange={e => s("revenu_mensuel", e.target.value)} /></div>
           <div><Label>Profession</Label><Input value={id.profession_detail} onChange={e => s("profession_detail", e.target.value)} /></div>
         </div>
 
@@ -114,9 +119,23 @@ export function StepIdentite({ id, setId }: Props) {
         <div><Label>Résidence principale (Ville-Commune-Quartier-Rue-Lot-Ilot)</Label><Input value={id.residence_principale} onChange={e => s("residence_principale", e.target.value)} /></div>
         <div><Label>Autre(s) résidence(s)</Label><Input value={id.autre_residence} onChange={e => s("autre_residence", e.target.value)} /></div>
 
-        <p className="text-xs text-amber-700 bg-amber-50 rounded p-2">
-          <strong>NB :</strong> Joindre obligatoirement une copie lisible recto/verso de la pièce d&apos;identité officielle en cours de validité.
-        </p>
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+          <p className="text-xs text-amber-800">
+            <strong>NB :</strong> Joindre obligatoirement une copie lisible recto/verso de la pièce d&apos;identité officielle en cours de validité.
+          </p>
+          <div>
+            <label className="block text-xs font-medium text-amber-900 mb-1">Importer la pièce d&apos;identité (recto/verso) *</label>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              className="block w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-amber-600 file:text-white hover:file:bg-amber-700 cursor-pointer"
+              onChange={e => setPieceIdentiteFile?.(e.target.files?.[0] ?? null)}
+            />
+            {pieceIdentiteFile && (
+              <p className="text-xs text-green-700 mt-1">✓ {pieceIdentiteFile.name}</p>
+            )}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

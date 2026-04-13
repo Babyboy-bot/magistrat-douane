@@ -58,20 +58,30 @@ const STEP_LABELS_FIXED = ["Identité", "Correspondants", "Assuré", "Cotisation
 const STEP_LABELS_PREV  = ["Garanties", "Bénéf. Prévoyance", "Questionnaire médical"];
 
 function StepIndicator({ current, steps }: { current: number; steps: string[] }) {
+  const pct = Math.round(((current) / (steps.length - 1)) * 100);
   return (
-    <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-1">
-      {steps.map((s, i) => (
-        <div key={`${s}-${i}`} className="flex items-center gap-1 shrink-0">
-          <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-            i < current ? "bg-amber-600 text-white" :
-            i === current ? "bg-amber-600 text-white ring-2 ring-amber-300" :
-            "bg-gray-200 text-gray-500"}`}>
-            {i < current ? <CheckCircle className="h-4 w-4" /> : i + 1}
+    <div className="mb-6 space-y-2">
+      <div className="flex items-center justify-between text-xs text-gray-500">
+        <span className="font-medium text-amber-700">{steps[current]}</span>
+        <span>{current + 1} / {steps.length}</span>
+      </div>
+      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-full bg-amber-600 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="flex items-center gap-1 overflow-x-auto pb-1">
+        {steps.map((s, i) => (
+          <div key={`${s}-${i}`} className="flex items-center gap-1 shrink-0">
+            <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+              i < current ? "bg-amber-600 text-white" :
+              i === current ? "bg-amber-600 text-white ring-2 ring-amber-300" :
+              "bg-gray-200 text-gray-500"}`}>
+              {i < current ? <CheckCircle className="h-3.5 w-3.5" /> : i + 1}
+            </div>
+            <span className={`text-[10px] hidden sm:block mr-1 ${i === current ? "text-amber-700 font-semibold" : "text-gray-400"}`}>{s}</span>
+            {i < steps.length - 1 && <div className={`w-4 h-0.5 mx-0.5 ${i < current ? "bg-amber-600" : "bg-gray-200"}`} />}
           </div>
-          <span className={`text-[10px] hidden sm:block mr-1 ${i === current ? "text-amber-700 font-semibold" : "text-gray-400"}`}>{s}</span>
-          {i < steps.length - 1 && <div className={`w-4 h-0.5 mx-0.5 ${i < current ? "bg-amber-600" : "bg-gray-200"}`} />}
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -84,6 +94,10 @@ export default function SouscrirePage() {
   const [hasDraft, setHasDraft] = useState(false);
   const [showEncadre, setShowEncadre] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
+
+  /* ── Fichiers ── */
+  const [pieceIdentiteFile, setPieceIdentiteFile] = useState<File | null>(null);
+  const [ribFile, setRibFile] = useState<File | null>(null);
 
   /* ── État Épargne ── */
   const [id, setId] = useState<IdentiteState>(emptyId());
@@ -100,6 +114,10 @@ export default function SouscrirePage() {
   /* ── Choix prévoyance ── */
   const [garantieDeces, setGarantieDeces] = useState(false);
   const [garantieFuneraires, setGarantieFuneraires] = useState(false);
+
+  /* ── Correspondant Prévoyance ── */
+  const [prevCorrespIdem, setPrevCorrespIdem] = useState(true);
+  const [prevCorresp, setPrevCorresp] = useState<CorrespondantState>(emptyCorresp(0));
 
   /* ── État Prévoyance ── */
   const [assuresAssocies, setAssuresAssocies] = useState<AssureAssocie[]>([]);
@@ -134,6 +152,8 @@ export default function SouscrirePage() {
         if (d.id) setId(p => ({ ...p, ...d.id }));
         if (d.corresp1) setCorresp1(p => ({ ...p, ...d.corresp1 }));
         if (d.corresp2) setCorresp2(p => ({ ...p, ...d.corresp2 }));
+        if (d.prevCorrespIdem !== undefined) setPrevCorrespIdem(d.prevCorrespIdem);
+        if (d.prevCorresp) setPrevCorresp(p => ({ ...p, ...d.prevCorresp }));
         if (d.assureIdem !== undefined) setAssureIdem(d.assureIdem);
         if (d.assure) setAssure(d.assure);
         if (d.cot) setCot(d.cot);
@@ -170,17 +190,140 @@ export default function SouscrirePage() {
   useEffect(() => {
     if (!user) return;
     const draft = {
-      step, id, corresp1, corresp2, assureIdem, assure, cot,
+      step, id, corresp1, corresp2, prevCorrespIdem, prevCorresp, assureIdem, assure, cot,
       benefConjoint_e, benefEnfants_e, autresBenef_e, consentementDonnees,
       garantieDeces, garantieFuneraires,
       assuresAssocies, benefConjoint_p, benefEnfants_p, autresBenef_p, q, antecedents,
     };
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-  }, [step, id, corresp1, corresp2, assureIdem, assure, cot, benefConjoint_e, benefEnfants_e, autresBenef_e, consentementDonnees, garantieDeces, garantieFuneraires, assuresAssocies, benefConjoint_p, benefEnfants_p, autresBenef_p, q, antecedents, user]);
+  }, [step, id, corresp1, corresp2, prevCorrespIdem, prevCorresp, assureIdem, assure, cot, benefConjoint_e, benefEnfants_e, autresBenef_e, consentementDonnees, garantieDeces, garantieFuneraires, assuresAssocies, benefConjoint_p, benefEnfants_p, autresBenef_p, q, antecedents, user]);
+
+  useEffect(() => {
+    if (!id.date_naissance) return;
+    const birth = new Date(id.date_naissance);
+    if (isNaN(birth.getTime())) return;
+    const today = new Date();
+    const age = today.getFullYear() - birth.getFullYear()
+      - (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0);
+    const max = Math.max(1, 65 - age);
+    setCot(prev => ({ ...prev, duree_annees: String(max) }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id.date_naissance]);
 
   const clearDraft = () => { localStorage.removeItem(DRAFT_KEY); setHasDraft(false); toast.success("Brouillon effacé."); };
-  const goNext = () => setStep(s => Math.min(s + 1, steps.length - 1));
-  const goBack = () => { if (step > 0) setStep(s => s - 1); else router.back(); };
+
+  const validateStep = (): boolean => {
+    const isMaried = id.situation_matrimoniale === "marie" || id.situation_matrimoniale === "concubin";
+    switch (stepId) {
+      case "identite":
+        if (!id.civilite) { toast.error("Veuillez sélectionner une civilité."); return false; }
+        if (!id.nom.trim()) { toast.error("Le nom est obligatoire."); return false; }
+        if (!id.prenoms.trim()) { toast.error("Les prénoms sont obligatoires."); return false; }
+        if (!id.date_naissance) { toast.error("La date de naissance est obligatoire."); return false; }
+        if (!id.pays_naissance.trim()) { toast.error("Le pays/ville de naissance est obligatoire."); return false; }
+        if (!id.type_piece) { toast.error("Veuillez sélectionner un type de pièce d'identité."); return false; }
+        if (!id.nni.trim()) { toast.error("Le NNI est obligatoire."); return false; }
+        if (!id.situation_matrimoniale) { toast.error("La situation matrimoniale est obligatoire."); return false; }
+        if (!id.email_personnel.trim()) { toast.error("L'email personnel est obligatoire."); return false; }
+        if (!id.telephone.trim()) { toast.error("Le numéro de téléphone est obligatoire."); return false; }
+        if (!id.statut_professionnel) { toast.error("Le statut professionnel est obligatoire."); return false; }
+        if (!id.origine_revenu) { toast.error("L'origine des cotisations est obligatoire."); return false; }
+        if (!pieceIdentiteFile) { toast.error("La pièce d'identité (recto/verso) est obligatoire."); return false; }
+        return true;
+      case "correspondants":
+        if (!corresp1.nom.trim()) { toast.error("Le nom du correspondant 1 est obligatoire."); return false; }
+        if (!corresp1.prenom.trim()) { toast.error("Le prénom du correspondant 1 est obligatoire."); return false; }
+        if (!corresp1.telephone.trim()) { toast.error("Le téléphone du correspondant 1 est obligatoire."); return false; }
+        if (!prevCorrespIdem) {
+          if (!prevCorresp.nom.trim()) { toast.error("Correspondant Prévoyance — le nom est obligatoire."); return false; }
+          if (!prevCorresp.prenom.trim()) { toast.error("Correspondant Prévoyance — le prénom est obligatoire."); return false; }
+          if (!prevCorresp.domicile.trim()) { toast.error("Correspondant Prévoyance — le domicile est obligatoire."); return false; }
+        }
+        return true;
+      case "assure":
+        if (!assureIdem) {
+          if (!assure.assure_nom.trim()) { toast.error("Le nom de l'assuré est obligatoire."); return false; }
+          if (!assure.assure_prenoms.trim()) { toast.error("Les prénoms de l'assuré sont obligatoires."); return false; }
+          if (!assure.assure_date_naissance) { toast.error("La date de naissance de l'assuré est obligatoire."); return false; }
+        }
+        return true;
+      case "cotisation":
+        if (!cot.duree_annees || Number(cot.duree_annees) < 1) { toast.error("La durée doit être d'au moins 1 an."); return false; }
+        if (!cot.periodicite) { toast.error("La périodicité est obligatoire."); return false; }
+        if (!cot.date_premiere_cotisation) { toast.error("La date de 1ère cotisation est obligatoire."); return false; }
+        if (!cot.montant_cotisation || Number(cot.montant_cotisation) < 25000) { toast.error("Le montant doit être au minimum de 25 000 FCFA."); return false; }
+        if (!cot.numero_compte.trim()) { toast.error("Le numéro de compte (RIB) est obligatoire."); return false; }
+        if (!ribFile) { toast.error("Le document RIB est obligatoire."); return false; }
+        return true;
+      case "benef-epargne": {
+        const hasAny = benefConjoint_e || benefEnfants_e || autresBenef_e.some(b => b.nom.trim());
+        if (!hasAny) { toast.error("Désignez au moins un bénéficiaire."); return false; }
+        for (let i = 0; i < autresBenef_e.length; i++) {
+          const b = autresBenef_e[i];
+          if (!b.nom.trim()) continue;
+          if (!b.en_qualite_de.trim()) { toast.error(`Bénéficiaire ${i + 1} — « En qualité de » est obligatoire.`); return false; }
+          if (!b.domicile.trim()) { toast.error(`Bénéficiaire ${i + 1} — Le domicile est obligatoire.`); return false; }
+          if (!b.adresse_postale.trim()) { toast.error(`Bénéficiaire ${i + 1} — L'adresse postale est obligatoire.`); return false; }
+          if (!b.telephone.trim()) { toast.error(`Bénéficiaire ${i + 1} — Le numéro de téléphone est obligatoire.`); return false; }
+        }
+        return true;
+      }
+      case "garanties":
+        if (garantieFuneraires) {
+          for (let i = 0; i < assuresAssocies.length; i++) {
+            const a = assuresAssocies[i];
+            if (!a.nom.trim()) { toast.error(`Assuré associé ${i + 1} — le nom est obligatoire.`); return false; }
+            if (!a.contact.trim()) { toast.error(`Assuré associé ${i + 1} — le contact est obligatoire.`); return false; }
+          }
+        }
+        return true;
+      case "questionnaire": {
+        if (!q.taille_cm) { toast.error("La taille est obligatoire."); return false; }
+        if (!q.poids_kg) { toast.error("Le poids est obligatoire."); return false; }
+        if (!q.tension_arterielle.trim()) { toast.error("La tension artérielle est obligatoire."); return false; }
+        if (!q.alcool) { toast.error("Veuillez indiquer votre consommation d'alcool."); return false; }
+        if (!q.distractions.trim()) { toast.error("Les distractions/loisirs sont obligatoires."); return false; }
+        const isAutres = (item: string) => item.toLowerCase().includes("autres") || item.toLowerCase().includes("préciser");
+        const PATHOLOGIES_LOCAL = [
+          { items: ["AVC", "HTA", "Paralysie", "Autres / à préciser"] },
+          { items: ["Asthme", "Tuberculose", "Autres / à préciser"] },
+          { items: ["Cirrhose de foie", "Autres / à préciser"] },
+          { items: ["Prostate", "Foie", "Seins", "Reins", "Autres / à préciser"] },
+          { items: ["Insuffisances rénale"] },
+          { items: ["Œdèmes des membres inférieurs"] },
+          { items: ["SIDA, VIH, infections chroniques ou inexpliquées ?"] },
+          { items: ["Diabète"] },
+          { items: ["Autres affections à préciser"] },
+        ];
+        const MEMBRES_KEYS_LOCAL = ["assure", "conjoint", "enfants", "pere", "mere", "beau_pere", "belle_mere"];
+        for (const cat of PATHOLOGIES_LOCAL) {
+          for (const item of cat.items) {
+            if (isAutres(item)) continue;
+            for (const mk of MEMBRES_KEYS_LOCAL) {
+              if (!antecedents[item]?.[mk]) {
+                toast.error(`Antécédents — remplissez toutes les cases pour "${item}". Utilisez le bouton "Non partout" si aucun antécédent.`);
+                return false;
+              }
+            }
+          }
+        }
+        return true;
+      }
+      default:
+        return true;
+    }
+  };
+
+  const goNext = () => {
+    if (validateStep()) {
+      setStep(s => Math.min(s + 1, steps.length - 1));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+  const goBack = () => {
+    if (step > 0) { setStep(s => s - 1); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    else router.back();
+  };
   const isLast = step === steps.length - 1;
 
   /* ── Soumission ── */
@@ -217,11 +360,16 @@ export default function SouscrirePage() {
           client: user.id, ...id,
           date_naissance: id.date_naissance || null,
           validite_piece: id.validite_piece || null,
-          corresp_nom: corresp1.nom, corresp_prenom: corresp1.prenom,
-          corresp_domicile: corresp1.domicile, corresp_adresse_postale: corresp1.adresse_postale,
-          corresp_telephone: corresp1.telephone, corresp_email: corresp1.email,
-          corresp_whatsapp: corresp1.whatsapp, corresp_facebook: corresp1.facebook,
-          corresp_linkedin: corresp1.linkedin, corresp_autres_reseaux: corresp1.autres_reseaux,
+          ...((): Record<string, string> => {
+            const c = prevCorrespIdem ? corresp1 : prevCorresp;
+            return {
+              corresp_nom: c.nom, corresp_prenom: c.prenom,
+              corresp_domicile: c.domicile, corresp_adresse_postale: c.adresse_postale,
+              corresp_telephone: c.telephone, corresp_email: c.email,
+              corresp_whatsapp: c.whatsapp, corresp_facebook: c.facebook,
+              corresp_linkedin: c.linkedin, corresp_autres_reseaux: c.autres_reseaux,
+            };
+          })(),
           garantie_prevoyance_deces: garantieDeces,
           garantie_frais_funeraires: garantieFuneraires,
           assures_associes: assuresAssocies.map(a => ({ ...a, date_naissance: a.date_naissance || null, montant_indemnite: ({ conjoint: 1_000_000, enfant: 500_000, pere: 750_000, mere: 750_000 })[a.lien_parente] })),
@@ -249,6 +397,11 @@ export default function SouscrirePage() {
         duree_annees: Number(cot.duree_annees),
       });
 
+      if (pieceIdentiteFile || ribFile) {
+        const epargnes = await magistassurApi.listEpargne({ clientId: String(user.id) });
+        const latest = epargnes.sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+        if (latest) await magistassurApi.uploadDocumentsEpargne(latest.id, { pieceIdentite: pieceIdentiteFile ?? undefined, ribDocument: ribFile ?? undefined });
+      }
       localStorage.removeItem(DRAFT_KEY);
       const msg = (garantieDeces || garantieFuneraires) ? "MAGIST'ASSUR ÉPARGNE + PRÉVOYANCE soumis avec succès !" : "MAGIST'ASSUR ÉPARGNE soumis avec succès !";
       toast.success(msg);
@@ -262,13 +415,13 @@ export default function SouscrirePage() {
 
   const renderStep = () => {
     switch (stepId) {
-      case "identite":        return <StepIdentite id={id} setId={setId} />;
-      case "correspondants":  return <StepCorrespondants corresp1={corresp1} setCorresp1={setCorresp1} corresp2={corresp2} setCorresp2={setCorresp2} />;
+      case "identite":        return <StepIdentite id={id} setId={setId} pieceIdentiteFile={pieceIdentiteFile} setPieceIdentiteFile={setPieceIdentiteFile} />;
+      case "correspondants":  return <StepCorrespondants corresp1={corresp1} setCorresp1={setCorresp1} corresp2={corresp2} setCorresp2={setCorresp2} prevCorrespIdem={prevCorrespIdem} setPrevCorrespIdem={setPrevCorrespIdem} prevCorresp={prevCorresp} setPrevCorresp={setPrevCorresp} />;
       case "assure":          return <StepAssure assureIdem={assureIdem} setAssureIdem={setAssureIdem} assure={assure} setAssure={setAssure} />;
-      case "cotisation":      return <StepCotisation cot={cot} setCot={setCot} />;
-      case "benef-epargne":   return <StepBeneficiairesEpargne benefConjoint={benefConjoint_e} setBenefConjoint={setBenefConjoint_e} benefEnfants={benefEnfants_e} setBenefEnfants={setBenefEnfants_e} autresBenef={autresBenef_e} setAutresBenef={setAutresBenef_e} consentementDonnees={consentementDonnees} setConsentementDonnees={setConsentementDonnees} />;
+      case "cotisation":      return <StepCotisation cot={cot} setCot={setCot} dateNaissance={id.date_naissance} ribFile={ribFile} setRibFile={setRibFile} />;
+      case "benef-epargne":   return <StepBeneficiairesEpargne benefConjoint={benefConjoint_e} setBenefConjoint={setBenefConjoint_e} benefEnfants={benefEnfants_e} setBenefEnfants={setBenefEnfants_e} autresBenef={autresBenef_e} setAutresBenef={setAutresBenef_e} consentementDonnees={consentementDonnees} setConsentementDonnees={setConsentementDonnees} situationMatrimoniale={id.situation_matrimoniale} />;
       case "options":         return <StepOptionsPrevoyance garantieDeces={garantieDeces} setGarantieDeces={setGarantieDeces} garantieFuneraires={garantieFuneraires} setGarantieFuneraires={setGarantieFuneraires} cot={cot} />;
-      case "garanties":       return <StepGaranties garantieDeces={garantieDeces} garantieFuneraires={garantieFuneraires} assuresAssocies={assuresAssocies} setAssuresAssocies={setAssuresAssocies} />;
+      case "garanties":       return <StepGaranties garantieDeces={garantieDeces} garantieFuneraires={garantieFuneraires} assuresAssocies={assuresAssocies} setAssuresAssocies={setAssuresAssocies} situationMatrimoniale={id.situation_matrimoniale} />;
       case "benef-prev":      return <StepBeneficiairesPrev benefConjoint={benefConjoint_p} setBenefConjoint={setBenefConjoint_p} benefEnfants={benefEnfants_p} setBenefEnfants={setBenefEnfants_p} autresBenef={autresBenef_p} setAutresBenef={setAutresBenef_p} />;
       case "questionnaire":   return <StepQuestionnaire q={q} setQ={setQ} antecedents={antecedents} setAntecedents={setAntecedents} />;
       case "recap":           return <StepRecap id={id} corresp1={corresp1} corresp2={corresp2} assureIdem={assureIdem} assure={assure} cot={cot} benefConjoint_e={benefConjoint_e} benefEnfants_e={benefEnfants_e} autresBenef_e={autresBenef_e} garantieDeces={garantieDeces} garantieFuneraires={garantieFuneraires} assuresAssocies={assuresAssocies} benefConjoint_p={benefConjoint_p} benefEnfants_p={benefEnfants_p} autresBenef_p={autresBenef_p} userName={`${user?.nom || ""} ${user?.prenoms || ""}`} />;

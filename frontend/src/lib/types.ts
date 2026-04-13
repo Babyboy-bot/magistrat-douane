@@ -51,6 +51,7 @@ export interface AuditLogEntry {
   metadata: Record<string, unknown>;
   performedBy?: string | null;
   targetUser: string;
+  ipAddress?: string | null;
   createdAt: string;
 }
 
@@ -82,7 +83,7 @@ export interface Emission {
   montantCommission: number;
   totalPaye: number;
   solde: number;
-  situation: "Affaire nouvelle" | "Incorporation" | "Retrait" | "Renouvellement" | "Modification";
+  situation: "Affaire nouvelle" | "Incorporation" | "Retrait" | "Renouvellement" | "Modification" | "Soldée";
   paiements: Paiement[];
 }
 
@@ -216,7 +217,7 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
 // ── MAGIST'ASSUR ─────────────────────────────────────
 
 export type PeriodiciteEpargne = "mensuelle" | "trimestrielle" | "semestrielle" | "annuelle";
-export type StatutContrat = "en_cours" | "rachete" | "arrive_terme" | "suspendu" | "sinistre" | "expire" | "resilie";
+export type StatutContrat = "en_cours" | "rachete" | "arrive_terme" | "suspendu" | "sinistre" | "expire" | "resilie" | "cloture";
 
 export interface Correspondant {
   id?: string;
@@ -258,6 +259,7 @@ export interface ContratEpargne {
   clientId: string;
   clientNom: string;
   agentId?: string;
+  prisEnChargeNom?: string;
   dureeAnnees: number;
   periodicite: PeriodiciteEpargne;
   datePremiereCotisation?: string;
@@ -337,6 +339,7 @@ export interface ContratPrevoyance {
   clientId: string;
   clientNom: string;
   agentId?: string;
+  prisEnChargeNom?: string;
   garantiePrevoyanceDeces: boolean;
   garantiefraisFuneraires: boolean;
   dateEffet?: string;
