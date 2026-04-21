@@ -1,29 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw, Upload, ArrowLeft, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { requestsApi } from "@/lib/api";
+import { requestsApi, documentsApi } from "@/lib/api";
 import type { RequestType } from "@/lib/types";
 import { toast } from "sonner";
 
 export default function ChangePage() {
   const router = useRouter();
   const [changement, setChangement] = useState("");
-  const [carteGriseUploaded, setCarteGriseUploaded] = useState(false);
-
+  const [carteGriseFile, setCarteGriseFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async () => {
     if (!changement) {
       toast.error("Veuillez sélectionner le type de changement");
       return;
     }
-    if (!carteGriseUploaded) {
+    if (!carteGriseFile) {
       toast.error("Veuillez uploader la nouvelle carte grise");
       return;
     }
@@ -33,7 +33,8 @@ export default function ChangePage() {
         nom: "changement_nom",
         immatriculation: "changement_immatriculation",
       };
-      await requestsApi.create(typeMap[changement] || "changement_nom", {});
+      const created = await requestsApi.create(typeMap[changement] || "changement_nom", {});
+      await documentsApi.upload(carteGriseFile, created.id, false);
       toast.success("Votre demande de changement a été soumise.");
       router.push("/client/history");
     } catch (err: unknown) {
@@ -78,17 +79,24 @@ export default function ChangePage() {
 
           <div className="space-y-1.5">
             <Label>Nouvelle carte grise *</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={(e) => setCarteGriseFile(e.target.files?.[0] || null)}
+            />
             <div
               className={`border-2 border-dashed rounded-xl p-6 text-center transition cursor-pointer ${
-                carteGriseUploaded
+                carteGriseFile
                   ? "border-green-300 bg-green-50"
                   : "border-gray-300 hover:border-[hsl(222,47%,20%)] hover:bg-blue-50/50"
               }`}
-              onClick={() => setCarteGriseUploaded(true)}
+              onClick={() => fileInputRef.current?.click()}
             >
-              <Upload className={`h-8 w-8 mx-auto mb-2 ${carteGriseUploaded ? "text-green-500" : "text-gray-400"}`} />
-              {carteGriseUploaded ? (
-                <p className="text-sm text-green-700 font-medium">✓ Nouvelle carte grise uploadée</p>
+              <Upload className={`h-8 w-8 mx-auto mb-2 ${carteGriseFile ? "text-green-500" : "text-gray-400"}`} />
+              {carteGriseFile ? (
+                <p className="text-sm text-green-700 font-medium">✓ {carteGriseFile.name}</p>
               ) : (
                 <>
                   <p className="text-sm font-medium text-gray-600">Cliquez pour uploader la nouvelle carte grise</p>

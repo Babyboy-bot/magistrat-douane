@@ -6,14 +6,13 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientStats } from "@/hooks/use-api-data";
 import { Emission, Paiement } from "@/lib/types";
+import { fmtDate } from "@/lib/utils";
 
 const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(n) + " FCFA";
-const fmtDate = (d: string) =>
-  d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "";
 
 function SoldeBar({ paid, total }: { paid: number; total: number }) {
   const pct = total > 0 ? Math.min(Math.round((paid / total) * 100), 100) : 100;
@@ -122,7 +121,13 @@ function ContratCard({ emission }: { emission: Emission }) {
 
 export default function PaymentPage() {
   const { user } = useAuthStore();
-  const { stats, emissions } = useClientStats(user?.id || "");
+  const { stats, emissions, refetch } = useClientStats(user?.id || "");
+
+  useEffect(() => {
+    const handler = () => refetch();
+    window.addEventListener("emission_paiement_updated", handler);
+    return () => window.removeEventListener("emission_paiement_updated", handler);
+  }, [refetch]);
 
   const totalDu = emissions.reduce((sum: number, e: Emission) => {
     const s = e.solde ?? (e.primeTTC - e.totalPaye);

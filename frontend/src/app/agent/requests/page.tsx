@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ClipboardList,
@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  AlertTriangle,
   Download,
   Eye,
   FileText,
@@ -29,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -43,6 +45,7 @@ import type { ClientRequest } from "@/lib/types";
 import { useAuthStore } from "@/stores/auth-store";
 import { toast } from "sonner";
 import { PlusCircle } from "lucide-react";
+import { fmtDate } from "@/lib/utils";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 function buildFileUrl(fichier: string): string {
@@ -79,26 +82,37 @@ export default function AgentRequestsPage() {
   });
 
   const [claimLoading, setClaimLoading] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("disponibles");
+  const [sinistreNote, setSinistreNote] = useState("");
 
   const filtered = allRequests.filter(
     (r) =>
-      r.numero.toLowerCase().includes(search.toLowerCase()) ||
-      r.clientNom.toLowerCase().includes(search.toLowerCase()) ||
-      REQUEST_TYPE_LABELS[r.type].toLowerCase().includes(search.toLowerCase())
+      r.type !== "souscription_magist" && (
+        r.numero.toLowerCase().includes(search.toLowerCase()) ||
+        r.clientNom.toLowerCase().includes(search.toLowerCase()) ||
+        REQUEST_TYPE_LABELS[r.type].toLowerCase().includes(search.toLowerCase())
+      )
   );
 
   const disponibles = filtered.filter((r) => r.status === "en_attente");
-  const mesRequetes = filtered.filter((r) => r.status === "en_cours" && r.agentId === String(user?.id));
-  const enCoursTous = filtered.filter((r) => r.status === "en_cours");
-  const traites = filtered.filter((r) => r.status === "traite");
+  const enCours = filtered.filter((r) => r.status === "en_cours");
+  const mesEnCours = enCours.filter((r) => r.agentId === String(user?.id));
+  const traites = filtered.filter((r) => r.status === "traite" && r.agentId === String(user?.id));
+
+  useEffect(() => {
+    const handler = () => refetchRequests();
+    window.addEventListener("new_request_created", handler);
+    return () => window.removeEventListener("new_request_created", handler);
+  }, [refetchRequests]);
 
   const handleClaim = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setClaimLoading(id);
     try {
       await requestsApi.claim(id);
-      toast.success("Requête prise en charge — visible dans \"Mes requêtes\".");
+      toast.success("Requête prise en charge.");
       refetchRequests();
+      setActiveTab("en_cours");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Cette requête a déjà été prise en charge.");
       refetchRequests();
@@ -220,9 +234,11 @@ export default function AgentRequestsPage() {
 
   const handleMarkAsTreated = async () => {
     if (!selectedRequest) return;
+    const note = selectedRequest.type === "declaration_sinistre" ? sinistreNote.trim() : undefined;
     try {
-      await requestsApi.treat(Number(selectedRequest.id));
-      toast.success("Requête marquée comme traitée.");
+      await requestsApi.treat(Number(selectedRequest.id), note);
+      toast.success("Requête clôturée.");
+      setSinistreNote("");
       setShowDetail(false);
       refetchRequests();
     } catch (err: unknown) {
@@ -249,10 +265,8 @@ export default function AgentRequestsPage() {
     e.target.value = "";
   };
 
-  const RequestCard = ({ request, showClaim = false, showRelease = false }: {
+  const RequestCard = ({ request }: {
     request: ClientRequest;
-    showClaim?: boolean;
-    showRelease?: boolean;
   }) => {
     const isClaimedByOther = request.status === "en_cours" && request.agentId && request.agentId !== String(user?.id);
     return (
@@ -296,30 +310,7 @@ export default function AgentRequestsPage() {
               <Badge className={statusColor(request.status)} variant="secondary">
                 {REQUEST_STATUS_LABELS[request.status]}
               </Badge>
-              {showClaim && !isClaimedByOther && (
-                <Button
-                  size="sm"
-                  className="h-7 text-xs bg-blue-600 hover:bg-blue-700"
-                  disabled={claimLoading === request.id}
-                  onClick={(e) => handleClaim(e, request.id)}
-                >
-                  <UserCheck className="h-3 w-3 mr-1" />
-                  {claimLoading === request.id ? "..." : "Prendre en charge"}
-                </Button>
-              )}
-              {showRelease && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs text-orange-600 border-orange-300 hover:bg-orange-50"
-                  disabled={claimLoading === request.id}
-                  onClick={(e) => handleRelease(e, request.id)}
-                >
-                  <Unlock className="h-3 w-3 mr-1" />
-                  Libérer
-                </Button>
-              )}
-            </div>
+              </div>
           </div>
         </CardContent>
       </Card>
@@ -360,13 +351,13 @@ export default function AgentRequestsPage() {
         </Card>
         <Card className="border-0 shadow-sm">
           <CardContent className="pt-4 pb-4 text-center">
-            <p className="text-2xl font-bold text-blue-600">{mesRequetes.length}</p>
-            <p className="text-xs text-gray-500">Mes requêtes</p>
+            <p className="text-2xl font-bold text-blue-600">{mesEnCours.length}</p>
+            <p className="text-xs text-gray-500">Mes en cours</p>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-sm">
           <CardContent className="pt-4 pb-4 text-center">
-            <p className="text-2xl font-bold text-orange-500">{enCoursTous.length - mesRequetes.length}</p>
+            <p className="text-2xl font-bold text-orange-500">{enCours.length - mesEnCours.length}</p>
             <p className="text-xs text-gray-500">Prises par autres</p>
           </CardContent>
         </Card>
@@ -379,16 +370,13 @@ export default function AgentRequestsPage() {
       </div>
 
       {/* Tabs by status */}
-      <Tabs defaultValue="disponibles">
-        <TabsList className="grid grid-cols-4 w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-3 w-full">
           <TabsTrigger value="disponibles" className="text-xs">
             Disponibles ({disponibles.length})
           </TabsTrigger>
-          <TabsTrigger value="mes" className="text-xs">
-            Mes requêtes ({mesRequetes.length})
-          </TabsTrigger>
           <TabsTrigger value="en_cours" className="text-xs">
-            En cours ({enCoursTous.length})
+            En cours ({enCours.length})
           </TabsTrigger>
           <TabsTrigger value="traite" className="text-xs">Traités ({traites.length})</TabsTrigger>
         </TabsList>
@@ -398,28 +386,21 @@ export default function AgentRequestsPage() {
           {disponibles.length > 0 ? (
             <>
               <p className="text-xs text-gray-500 mb-2">Cliquez sur "Prendre en charge" pour vous assigner la requête. Elle disparaîtra de la liste des autres agents.</p>
-              {disponibles.map((r) => <RequestCard key={r.id} request={r} showClaim />)}
+              {disponibles.map((r) => <RequestCard key={r.id} request={r} />)}
             </>
           ) : (
             <p className="text-sm text-gray-400 text-center py-8">Aucune requête disponible</p>
           )}
         </TabsContent>
 
-        {/* Mes requêtes — en_cours assignées à moi */}
-        <TabsContent value="mes" className="space-y-2 mt-4">
-          {mesRequetes.length > 0 ? (
-            mesRequetes.map((r) => <RequestCard key={r.id} request={r} showRelease />)
-          ) : (
-            <p className="text-sm text-gray-400 text-center py-8">Vous n&apos;avez aucune requête en cours</p>
-          )}
-        </TabsContent>
-
-        {/* En cours — toutes (visibilité globale) */}
+        {/* En cours — toutes, avec distinction mine/autres */}
         <TabsContent value="en_cours" className="space-y-2 mt-4">
-          {enCoursTous.length > 0 ? (
+          {enCours.length > 0 ? (
             <>
-              <p className="text-xs text-gray-500 mb-2">Requêtes déjà prises en charge par un agent.</p>
-              {enCoursTous.map((r) => <RequestCard key={r.id} request={r} showRelease={r.agentId === String(user?.id)} />)}
+              {mesEnCours.length > 0 && (
+                <p className="text-xs text-blue-600 font-medium mb-1">{mesEnCours.length} assignée{mesEnCours.length > 1 ? "s" : ""} à vous</p>
+              )}
+              {enCours.map((r) => <RequestCard key={r.id} request={r} />)}
             </>
           ) : (
             <p className="text-sm text-gray-400 text-center py-8">Aucune requête en cours</p>
@@ -473,6 +454,43 @@ export default function AgentRequestsPage() {
                   </div>
                 </div>
 
+                {/* Détails sinistre */}
+                {selectedRequest.type === "declaration_sinistre" && selectedRequest.details && (() => {
+                  const d = selectedRequest.details as Record<string, unknown>;
+                  const rows: { label: string; value: unknown }[] = [
+                    { label: "Date du sinistre", value: d.date_sinistre ? fmtDate(d.date_sinistre as string) : undefined },
+                    { label: "Heure", value: d.heure_sinistre },
+                    { label: "Lieu", value: d.lieu },
+                    { label: "Nature", value: d.nature },
+                    { label: "Circonstances", value: d.circonstances },
+                    { label: "Dégâts matériels", value: d.degats_materiels },
+                    { label: "Dégâts corporels", value: d.degats_corporels },
+                    { label: "Témoins", value: d.temoins },
+                    { label: "Constat amiable", value: d.constat_amiable },
+                    { label: "N° PV police", value: d.pv_police },
+                    { label: "Observations", value: d.observations },
+                  ].filter((r) => r.value);
+                  return (
+                    <div className="rounded-lg bg-orange-50 border border-orange-200 p-3 space-y-1.5">
+                      <p className="text-xs font-semibold text-orange-700 flex items-center gap-1 mb-2">
+                        <AlertTriangle className="h-3.5 w-3.5" /> Détails du sinistre
+                      </p>
+                      {rows.map((r) => (
+                        <div key={r.label} className="grid grid-cols-2 gap-1 text-xs">
+                          <span className="text-gray-500">{r.label}</span>
+                          <span className="font-medium text-gray-800">{String(r.value)}</span>
+                        </div>
+                      ))}
+                      {selectedRequest.sinistre_note && (
+                        <div className="mt-2 pt-2 border-t border-orange-200">
+                          <p className="text-xs text-orange-600 font-semibold mb-0.5">Note de clôture :</p>
+                          <p className="text-xs text-gray-700">{selectedRequest.sinistre_note}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Documents joints */}
                 {selectedRequest.documents.length > 0 && (
                   <div>
@@ -508,7 +526,7 @@ export default function AgentRequestsPage() {
                   <p className="text-sm font-semibold text-gray-700 mb-2">
                     Livrables (documents à remettre au client)
                   </p>
-                  {selectedRequest.livrables.length > 0 && (
+                  {selectedRequest.livrables.length > 0 ? (
                     <div className="space-y-1 mb-2">
                       {selectedRequest.livrables.map((doc) => (
                         <div
@@ -530,57 +548,115 @@ export default function AgentRequestsPage() {
                         </div>
                       ))}
                     </div>
+                  ) : (
+                    <p className="text-xs text-gray-400 mb-2">Aucun livrable pour l&apos;instant</p>
                   )}
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                    onChange={handleFileSelected}
-                  />
-                  <div
-                    className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-[hsl(222,47%,20%)] hover:bg-blue-50/50 transition cursor-pointer"
-                    onClick={handleUploadLivrable}
-                  >
-                    <Upload className="h-6 w-6 text-gray-400 mx-auto mb-1" />
-                    <p className="text-xs font-medium text-gray-600">
-                      Cliquez pour téléverser un document
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      Facture, reçu, contrat, attestation, etc.
-                    </p>
-                  </div>
+                  {/* Upload uniquement si en cours et assigné à moi */}
+                  {selectedRequest.status === "en_cours" && selectedRequest.agentId === String(user?.id) && (
+                    <>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        onChange={handleFileSelected}
+                      />
+                      <div
+                        className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-[hsl(222,47%,20%)] hover:bg-blue-50/50 transition cursor-pointer"
+                        onClick={handleUploadLivrable}
+                      >
+                        <Upload className="h-6 w-6 text-gray-400 mx-auto mb-1" />
+                        <p className="text-xs font-medium text-gray-600">
+                          Cliquez pour téléverser un document
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          Facture, reçu, contrat, attestation, etc.
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
-                {/* Actions */}
+                {/* Actions selon statut */}
                 <div className="flex flex-wrap gap-2 pt-2">
-                  {selectedRequest.status !== "traite" && (
+                  {/* EN ATTENTE — uniquement Prendre en charge */}
+                  {selectedRequest.status === "en_attente" && (
                     <Button
-                      onClick={handleMarkAsTreated}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Marquer comme traité
-                    </Button>
-                  )}
-                  {EMISSION_TYPES.includes(selectedRequest.type) && (
-                    <Button
-                      onClick={() => openEmissionForm(selectedRequest)}
+                      onClick={async (e) => {
+                        await handleClaim(e as React.MouseEvent, selectedRequest.id);
+                        setShowDetail(false);
+                      }}
                       className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                      disabled={claimLoading === selectedRequest.id}
                     >
-                      <PlusCircle className="h-4 w-4 mr-2" />
-                      Créer l'émission
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      {claimLoading === selectedRequest.id ? "En cours..." : "Prendre en charge"}
                     </Button>
                   )}
-                  {selectedRequest.type === "souscription_magist" && (
-                    <Button
-                      onClick={() => { setShowDetail(false); router.push("/agent/magistassur"); }}
-                      className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
-                    >
-                      <Shield className="h-4 w-4 mr-2" />
-                      Voir dans MAGIST&apos;ASSUR
-                    </Button>
+
+                  {/* EN COURS — mes requêtes : libérer, traiter, créer émission */}
+                  {selectedRequest.status === "en_cours" && selectedRequest.agentId === String(user?.id) && (
+                    <>
+                      {selectedRequest.type === "declaration_sinistre" && (
+                        <div className="w-full space-y-1">
+                          <Label className="text-xs text-gray-500">Note de clôture (sinistre)</Label>
+                          <Textarea
+                            rows={2}
+                            placeholder="Conclusion, décision, suite donnée au dossier..."
+                            value={sinistreNote}
+                            onChange={(e) => setSinistreNote(e.target.value)}
+                            className="text-xs"
+                          />
+                        </div>
+                      )}
+                      <Button
+                        onClick={handleMarkAsTreated}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Clôturer
+                      </Button>
+                      {EMISSION_TYPES.includes(selectedRequest.type) && (
+                        <Button
+                          onClick={() => openEmissionForm(selectedRequest)}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          <PlusCircle className="h-4 w-4 mr-2" />
+                          Créer l&apos;émission
+                        </Button>
+                      )}
+                      {selectedRequest.type === "souscription_magist" && (
+                        <Button
+                          onClick={() => { setShowDetail(false); router.push("/agent/magistassur"); }}
+                          className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                        >
+                          <Shield className="h-4 w-4 mr-2" />
+                          Voir dans MAGIST&apos;ASSUR
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        className="flex-1 text-orange-600 border-orange-300 hover:bg-orange-50"
+                        disabled={claimLoading === selectedRequest.id}
+                        onClick={async (e) => {
+                          await handleRelease(e as React.MouseEvent, selectedRequest.id);
+                          setShowDetail(false);
+                        }}
+                      >
+                        <Unlock className="h-4 w-4 mr-2" />
+                        Libérer
+                      </Button>
+                    </>
                   )}
+
+                  {/* EN COURS — requête d'un autre agent : lecture seule */}
+                  {selectedRequest.status === "en_cours" && selectedRequest.agentId !== String(user?.id) && (
+                    <div className="flex-1 text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                      <Lock className="h-4 w-4 shrink-0" />
+                      Prise en charge par {selectedRequest.agentNom}
+                    </div>
+                  )}
+
                   <Button
                     variant="outline"
                     className="flex-1"

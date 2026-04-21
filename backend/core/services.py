@@ -125,6 +125,27 @@ def create_emission(validated_data: dict, agent) -> Emission:
         raise ValueError("La prime TTC ne peut pas être négative.")
 
     emission = Emission.objects.create(**validated_data, agent=agent)
+
+    try:
+        from notifications.models import Notification
+        from notifications.ws import notify_client_emission_created
+        fmt = lambda v: f"{v:,.0f}".replace(",", " ")
+        police = emission.num_police or f"#{emission.id}"
+        Notification.create_notification(
+            user_id=emission.client_id,
+            title="Nouvelle émission 📋",
+            message=(
+                f"L'agent {agent.full_name} a créé une émission {police}"
+                + (f" — {emission.risque}" if emission.risque else "")
+                + f". Prime TTC : {fmt(emission.prime_ttc or 0)} FCFA."
+            ),
+            type="info",
+            priority="medium",
+        )
+        notify_client_emission_created(emission)
+    except Exception:
+        pass
+
     return emission
 
 
@@ -158,7 +179,11 @@ def create_paiement(validated_data: dict, agent, emission: Emission) -> Paiement
         created_by=agent,
     )
     solde_apres = solde - montant
-    notify_paiement(emission, montant, solde_apres)
+    if solde_apres <= 0 and emission.situation != "Soldée":
+        emission.situation = "Soldée"
+        emission.save(update_fields=["situation"])
+    # Envoyer la notif WS APRES le commit pour éviter la race condition
+    transaction.on_commit(lambda: notify_paiement(emission, montant, solde_apres))
     return paiement
 
 

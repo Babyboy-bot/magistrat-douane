@@ -36,6 +36,7 @@ class Emission(models.Model):
         RETRAIT = "Retrait", "Retrait"
         RENOUVELLEMENT = "Renouvellement", "Renouvellement"
         MODIFICATION = "Modification", "Modification"
+        SOLDEE = "Soldée", "Soldée"
 
     client = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -80,6 +81,7 @@ class Emission(models.Model):
             models.Index(fields=["echeance"], name="idx_emission_echeance"),
             models.Index(fields=["risque"], name="idx_emission_risque"),
             models.Index(fields=["compagnie"], name="idx_emission_compagnie"),
+            models.Index(fields=["situation"], name="idx_emission_situation"),
         ]
         constraints = [
             models.CheckConstraint(
@@ -110,14 +112,13 @@ class Emission(models.Model):
 
     @property
     def montant_commission(self):
-        """Commission ACS = prime_ttc × taux_commission / 100.
-        Fallback sur la différence si le taux n'est pas renseigné."""
+        """Commission ACS = prime_nette × taux_commission / 100."""
         if self.taux_commission:
             from decimal import Decimal, ROUND_HALF_UP
-            return (Decimal(str(self.prime_ttc)) * self.taux_commission / 100).quantize(
+            return (Decimal(str(self.prime_nette)) * self.taux_commission / 100).quantize(
                 Decimal("1"), rounding=ROUND_HALF_UP
             )
-        return self.prime_ttc - self.prime_nette
+        return 0
 
 
 class Paiement(models.Model):

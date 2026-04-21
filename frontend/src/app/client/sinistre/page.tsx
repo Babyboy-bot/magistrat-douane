@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Upload, ArrowLeft, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,15 +11,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientEmissions } from "@/hooks/use-api-data";
-import { requestsApi } from "@/lib/api";
+import { requestsApi, documentsApi } from "@/lib/api";
+import { parseDisplayDate } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function SinistrePage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { data: emissions } = useClientEmissions(user?.id || "");
-  const [photosCount, setPhotosCount] = useState(0);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     contratId: "",
@@ -36,6 +38,21 @@ export default function SinistrePage() {
     observations: "",
   });
 
+  const selectedEmission = emissions.find((e) => e.id === form.contratId) ?? null;
+
+  const coverageStatus = (() => {
+    if (!selectedEmission || !form.dateSinistre) return null;
+    const sinDate = new Date(form.dateSinistre);
+    const effet = parseDisplayDate(selectedEmission.effet);
+    const echeance = parseDisplayDate(selectedEmission.echeance);
+    const today = new Date();
+    const isExpired = today > echeance;
+    if (sinDate < effet) return { type: "error", msg: `Le sinistre est antérieur à la date d'effet du contrat (${selectedEmission.effet}). Ce sinistre ne sera probablement pas couvert.` };
+    if (sinDate > echeance) return { type: "error", msg: `Le sinistre est postérieur à l'échéance du contrat (${selectedEmission.echeance}). Ce sinistre ne sera probablement pas couvert.` };
+    if (isExpired) return { type: "warning", msg: `Le contrat est expiré depuis le ${selectedEmission.echeance}, mais le sinistre est survenu pendant la période de couverture.` };
+    return { type: "ok", msg: `Sinistre dans la période de couverture (${selectedEmission.effet} → ${selectedEmission.echeance}).` };
+  })();
+
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
@@ -47,7 +64,7 @@ export default function SinistrePage() {
     }
     setLoading(true);
     try {
-      await requestsApi.create("declaration_sinistre", {
+      const created = await requestsApi.create("declaration_sinistre", {
         contrat_id: form.contratId,
         date_sinistre: form.dateSinistre,
         heure_sinistre: form.heureSinistre,
@@ -61,6 +78,9 @@ export default function SinistrePage() {
         pv_police: form.pvPolice,
         observations: form.observations,
       });
+      for (const file of selectedFiles) {
+        await documentsApi.upload(file, created.id, false);
+      }
       toast.success("Votre déclaration de sinistre a été soumise.");
       router.push("/client/history");
     } catch (err: unknown) {
@@ -104,19 +124,40 @@ export default function SinistrePage() {
                 <SelectValue placeholder="Sélectionnez le contrat..." />
               </SelectTrigger>
               <SelectContent>
-                {(emissions || []).map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.risque} — {e.numPolice} ({e.marque !== "-" ? e.marque : e.compagnie})
-                  </SelectItem>
-                ))}
+                {(emissions || []).map((e) => {
+                  const expired = parseDisplayDate(e.echeance) < new Date();
+                  return (
+                    <SelectItem key={e.id} value={e.id}>
+                      {expired ? "⚠️ " : ""}{e.risque} — {e.numPolice} ({e.marque !== "-" ? e.marque : e.compagnie})
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
+            {selectedEmission && (
+              <p className="text-xs text-gray-500">
+                Couverture : <strong>{selectedEmission.effet}</strong> → <strong>{selectedEmission.echeance}</strong>
+                {parseDisplayDate(selectedEmission.echeance) < new Date() && (
+                  <span className="ml-2 text-orange-600 font-semibold">Contrat expiré</span>
+                )}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Date du sinistre *</Label>
               <Input type="date" value={form.dateSinistre} onChange={(e) => handleChange("dateSinistre", e.target.value)} />
+              {coverageStatus && (
+                <div className={`mt-1 text-xs rounded-lg px-3 py-2 flex items-start gap-1.5 ${
+                  coverageStatus.type === "error" ? "bg-red-50 text-red-700 border border-red-200" :
+                  coverageStatus.type === "warning" ? "bg-orange-50 text-orange-700 border border-orange-200" :
+                  "bg-green-50 text-green-700 border border-green-200"
+                }`}>
+                  <span className="shrink-0">{coverageStatus.type === "ok" ? "✅" : "⚠️"}</span>
+                  <span>{coverageStatus.msg}</span>
+                </div>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Heure du sinistre</Label>
@@ -212,17 +253,31 @@ export default function SinistrePage() {
           {/* Photos upload */}
           <div className="space-y-1.5">
             <Label>Photos / Documents justificatifs</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                setSelectedFiles((prev) => [...prev, ...files]);
+              }}
+            />
             <div
               className={`border-2 border-dashed rounded-xl p-6 text-center transition cursor-pointer ${
-                photosCount > 0 ? "border-green-300 bg-green-50" : "border-gray-300 hover:border-[hsl(222,47%,20%)] hover:bg-blue-50/50"
+                selectedFiles.length > 0 ? "border-green-300 bg-green-50" : "border-gray-300 hover:border-[hsl(222,47%,20%)] hover:bg-blue-50/50"
               }`}
-              onClick={() => setPhotosCount((c) => c + 1)}
+              onClick={() => fileInputRef.current?.click()}
             >
-              <Upload className={`h-8 w-8 mx-auto mb-2 ${photosCount > 0 ? "text-green-500" : "text-gray-400"}`} />
-              {photosCount > 0 ? (
-                <p className="text-sm text-green-700 font-medium">
-                  ✓ {photosCount} fichier{photosCount > 1 ? "s" : ""} ajouté{photosCount > 1 ? "s" : ""} — Cliquez pour en ajouter
-                </p>
+              <Upload className={`h-8 w-8 mx-auto mb-2 ${selectedFiles.length > 0 ? "text-green-500" : "text-gray-400"}`} />
+              {selectedFiles.length > 0 ? (
+                <div className="space-y-1">
+                  {selectedFiles.map((f, i) => (
+                    <p key={i} className="text-sm text-green-700 font-medium">✓ {f.name}</p>
+                  ))}
+                  <p className="text-xs text-gray-500 mt-1">Cliquez pour ajouter d&apos;autres fichiers</p>
+                </div>
               ) : (
                 <>
                   <p className="text-sm font-medium text-gray-600">Cliquez pour ajouter des photos ou documents</p>

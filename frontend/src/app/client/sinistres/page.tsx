@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientRequests } from "@/hooks/use-api-data";
 import { downloadFile } from "@/lib/api";
+import { fmtDate } from "@/lib/utils";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 function buildUrl(f: string) {
@@ -113,7 +114,7 @@ export default function SinistresPage() {
                         {date && <p className="text-xs text-gray-500">Date du sinistre : {date}</p>}
                         {lieu && <p className="text-xs text-gray-500">Lieu : {lieu}</p>}
                         <p className="text-xs text-gray-400">
-                          Déclaré le {new Date(s.createdAt).toLocaleDateString("fr-FR")}
+                          Déclaré le {fmtDate(s.createdAt)}
                         </p>
                         {s.agentNom && (
                           <p className="text-xs text-blue-600">Agent en charge : {s.agentNom}</p>

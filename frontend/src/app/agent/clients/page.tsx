@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { fmtDate } from "@/lib/utils";
 import {
   Users,
   Search,
@@ -37,11 +38,7 @@ const initialFormState = { nom: "", prenoms: "", email: "", telephone: "", telep
 
 const formatCurrency = (value: number) => `${new Intl.NumberFormat("fr-FR").format(value)} FCFA`;
 
-const formatDate = (iso: string) => {
-  if (!iso) return "";
-  try { return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }); }
-  catch { return iso; }
-};
+const formatDate = fmtDate;
 
 export default function AgentClientsPage() {
   const [page, setPage] = useState(1);

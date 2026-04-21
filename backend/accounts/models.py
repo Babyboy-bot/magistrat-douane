@@ -323,6 +323,12 @@ class UserAuditLog(models.Model):
 
         ("creation", "Création de compte"),
 
+        ("login", "Connexion"),
+
+        ("login_failed", "Tentative de connexion échouée"),
+
+        ("logout", "Déconnexion"),
+
     )
 
 
@@ -354,6 +360,8 @@ class UserAuditLog(models.Model):
     action = models.CharField(max_length=50, choices=ACTION_CHOICES)
 
     metadata = models.JSONField(blank=True, default=dict)
+
+    ip_address = models.GenericIPAddressField("Adresse IP", null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 

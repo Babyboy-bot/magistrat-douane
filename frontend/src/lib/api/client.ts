@@ -87,7 +87,12 @@ export const apiFetch = async <T = unknown>(
     ...(reqOpts.headers as Record<string, string> | undefined),
   };
 
-  const init = (): RequestInit => ({ ...reqOpts, headers, credentials: "include" });
+  const init = (): RequestInit => ({
+    ...reqOpts,
+    headers,
+    credentials: "include",
+    cache: reqOpts.method && reqOpts.method !== "GET" ? undefined : "no-store",
+  });
   const url = (p: string) => `${API_BASE}${p}`;
 
   let res = await fetch(url(path), init());

@@ -17,4 +17,5 @@ urlpatterns = [
     path("agents/create/", views.AdminCreateAgentView.as_view(), name="admin_create_agent"),
     path("agents/<int:pk>/", views.AgentDetailView.as_view(), name="agent_detail"),
     path("audit-logs/", views.AuditLogListView.as_view(), name="audit_logs"),
+    path("audit-logs/export/", views.AuditLogCsvExportView.as_view(), name="audit_logs_export"),
 ]

@@ -4,6 +4,7 @@ import { Wallet, AlertCircle, FileText, Car, Home, Shield, RefreshCw, AlertTrian
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useEffect } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientStats, useClientRequests } from "@/hooks/use-api-data";
 import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS, Emission, ClientRequest } from "@/lib/types";
@@ -41,8 +42,14 @@ function urgencyBadge(days: number) {
 export default function ClientDashboard() {
   const { user } = useAuthStore();
   const clientId = user?.id || "";
-  const { stats, emissions } = useClientStats(clientId);
+  const { stats, emissions, refetch } = useClientStats(clientId);
   const { data: requests } = useClientRequests(clientId);
+
+  useEffect(() => {
+    const handler = () => refetch();
+    window.addEventListener("emission_paiement_updated", handler);
+    return () => window.removeEventListener("emission_paiement_updated", handler);
+  }, [refetch]);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("fr-FR").format(amount) + " FCFA";

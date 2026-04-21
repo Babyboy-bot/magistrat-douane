@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { fmtDate } from "@/lib/utils";
-import { Shield, Search, TrendingUp, Heart, RefreshCw, ChevronDown, ChevronRight, Clock, CheckCircle2, KeyRound, Settings2, FileSpreadsheet, FileDown, Lock as LockIcon } from "lucide-react";
+import { Shield, Search, TrendingUp, Heart, RefreshCw, ChevronDown, ChevronRight, Clock, CheckCircle2, KeyRound, Settings2, FileSpreadsheet, FileDown, Lock as LockIcon, FileText, CreditCard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -218,19 +218,30 @@ export default function AgentMagistAssurPage() {
     }
   };
 
+  const isAdmin = user?.role === "admin";
+  const userId = String(user?.id ?? "");
+
+  const isMyEpargne = (e: ContratEpargne) =>
+    isAdmin || e.agentId === userId || e.prisEnChargeId === userId;
+  const isMyPrevoyance = (p: ContratPrevoyance) =>
+    isAdmin || p.agentId === userId || p.prisEnChargeNom === `${user?.nom ?? ""} ${user?.prenoms ?? ""}`.trim();
+
   const match = (nom: string, police: string) =>
     !search || nom.toLowerCase().includes(search.toLowerCase()) || police.includes(search);
 
-  const filteredEpargnes = epargnes.filter(e => match(e.clientNom, e.numPolice));
-  const filteredPrevoyances = prevoyances.filter(p => match(p.clientNom, p.numPolice));
-  const enAttenteE = filteredEpargnes.filter(e => !e.numPolice);
-  const enAttenteP = filteredPrevoyances.filter(p => !p.numPolice);
+  // En attente : tous les agents voient tous les contrats sans numéro de police
+  const enAttenteE = epargnes.filter(e => !e.numPolice && match(e.clientNom, e.numPolice));
+  const enAttenteP = prevoyances.filter(p => !p.numPolice && match(p.clientNom, p.numPolice));
   const totalAttente = enAttenteE.length + enAttenteP.length;
 
-  const totalEpargne = epargnes.length;
-  const totalPrevoyance = prevoyances.length;
-  const capitalTotal = epargnes.reduce((s, e) => s + e.capitalConstitue, 0);
-  const primesAnnuellesPrev = prevoyances.reduce((s, p) => s + p.primeAnnuelle, 0);
+  // Épargne/Prévoyance : agents voient seulement leurs contrats
+  const filteredEpargnes = epargnes.filter(e => isMyEpargne(e) && match(e.clientNom, e.numPolice));
+  const filteredPrevoyances = prevoyances.filter(p => isMyPrevoyance(p) && match(p.clientNom, p.numPolice));
+
+  const totalEpargne = filteredEpargnes.length;
+  const totalPrevoyance = filteredPrevoyances.length;
+  const capitalTotal = filteredEpargnes.reduce((s, e) => s + e.capitalConstitue, 0);
+  const primesAnnuellesPrev = filteredPrevoyances.reduce((s, p) => s + p.primeAnnuelle, 0);
 
   return (
     <div className="space-y-6">
@@ -407,6 +418,20 @@ export default function AgentMagistAssurPage() {
                                   </div>
                                 </div>
                               )}
+                              {/* Documents */}
+                              <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Documents joints</p>
+                                <div className="flex gap-3">
+                                  {e.pieceIdentiteUrl
+                                    ? <a href={e.pieceIdentiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 rounded-lg px-3 py-1.5 font-medium transition"><FileText className="h-3.5 w-3.5" /> Pièce d&apos;identité</a>
+                                    : <span className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">✗ CNI manquante</span>
+                                  }
+                                  {e.ribDocumentUrl
+                                    ? <a href={e.ribDocumentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 rounded-lg px-3 py-1.5 font-medium transition"><CreditCard className="h-3.5 w-3.5" /> RIB</a>
+                                    : <span className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">✗ RIB manquant</span>
+                                  }
+                                </div>
+                              </div>
                               {/* Export NSIA */}
                               <div className="bg-blue-50 rounded-lg p-3 border border-blue-100 space-y-2">
                                 <p className="text-xs font-semibold text-blue-700 flex items-center gap-1"><FileDown className="h-3 w-3" /> Exporter pour envoi à NSIA</p>
@@ -625,6 +650,16 @@ export default function AgentMagistAssurPage() {
                           </div>
                         </div>
                       )}
+                      <div className="flex gap-3">
+                        {e.pieceIdentiteUrl
+                          ? <a href={e.pieceIdentiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 rounded-lg px-3 py-1.5 font-medium transition"><FileText className="h-3.5 w-3.5" /> Pièce d&apos;identité</a>
+                          : <span className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">✗ CNI manquante</span>
+                        }
+                        {e.ribDocumentUrl
+                          ? <a href={e.ribDocumentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 rounded-lg px-3 py-1.5 font-medium transition"><CreditCard className="h-3.5 w-3.5" /> RIB</a>
+                          : <span className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">✗ RIB manquant</span>
+                        }
+                      </div>
                       <div className="bg-blue-50 rounded-lg p-3 border border-blue-100 space-y-2">
                         <p className="text-xs font-semibold text-blue-700 flex items-center gap-1"><FileDown className="h-3 w-3" /> Exporter pour envoi à NSIA</p>
                         <div className="flex gap-2">

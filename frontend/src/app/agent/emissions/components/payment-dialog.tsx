@@ -21,6 +21,7 @@ export function PaymentDialog({ emission, formatCurrency, open, onClose, onSucce
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentRef, setPaymentRef] = useState("");
   const [paymentObs, setPaymentObs] = useState("");
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [loading, setLoading] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
@@ -31,7 +32,16 @@ export function PaymentDialog({ emission, formatCurrency, open, onClose, onSucce
     if (!emission || !open) {
       setBalance(null);
       setBalanceError(null);
+      setPaymentAmount("");
+      setPaymentRef("");
+      setPaymentObs("");
+      setPaymentDate(new Date().toISOString().split("T")[0]);
       return;
+    }
+    // Pré-remplir méthode avec la dernière observation
+    if (emission.paiements && emission.paiements.length > 0) {
+      const last = emission.paiements[emission.paiements.length - 1];
+      if (last.observations) setPaymentObs(last.observations);
     }
     let cancelled = false;
     const fetchBalance = async () => {
@@ -41,6 +51,7 @@ export function PaymentDialog({ emission, formatCurrency, open, onClose, onSucce
         const data = await emissionsApi.getBalance(emission.id);
         if (!cancelled) {
           setBalance(data.solde);
+          setPaymentAmount(String(Math.round(data.solde)));
         }
       } catch (err: unknown) {
         if (!cancelled) {
@@ -72,7 +83,7 @@ export function PaymentDialog({ emission, formatCurrency, open, onClose, onSucce
     try {
       await paiementsApi.create({
         emissionId: String(emission.id),
-        dateReglement: new Date().toISOString().split("T")[0],
+        dateReglement: paymentDate,
         reference: paymentRef,
         montantRegle: Number(paymentAmount),
         observations: paymentObs,
@@ -81,6 +92,7 @@ export function PaymentDialog({ emission, formatCurrency, open, onClose, onSucce
       setPaymentAmount("");
       setPaymentRef("");
       setPaymentObs("");
+      setPaymentDate(new Date().toISOString().split("T")[0]);
       setBalance((current) => (typeof current === "number" ? current - Number(paymentAmount) : current));
       onSuccess();
       onClose();
@@ -120,9 +132,6 @@ export function PaymentDialog({ emission, formatCurrency, open, onClose, onSucce
                 <span className="text-gray-400">Client:</span> <strong>{emission.clientNom}</strong>
               </p>
               <p>
-                <span className="text-gray-400">Police:</span> {emission.numPolice}
-              </p>
-              <p>
                 <span className="text-gray-400">Solde restant:</span>{" "}
                 {balanceLoading ? (
                   <span className="text-xs text-gray-500">Chargement...</span>
@@ -137,6 +146,14 @@ export function PaymentDialog({ emission, formatCurrency, open, onClose, onSucce
                   Reste après paiement : <strong>{formatCurrency(Math.max(remainingAfterPayment, 0))}</strong>
                 </p>
               )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>N° Police</Label>
+              <Input value={emission.numPolice} readOnly disabled className="bg-gray-50 text-gray-500 cursor-not-allowed" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Date de règlement *</Label>
+              <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>Montant réglé (FCFA) *</Label>

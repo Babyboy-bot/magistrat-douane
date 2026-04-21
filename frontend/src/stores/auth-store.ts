@@ -11,6 +11,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   updateProfile: (updates: Partial<User>) => void;
+  patchUser: (user: User) => void;
   fetchMe: () => Promise<void>;
   initialize: () => Promise<void>;
 }
@@ -47,13 +48,16 @@ export const useAuthStore = create<AuthState>()(
         authApi.updateProfile(updates as Record<string, string>).catch(() => {});
       },
 
+      patchUser: (user: User) => {
+        set({ user });
+      },
+
       fetchMe: async () => {
         try {
-          set({ loading: true });
           const user = await authApi.me();
-          set({ user, isAuthenticated: true, loading: false });
+          set({ user, isAuthenticated: true });
         } catch {
-          set({ user: null, isAuthenticated: false, loading: false });
+          set({ user: null, isAuthenticated: false });
         }
       },
 
@@ -61,11 +65,7 @@ export const useAuthStore = create<AuthState>()(
       initialize: async () => {
         set({ loading: true });
         try {
-          const { isAuthenticated } = get();
-          if (!isAuthenticated) {
-            // Try to fetch current user from cookies
-            await get().fetchMe();
-          }
+          await get().fetchMe();
         } finally {
           set({ initialized: true, loading: false });
         }

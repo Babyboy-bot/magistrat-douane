@@ -37,7 +37,20 @@ interface UseWebSocketReturn {
   clearNotifications: () => void;
 }
 
-function eventToNotification(raw: Record<string, unknown>): AppNotification {
+function eventToNotification(raw: Record<string, unknown>): AppNotification | null {
+  // Format émis par notification_service : contient id/title/message directement, sans champ event
+  if (typeof raw.title === "string" && typeof raw.message === "string" && !raw.event) {
+    return {
+      id: raw.id ? String(raw.id) : `notif-${Date.now()}`,
+      title: raw.title,
+      message: raw.message,
+      type: (raw.type as AppNotification["type"]) ?? "info",
+      created_at: (raw.created_at as string) ?? new Date().toISOString(),
+      read_at: raw.read_at as string | undefined,
+      data: (raw.data as Record<string, unknown>) ?? {},
+    };
+  }
+
   const event = raw.event as string;
   const id = `${event}-${raw.request_id ?? raw.document_nom ?? Date.now()}`;
 
@@ -82,6 +95,21 @@ function eventToNotification(raw: Record<string, unknown>): AppNotification {
         data: raw,
       };
     }
+    case "emission_created": {
+      const police = raw.num_police as string;
+      const risque = raw.risque as string;
+      const compagnie = raw.compagnie as string;
+      const prime = Number(raw.prime_ttc);
+      const fmt = (v: number) => new Intl.NumberFormat("fr-FR").format(v);
+      return {
+        id,
+        title: "Nouvelle émission créée 📋",
+        message: `Une émission ${police}${risque ? ` — ${risque}` : ""}${compagnie ? ` (${compagnie})` : ""} a été créée pour vous. Prime TTC : ${fmt(prime)} FCFA.`,
+        type: "info",
+        created_at: new Date().toISOString(),
+        data: raw,
+      };
+    }
     case "emission_paiement": {
       const police = raw.num_police as string;
       const montant = Number(raw.montant_regle);
@@ -109,14 +137,7 @@ function eventToNotification(raw: Record<string, unknown>): AppNotification {
         data: raw,
       };
     default:
-      return {
-        id: `unknown-${Date.now()}`,
-        title: "Notification",
-        message: JSON.stringify(raw),
-        type: "info",
-        created_at: new Date().toISOString(),
-        data: raw,
-      };
+      return null;
   }
 }
 
@@ -187,9 +208,15 @@ function playNotificationSound(type: "info" | "success" | "warning" | "error") {
   }
 }
 
+// ── Cache module-level (survit aux remontages React) ────────────────────────
+const _notifCache = new Map<string, AppNotification[]>();
+const _loadedUsers = new Set<string>();
+
 export function useWebSocket(userId?: string): UseWebSocketReturn {
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const initialLoadedRef = useRef(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>(
+    userId && _notifCache.has(userId) ? _notifCache.get(userId)! : []
+  );
+  const initialLoadedRef = useRef(false); // garde uniquement pour compat (inutilisé)
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
@@ -262,10 +289,13 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
         }
         if (data.type === "notification" && data.data) {
           const notif = eventToNotification(data.data as Record<string, unknown>);
+          if (!notif) return;
           if (readIdsRef.current.has(notif.id)) return;
           setNotifications((prev) => {
             if (prev.some((n) => n.id === notif.id)) return prev;
-            return [notif, ...prev.slice(0, 49)];
+            const next = [notif, ...prev.slice(0, 49)];
+            if (userId) _notifCache.set(userId, next);
+            return next;
           });
           playNotificationSound(notif.type);
           if (notif.type === "success") toast.success(notif.title, { description: notif.message });
@@ -276,6 +306,14 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
             import("@/stores/auth-store").then(({ useAuthStore }) => {
               useAuthStore.getState().fetchMe();
             });
+          }
+          // Rafraîchir les données paiement côté client
+          if ((data.data as Record<string, unknown>).event === "emission_paiement") {
+            window.dispatchEvent(new CustomEvent("emission_paiement_updated"));
+          }
+          // Rafraîchir la liste des requêtes agent en temps réel
+          if ((data.data as Record<string, unknown>).event === "new_request") {
+            window.dispatchEvent(new CustomEvent("new_request_created"));
           }
         }
       } catch {
@@ -307,12 +345,17 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
   useEffect(() => {
     if (userId) readIdsRef.current = loadReadIds(userId);
     mountedRef.current = true;
-    if (userId && !initialLoadedRef.current) {
-      initialLoadedRef.current = true;
+    // Charger depuis le cache si déjà initialisé pour ce user
+    if (userId && _notifCache.has(userId)) {
+      setNotifications(_notifCache.get(userId)!);
+    } else if (userId && !_loadedUsers.has(userId)) {
+      _loadedUsers.add(userId);
       fetchNotificationsApi().then((fetched) => {
         if (!mountedRef.current) return;
-        const unread = fetched.filter((n) => !n.read_at);
-        setNotifications(unread.slice(0, 50));
+        const unread = fetched.filter((n) => !n.read_at && !readIdsRef.current.has(n.id));
+        const slice = unread.slice(0, 50);
+        _notifCache.set(userId, slice);
+        setNotifications(slice);
       });
     }
     connect();
@@ -341,7 +384,11 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
       saveReadIds(userId, readIdsRef.current);
       apiMarkRead(id);
     }
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    setNotifications((prev) => {
+      const next = prev.filter((n) => n.id !== id);
+      if (userId) _notifCache.set(userId, next);
+      return next;
+    });
   }, [userId]);
 
   const markAllAsRead = useCallback(() => {
@@ -350,6 +397,8 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
         prev.forEach((n) => readIdsRef.current.add(n.id));
         saveReadIds(userId, readIdsRef.current);
         apiMarkAllRead();
+        _loadedUsers.delete(userId);
+        _notifCache.set(userId, []);
       }
       return [];
     });
@@ -359,6 +408,8 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
     if (userId) {
       readIdsRef.current = new Set();
       saveReadIds(userId, readIdsRef.current);
+      _loadedUsers.delete(userId);
+      _notifCache.set(userId, []);
     }
     setNotifications([]);
   }, [userId]);

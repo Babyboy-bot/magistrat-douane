@@ -223,19 +223,19 @@ export function EmissionFormDialog({ clients, open, onOpenChange, onCreated, pre
             </div>
           </div>
           {/* Aperçu commission */}
-          {form.tauxCommission > 0 && Number(form.primeTtc) > 0 && (
+          {form.tauxCommission > 0 && Number(form.primeNette) > 0 && (
             <div className="rounded-lg bg-purple-50 border border-purple-200 px-3 py-2 text-sm">
               <span className="text-purple-700">
                 Commission ACS ({form.tauxCommission}%) :{" "}
                 <strong>
                   {new Intl.NumberFormat("fr-FR").format(
-                    Math.round(Number(form.primeTtc) * form.tauxCommission / 100)
+                    Math.round(Number(form.primeNette) * form.tauxCommission / 100)
                   )}{" "}FCFA
                 </strong>
               </span>
-              {Number(form.primeNette) > 0 && (
+              {Number(form.primeTtc) > 0 && (
                 <span className="text-purple-500 ml-2 text-xs">
-                  (prime nette insur. : {new Intl.NumberFormat("fr-FR").format(Number(form.primeTtc) - Math.round(Number(form.primeTtc) * form.tauxCommission / 100))} FCFA)
+                  (prime nette insur. : {new Intl.NumberFormat("fr-FR").format(Number(form.primeTtc) - Math.round(Number(form.primeNette) * form.tauxCommission / 100))} FCFA)
                 </span>
               )}
             </div>

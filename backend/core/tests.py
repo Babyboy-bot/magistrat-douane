@@ -101,7 +101,7 @@ class TestEmissionList:
         force_login(api_client, agent)
         resp = api_client.get("/api/emissions/")
         first = resp.data["results"][0]
-        expected = Decimal(str(emission.prime_ttc)) - Decimal(str(emission.prime_nette))
+        expected = (Decimal(str(emission.prime_nette)) * emission.taux_commission / 100).quantize(Decimal("1"))
         assert Decimal(str(first["montant_commission"])) == expected
 
 

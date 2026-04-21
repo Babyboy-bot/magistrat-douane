@@ -7,6 +7,8 @@ import type { CorrespondantState } from "./types";
 interface Props {
   corresp1: CorrespondantState; setCorresp1: (v: CorrespondantState) => void;
   corresp2: CorrespondantState; setCorresp2: (v: CorrespondantState) => void;
+  prevCorrespIdem: boolean; setPrevCorrespIdem: (v: boolean) => void;
+  prevCorresp: CorrespondantState; setPrevCorresp: (v: CorrespondantState) => void;
 }
 
 function CorrespondantCard({ label, data, set }: { label: string; data: CorrespondantState; set: (v: CorrespondantState) => void }) {
@@ -16,13 +18,13 @@ function CorrespondantCard({ label, data, set }: { label: string; data: Correspo
       <CardHeader><CardTitle className="text-base">{label}</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Nom</Label><Input value={data.nom} onChange={e => s("nom", e.target.value)} /></div>
-          <div><Label>Prénom</Label><Input value={data.prenom} onChange={e => s("prenom", e.target.value)} /></div>
+          <div><Label>Nom {label.includes("1") ? <span className="text-red-500">*</span> : ""}</Label><Input value={data.nom} onChange={e => s("nom", e.target.value)} /></div>
+          <div><Label>Prénom {label.includes("1") ? <span className="text-red-500">*</span> : ""}</Label><Input value={data.prenom} onChange={e => s("prenom", e.target.value)} /></div>
         </div>
         <div><Label>Domicile (Ville-Commune-Quartier-Rue-Lot-Ilot)</Label><Input value={data.domicile} onChange={e => s("domicile", e.target.value)} /></div>
         <div><Label>Adresse Postale</Label><Input value={data.adresse_postale} onChange={e => s("adresse_postale", e.target.value)} /></div>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Tél. / Cél.</Label><Input value={data.telephone} onChange={e => s("telephone", e.target.value)} /></div>
+          <div><Label>Tél. / Cél. {label.includes("1") ? <span className="text-red-500">*</span> : ""}</Label><Input value={data.telephone} onChange={e => s("telephone", e.target.value)} /></div>
           <div><Label>E-mail</Label><Input type="email" value={data.email} onChange={e => s("email", e.target.value)} /></div>
         </div>
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Réf. Réseaux Sociaux</p>
@@ -37,11 +39,57 @@ function CorrespondantCard({ label, data, set }: { label: string; data: Correspo
   );
 }
 
-export function StepCorrespondants({ corresp1, setCorresp1, corresp2, setCorresp2 }: Props) {
+const btn = (active: boolean, color: "amber" | "gray" = "amber") =>
+  `flex-1 border rounded-lg py-2 text-sm font-medium transition ${
+    active
+      ? color === "amber" ? "bg-amber-600 text-white border-amber-600" : "bg-gray-700 text-white border-gray-700"
+      : "border-gray-300 hover:border-amber-400"
+  }`;
+
+export function StepCorrespondants({ corresp1, setCorresp1, corresp2, setCorresp2, prevCorrespIdem, setPrevCorrespIdem, prevCorresp, setPrevCorresp }: Props) {
+  const sp = (field: keyof CorrespondantState, val: string) => setPrevCorresp({ ...prevCorresp, [field]: val });
+
   return (
     <div className="space-y-4">
-      <CorrespondantCard label="Correspondant 1" data={corresp1} set={setCorresp1} />
-      <CorrespondantCard label="Correspondant 2" data={corresp2} set={setCorresp2} />
+      <CorrespondantCard label="2. Correspondant 1 *" data={corresp1} set={setCorresp1} />
+      <CorrespondantCard label="Correspondant 2 (optionnel)" data={corresp2} set={setCorresp2} />
+
+      {/* ── Correspondant Prévoyance ── */}
+      <Card className="border-0 shadow-sm border-l-4 border-l-amber-500">
+        <CardHeader>
+          <CardTitle className="text-base text-amber-800">Correspondant — PRÉVOYANCE</CardTitle>
+          <p className="text-xs text-gray-500">Utilisé uniquement si vous souscrivez à une garantie Prévoyance.</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">Identique au Correspondant 1 ?</Label>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setPrevCorrespIdem(true)} className={btn(prevCorrespIdem)}>Oui — même correspondant</button>
+              <button type="button" onClick={() => setPrevCorrespIdem(false)} className={btn(!prevCorrespIdem, "gray")}>Non — correspondant différent</button>
+            </div>
+          </div>
+
+          {prevCorrespIdem ? (
+            <div className="bg-amber-50 rounded-lg p-3 text-sm text-amber-800 space-y-1">
+              <p className="font-semibold">{corresp1.nom} {corresp1.prenom}</p>
+              {corresp1.domicile && <p className="text-xs text-gray-600">{corresp1.domicile}</p>}
+              {corresp1.telephone && <p className="text-xs text-gray-600">Tél : {corresp1.telephone}</p>}
+            </div>
+          ) : (
+            <div className="space-y-3 pt-1">
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Nom <span className="text-red-500">*</span></Label><Input value={prevCorresp.nom} onChange={e => sp("nom", e.target.value)} /></div>
+                <div><Label>Prénom <span className="text-red-500">*</span></Label><Input value={prevCorresp.prenom} onChange={e => sp("prenom", e.target.value)} /></div>
+              </div>
+              <div><Label>Domicile <span className="text-red-500">*</span></Label><Input value={prevCorresp.domicile} onChange={e => sp("domicile", e.target.value)} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Téléphone</Label><Input value={prevCorresp.telephone} onChange={e => sp("telephone", e.target.value)} /></div>
+                <div><Label>E-mail</Label><Input type="email" value={prevCorresp.email} onChange={e => sp("email", e.target.value)} /></div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

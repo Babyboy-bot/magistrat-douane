@@ -72,6 +72,9 @@ function mapContratEpargne(r: Record<string, unknown>): ContratEpargne {
     telephone: (r.telephone as string) || undefined,
     emailPersonnel: (r.email_personnel as string) || undefined,
     adressePostale: (r.adresse_postale as string) || undefined,
+    pieceIdentiteUrl: (r.piece_identite_url as string) || undefined,
+    ribDocumentUrl: (r.rib_document_url as string) || undefined,
+    prisEnChargeId: r.pris_en_charge_par ? String(r.pris_en_charge_par) : undefined,
   };
 }
 

@@ -1,24 +1,36 @@
 "use client";
 
-import { useState } from "react";
-import { Car, Home, Eye, EyeOff, Search } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Car, Home, Eye, EyeOff, Search, CheckCircle2, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientEmissions } from "@/hooks/use-api-data";
+import { parseDisplayDate } from "@/lib/utils";
 
 export default function PortfolioPage() {
   const { user } = useAuthStore();
-  const { data: emissions } = useClientEmissions(user?.id || "");
+  const { data: emissions, refetch } = useClientEmissions(user?.id || "");
+
+  useEffect(() => {
+    const handler = () => refetch();
+    window.addEventListener("emission_paiement_updated", handler);
+    return () => window.removeEventListener("emission_paiement_updated", handler);
+  }, [refetch]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<"actifs" | "soldes">("actifs");
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("fr-FR").format(amount) + " FCFA";
 
-  const filtered = emissions.filter(
+  const actifs = emissions.filter((e) => (e.solde ?? (e.primeTTC - e.totalPaye)) > 0);
+  const soldes = emissions.filter((e) => (e.solde ?? (e.primeTTC - e.totalPaye)) <= 0);
+  const base = tab === "actifs" ? actifs : soldes;
+
+  const filtered = base.filter(
     (e) =>
       e.risque.toLowerCase().includes(search.toLowerCase()) ||
       e.compagnie.toLowerCase().includes(search.toLowerCase()) ||
@@ -36,6 +48,33 @@ export default function PortfolioPage() {
             {emissions.length} contrat{emissions.length > 1 ? "s" : ""} en portefeuille
           </p>
         </div>
+      </div>
+
+      {/* Onglets Actifs / Soldés */}
+      <div className="flex gap-2 border-b">
+        <button
+          onClick={() => setTab("actifs")}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            tab === "actifs" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <Clock className="h-4 w-4" />
+          Contrats actifs
+          <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 text-xs">{actifs.length}</span>
+        </button>
+        <button
+          onClick={() => setTab("soldes")}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            tab === "soldes" ? "border-green-600 text-green-600" : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <CheckCircle2 className="h-4 w-4" />
+          Contrats soldés
+          <span className="ml-1 bg-green-100 text-green-700 rounded-full px-2 py-0.5 text-xs">{soldes.length}</span>
+        </button>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
@@ -69,9 +108,8 @@ export default function PortfolioPage() {
               </thead>
               <tbody>
                 {filtered.map((e) => {
-                  const isExpired = new Date(e.echeance) < new Date();
-                  const totalPaye = e.paiements.reduce((s, p) => s + p.montantRegle, 0);
-                  const solde = e.primeTTC - totalPaye;
+                  const isExpired = parseDisplayDate(e.echeance) < new Date();
+                  const solde = e.solde ?? (e.primeTTC - e.totalPaye);
                   const isExpanded = expandedId === e.id;
 
                   return (
@@ -149,8 +187,7 @@ export default function PortfolioPage() {
       {/* Mobile cards */}
       <div className="lg:hidden space-y-3">
         {filtered.map((e) => {
-          const totalPaye = e.paiements.reduce((s, p) => s + p.montantRegle, 0);
-          const solde = e.primeTTC - totalPaye;
+          const solde = e.solde ?? (e.primeTTC - e.totalPaye);
           const isExpanded = expandedId === e.id;
           const isExpired = new Date(e.echeance) < new Date();
 

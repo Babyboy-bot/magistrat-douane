@@ -30,11 +30,11 @@ export function StepAssure({ assureIdem, setAssureIdem, assure, setAssure }: Pro
             <p className="text-sm text-gray-500">Renseignez les informations sur l&apos;assuré si différent du souscripteur</p>
 
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Nom</Label><Input value={assure.assure_nom} onChange={e => s("assure_nom", e.target.value)} /></div>
-              <div><Label>Prénom(s)</Label><Input value={assure.assure_prenoms} onChange={e => s("assure_prenoms", e.target.value)} /></div>
+              <div><Label>Nom <span className="text-red-500">*</span></Label><Input value={assure.assure_nom} onChange={e => s("assure_nom", e.target.value)} /></div>
+              <div><Label>Prénom(s) <span className="text-red-500">*</span></Label><Input value={assure.assure_prenoms} onChange={e => s("assure_prenoms", e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Date de naissance</Label><Input type="date" value={assure.assure_date_naissance} onChange={e => s("assure_date_naissance", e.target.value)} /></div>
+              <div><Label>Date de naissance <span className="text-red-500">*</span></Label><Input type="date" value={assure.assure_date_naissance} onChange={e => s("assure_date_naissance", e.target.value)} /></div>
               <div><Label>Lieu de naissance</Label><Input value={assure.assure_lieu_naissance} onChange={e => s("assure_lieu_naissance", e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">

@@ -232,28 +232,28 @@ export default function AutomobileSubscriptionPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Nom du propriétaire</Label>
+                <Label>Nom du propriétaire <span className="text-red-500">*</span></Label>
                 <Input
                   value={vehicule.proprietaire}
                   onChange={(e) => setVehicule({ ...vehicule, proprietaire: e.target.value })}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Immatriculation</Label>
+                <Label>Immatriculation <span className="text-red-500">*</span></Label>
                 <Input
                   value={vehicule.immatriculation}
                   onChange={(e) => setVehicule({ ...vehicule, immatriculation: e.target.value })}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Marque</Label>
+                <Label>Marque <span className="text-red-500">*</span></Label>
                 <Input
                   value={vehicule.marque}
                   onChange={(e) => setVehicule({ ...vehicule, marque: e.target.value })}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Genre</Label>
+                <Label>Genre <span className="text-red-500">*</span></Label>
                 <Input
                   value={vehicule.genre}
                   onChange={(e) => setVehicule({ ...vehicule, genre: e.target.value })}
@@ -267,7 +267,7 @@ export default function AutomobileSubscriptionPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Énergie</Label>
+                <Label>Énergie <span className="text-red-500">*</span></Label>
                 <Input
                   value={vehicule.energie}
                   onChange={(e) => setVehicule({ ...vehicule, energie: e.target.value })}
@@ -282,7 +282,7 @@ export default function AutomobileSubscriptionPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Places assises</Label>
+                <Label>Places assises <span className="text-red-500">*</span></Label>
                 <Input
                   type="number"
                   value={vehicule.placesAssises}
@@ -311,7 +311,7 @@ export default function AutomobileSubscriptionPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Date de mise en circulation</Label>
+                <Label>Date de mise en circulation <span className="text-red-500">*</span></Label>
                 <Input
                   type="date"
                   value={vehicule.dateMiseCirculation}
@@ -322,7 +322,7 @@ export default function AutomobileSubscriptionPage() {
 
             <div className="border-t pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Valeur neuve (FCFA)</Label>
+                <Label>Valeur neuve (FCFA) <span className="text-red-500">*</span></Label>
                 <Input
                   type="number"
                   placeholder="Ex: 25 000 000"
@@ -331,7 +331,7 @@ export default function AutomobileSubscriptionPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Valeur vénale (FCFA)</Label>
+                <Label>Valeur vénale (FCFA) <span className="text-red-500">*</span></Label>
                 <Input
                   type="number"
                   placeholder="Ex: 18 000 000"

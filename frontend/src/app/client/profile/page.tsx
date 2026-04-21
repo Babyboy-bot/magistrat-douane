@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuthStore } from "@/stores/auth-store";
 import { authApi } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
@@ -14,16 +14,17 @@ import { PROFESSION_LABELS } from "@/lib/types";
 import { toast } from "sonner";
 
 export default function ProfilePage() {
-  const { user, updateProfile } = useAuthStore();
+  const { user, updateProfile, patchUser } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (photoInputRef.current) photoInputRef.current.value = "";
     try {
-      const updated = await authApi.uploadPhoto(file);
-      updateProfile(updated);
+      const updatedUser = await authApi.uploadPhoto(file);
+      patchUser(updatedUser);
       toast.success("Photo de profil mise à jour");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de l'upload");
@@ -100,13 +101,10 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4">
             <div className="relative">
               <Avatar className="h-20 w-20">
-                {user?.photo ? (
-                  <img src={user.photo} alt="Photo" className="h-20 w-20 rounded-full object-cover" />
-                ) : (
-                  <AvatarFallback className="bg-[hsl(222,47%,20%)] text-white text-xl font-bold">
-                    {initials}
-                  </AvatarFallback>
-                )}
+                {user?.photo && <AvatarImage src={user.photo} alt="Photo de profil" className="object-cover" />}
+                <AvatarFallback className="bg-[hsl(222,47%,20%)] text-white text-xl font-bold">
+                  {initials}
+                </AvatarFallback>
               </Avatar>
               <button
                 onClick={() => photoInputRef.current?.click()}

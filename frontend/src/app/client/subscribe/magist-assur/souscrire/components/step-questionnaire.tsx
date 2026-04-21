@@ -34,9 +34,9 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>1. Taille (cm)</Label><Input type="number" min={0} value={q.taille_cm} onChange={e => s("taille_cm", e.target.value)} placeholder="ex: 175" /></div>
-            <div><Label>2. Poids (kg)</Label><Input type="number" min={0} value={q.poids_kg} onChange={e => s("poids_kg", e.target.value)} placeholder="ex: 70" /></div>
-            <div><Label>3. Tension artérielle</Label><Input value={q.tension_arterielle} onChange={e => s("tension_arterielle", e.target.value)} placeholder="ex: 12/8" /></div>
+            <div><Label>1. Taille (cm) <span className="text-red-500">*</span></Label><Input type="number" min={0} value={q.taille_cm} onChange={e => s("taille_cm", e.target.value)} placeholder="ex: 175" /></div>
+            <div><Label>2. Poids (kg) <span className="text-red-500">*</span></Label><Input type="number" min={0} value={q.poids_kg} onChange={e => s("poids_kg", e.target.value)} placeholder="ex: 70" /></div>
+            <div><Label>3. Tension artérielle <span className="text-red-500">*</span></Label><Input value={q.tension_arterielle} onChange={e => s("tension_arterielle", e.target.value)} placeholder="ex: 12/8" /></div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -44,7 +44,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
               <Label className="mb-2 block">4. Fumez-vous ?</Label>
               <div className="flex gap-3">
                 <button type="button" onClick={() => s("fumeur", true)} className={btn(q.fumeur)}>Oui</button>
-                <button type="button" onClick={() => { s("fumeur", false); s("cigarettes_par_jour", ""); }} className={btn(!q.fumeur)}>Non</button>
+                <button type="button" onClick={() => setQ({ ...q, fumeur: false, cigarettes_par_jour: "" })} className={btn(!q.fumeur)}>Non</button>
               </div>
               {q.fumeur && (
                 <div className="mt-2">
@@ -55,7 +55,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
             </div>
 
             <div>
-              <Label className="mb-2 block">5. Alcool ?</Label>
+              <Label className="mb-2 block">5. Alcool ? <span className="text-red-500">*</span></Label>
               <div className="grid grid-cols-2 gap-1">
                 {[["non","Non"],["pas_du_tout","Pas du tout"],["a_l_occasion","À l'occasion"],["regulierement","Régulièrement"]].map(([v, l]) => (
                   <button key={v} type="button" onClick={() => s("alcool", v)}
@@ -65,14 +65,14 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
             </div>
           </div>
 
-          <div><Label>6. Vos distractions / loisirs</Label><Input value={q.distractions} onChange={e => s("distractions", e.target.value)} /></div>
+          <div><Label>6. Vos distractions / loisirs <span className="text-red-500">*</span></Label><Input value={q.distractions} onChange={e => s("distractions", e.target.value)} /></div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="mb-2 block">7. Pratiquez-vous un sport ?</Label>
               <div className="flex gap-3">
                 <button type="button" onClick={() => s("sport", true)} className={btn(q.sport)}>Oui</button>
-                <button type="button" onClick={() => { s("sport", false); s("sport_titre", ""); }} className={btn(!q.sport)}>Non</button>
+                <button type="button" onClick={() => setQ({ ...q, sport: false, sport_titre: "" })} className={btn(!q.sport)}>Non</button>
               </div>
               {q.sport && (
                 <div className="flex gap-2 mt-2">
@@ -88,7 +88,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
               <Label className="mb-2 block">8. Infirmité ou invalidité ?</Label>
               <div className="flex gap-3">
                 <button type="button" onClick={() => s("invalidite", true)} className={btn(q.invalidite)}>Oui</button>
-                <button type="button" onClick={() => { s("invalidite", false); s("invalidite_nature", ""); s("invalidite_date", ""); }} className={btn(!q.invalidite)}>Non</button>
+                <button type="button" onClick={() => setQ({ ...q, invalidite: false, invalidite_nature: "", invalidite_date: "" })} className={btn(!q.invalidite)}>Non</button>
               </div>
               {q.invalidite && (
                 <div className="mt-2 space-y-2">

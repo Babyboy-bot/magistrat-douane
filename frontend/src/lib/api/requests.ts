@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import type { ClientRequest, Document, RequestType, RequestStatus } from "@/lib/types";
+import { fmtDate } from "@/lib/utils";
 
 // ── Mappers ──────────────────────────────────────────────────────────────────
 
@@ -24,8 +25,6 @@ export function mapDocument(d: Record<string, unknown>): Document {
 }
 
 export function mapRequest(r: Record<string, unknown>): ClientRequest {
-  const fmtDate = (v: unknown) =>
-    v ? new Date(v as string).toLocaleString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
   return {
     id: String(r.id),
     numero: r.numero as string,
@@ -37,8 +36,8 @@ export function mapRequest(r: Record<string, unknown>): ClientRequest {
     agentNom: (r.agent_nom as string) || undefined,
     documents: Array.isArray(r.documents) ? (r.documents as Record<string, unknown>[]).map(mapDocument) : [],
     livrables: Array.isArray(r.livrables) ? (r.livrables as Record<string, unknown>[]).map(mapDocument) : [],
-    createdAt: fmtDate(r.created_at),
-    treatedAt: r.treated_at ? fmtDate(r.treated_at) : undefined,
+    createdAt: fmtDate(r.created_at as string),
+    treatedAt: r.treated_at ? fmtDate(r.treated_at as string) : undefined,
     details: r.details as Record<string, unknown>,
     sinistre_note: (r.sinistre_note as string) || undefined,
   };

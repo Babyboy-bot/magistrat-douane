@@ -196,7 +196,7 @@ export function useAgentDashboardStats() {
 // ── Client Stats (computed from emissions) ──
 
 export function useClientStats(clientId: string) {
-  const { data: emissions, loading } = useClientEmissions(clientId);
+  const { data: emissions, loading, refetch } = useClientEmissions(clientId);
   const emissionsArray = Array.isArray(emissions) ? emissions : [];
 
   const stats: CompteStats = {
@@ -205,7 +205,7 @@ export function useClientStats(clientId: string) {
     primeAPayer: emissionsArray.reduce((sum: number, e: Emission) => sum + (e.solde ?? 0), 0),
   };
 
-  return { stats, emissions: emissionsArray, loading };
+  return { stats, emissions: emissionsArray, loading, refetch };
 }
 
 // ── MAGIST'ASSUR (client) ──

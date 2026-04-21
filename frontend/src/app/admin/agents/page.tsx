@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fmtDate } from "@/lib/utils";
 import {
   Users,
   Plus,
@@ -87,7 +88,11 @@ export default function AdminAgentsPage() {
   const [selectedAgent, setSelectedAgent] = useState<User | null>(null);
   const [form, setForm] = useState<AgentForm>({ ...emptyForm });
 
-  const agents = paginatedAgents.results ?? [];
+  const [localOverrides, setLocalOverrides] = useState<Map<string, boolean>>(new Map());
+
+  const agents = (paginatedAgents.results ?? []).map((a) =>
+    localOverrides.has(a.id) ? { ...a, is_active: localOverrides.get(a.id)! } : a
+  );
   const totalCount = paginatedAgents.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
@@ -196,8 +201,10 @@ export default function AdminAgentsPage() {
   };
 
   const handleToggle = async (agent: User) => {
+    const newStatus = !agent.is_active;
+    const action = newStatus ? "activé" : "désactivé";
+    setLocalOverrides((prev) => new Map(prev).set(agent.id, newStatus));
     try {
-      const newStatus = !agent.is_active;
       await agentsApi.update(Number(agent.id), {
         nom: agent.nom,
         prenoms: agent.prenoms,
@@ -205,11 +212,10 @@ export default function AdminAgentsPage() {
         telephone: agent.telephone,
         is_active: newStatus,
       });
-      
-      const action = newStatus ? "activé" : "désactivé";
       toast.success(`Agent ${agent.nom} ${agent.prenoms} ${action}`);
       refetchUsers();
     } catch (err: unknown) {
+      setLocalOverrides((prev) => { const m = new Map(prev); m.delete(agent.id); return m; });
       toast.error(err instanceof Error ? err.message : "Erreur lors de la modification");
     }
   };
@@ -534,7 +540,7 @@ export default function AdminAgentsPage() {
                   <div>
                     <span className="text-gray-400">Membre depuis</span>
                     <p className="font-semibold">
-                      {a.createdAt ? new Date(a.createdAt).toLocaleDateString('fr-FR') : '—'}
+                      {a.createdAt ? fmtDate(a.createdAt) : '—'}
                     </p>
                   </div>
                 </div>

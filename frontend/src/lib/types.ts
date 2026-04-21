@@ -293,6 +293,9 @@ export interface ContratEpargne {
   telephone?: string;
   emailPersonnel?: string;
   adressePostale?: string;
+  pieceIdentiteUrl?: string;
+  ribDocumentUrl?: string;
+  prisEnChargeId?: string;
 }
 
 export interface AssureAssocie {

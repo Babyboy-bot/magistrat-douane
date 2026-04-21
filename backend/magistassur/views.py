@@ -73,7 +73,7 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
     pagination_class = None
 
     def get_permissions(self):
-        if self.action == "create":
+        if self.action in ("create", "upload_documents"):
             return [IsAuthenticated()]
         return [IsAuthenticated(), IsAgentOrAdmin()]
 
