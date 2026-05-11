@@ -110,13 +110,14 @@ class ClientRequestSerializer(serializers.ModelSerializer):
     livrables = serializers.SerializerMethodField()
     client_nom = serializers.CharField(source="client.full_name", read_only=True)
     agent_nom = serializers.SerializerMethodField()
+    agent_telephone = serializers.SerializerMethodField()
     type_label = serializers.CharField(source="get_type_display", read_only=True)
     status_label = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:
         model = ClientRequest
         fields = [
-            "id", "numero", "client", "client_nom", "agent", "agent_nom",
+            "id", "numero", "client", "client_nom", "agent", "agent_nom", "agent_telephone",
             "type", "type_label", "status", "status_label",
             "details", "sinistre_note", "documents", "livrables", "treated_at", "created_at",
         ]
@@ -124,6 +125,9 @@ class ClientRequestSerializer(serializers.ModelSerializer):
 
     def get_agent_nom(self, obj):
         return obj.agent.full_name if obj.agent else None
+
+    def get_agent_telephone(self, obj):
+        return obj.agent.telephone if obj.agent else None
 
     def get_documents(self, obj):
         return DocumentSerializer(

@@ -167,6 +167,10 @@ class ClientRequest(models.Model):
     class Status(models.TextChoices):
         EN_ATTENTE = "en_attente", "En attente"
         EN_COURS = "en_cours", "En cours"
+        DEVIS_ENVOYE = "devis_envoye", "Devis envoyé"
+        EN_REVISION = "en_revision", "En révision"
+        VALIDE = "valide", "Validé"
+        REFUSE = "refuse", "Refusé"
         TRAITE = "traite", "Traité"
 
     numero = models.CharField("Numéro", max_length=30, unique=True)

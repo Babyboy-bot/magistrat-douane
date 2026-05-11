@@ -1,8 +1,10 @@
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.file_validators import validate_upload
 from core.models import ClientRequest, Document
 from core.serializers import DocumentSerializer
 from core.services import notify_livrable_added
@@ -34,6 +36,12 @@ class RequestLivrablesView(APIView):
         req, err = self._get_request_or_403(pk, request.user)
         if err:
             return err
+        file = request.FILES.get("file")
+        if file:
+            try:
+                validate_upload(file)
+            except ValidationError as e:
+                return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         serializer = DocumentSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save(request=req, uploaded_by=request.user, is_livrable=True)
@@ -92,8 +100,10 @@ class CarteGriseUploadView(generics.CreateAPIView):
             file = request.FILES.get("file")
             if not file:
                 return Response({"error": "Aucun fichier fourni"}, status=status.HTTP_400_BAD_REQUEST)
-            if file.content_type not in ["application/pdf", "image/jpeg", "image/jpg", "image/png"]:
-                return Response({"error": "Format non supporté (PDF, JPG, PNG)"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                validate_upload(file)
+            except ValidationError as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
             doc = Document.objects.create(
                 nom=f"carte_grise_{file.name}",
                 fichier=file,

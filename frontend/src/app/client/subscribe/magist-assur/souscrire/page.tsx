@@ -147,6 +147,7 @@ export default function SouscrirePage() {
 
   /* ── Fichiers ── */
   const [pieceIdentiteFile, setPieceIdentiteFile] = useState<File | null>(null);
+  const [pieceIdentiteVersoFile, setPieceIdentiteVersoFile] = useState<File | null>(null);
   const [ribFile, setRibFile] = useState<File | null>(null);
 
   const handleSetPieceIdentiteFile = useCallback(async (file: File | null) => {
@@ -155,6 +156,15 @@ export default function SouscrirePage() {
       await saveFileToIndexedDB("pieceIdentite", file);
     } else {
       await deleteFileFromIndexedDB("pieceIdentite");
+    }
+  }, []);
+
+  const handleSetPieceIdentiteVersoFile = useCallback(async (file: File | null) => {
+    setPieceIdentiteVersoFile(file);
+    if (file) {
+      await saveFileToIndexedDB("pieceIdentiteVerso", file);
+    } else {
+      await deleteFileFromIndexedDB("pieceIdentiteVerso");
     }
   }, []);
 
@@ -184,7 +194,7 @@ export default function SouscrirePage() {
   const [garantieFuneraires, setGarantieFuneraires] = useState(false);
 
   /* ── Correspondant Prévoyance ── */
-  const [prevCorrespIdem, setPrevCorrespIdem] = useState(true);
+  const [prevCorrespIdem, setPrevCorrespIdem] = useState<boolean | null>(null);
   const [prevCorresp, setPrevCorresp] = useState<CorrespondantState>(emptyCorresp(0));
 
   /* ── État Prévoyance ── */
@@ -312,7 +322,7 @@ export default function SouscrirePage() {
         if (!corresp1.nom.trim()) { toast.error("Le nom du correspondant 1 est obligatoire."); return false; }
         if (!corresp1.prenom.trim()) { toast.error("Le prénom du correspondant 1 est obligatoire."); return false; }
         if (!corresp1.telephone.trim()) { toast.error("Le téléphone du correspondant 1 est obligatoire."); return false; }
-        if (!prevCorrespIdem) {
+        if (prevCorrespIdem === false) {
           if (!prevCorresp.nom.trim()) { toast.error("Correspondant Prévoyance — le nom est obligatoire."); return false; }
           if (!prevCorresp.prenom.trim()) { toast.error("Correspondant Prévoyance — le prénom est obligatoire."); return false; }
           if (!prevCorresp.domicile.trim()) { toast.error("Correspondant Prévoyance — le domicile est obligatoire."); return false; }
@@ -408,8 +418,10 @@ export default function SouscrirePage() {
     if (!user) return;
     // Tenter de récupérer depuis IndexedDB si le state est null (après refresh)
     const finalPieceFile = pieceIdentiteFile ?? await getFileFromIndexedDB("pieceIdentite");
+    const finalPieceVersoFile = pieceIdentiteVersoFile ?? await getFileFromIndexedDB("pieceIdentiteVerso");
     const finalRibFile = ribFile ?? await getFileFromIndexedDB("rib");
-    if (!finalPieceFile) { toast.error("La pièce d'identité (recto/verso) est obligatoire."); return; }
+    if (!finalPieceFile) { toast.error("La pièce d'identité (recto) est obligatoire."); return; }
+    if (!finalPieceVersoFile) { toast.error("La pièce d'identité (verso) est obligatoire."); return; }
     if (!finalRibFile) { toast.error("Le document RIB est obligatoire."); return; }
     setLoading(true);
     try {
@@ -482,10 +494,11 @@ export default function SouscrirePage() {
       if (finalPieceFile || finalRibFile) {
         const epargnes = await magistassurApi.listEpargne({ clientId: String(user.id) });
         const latest = epargnes.sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-        if (latest) await magistassurApi.uploadDocumentsEpargne(latest.id, { pieceIdentite: finalPieceFile ?? undefined, ribDocument: finalRibFile ?? undefined });
+        if (latest) await magistassurApi.uploadDocumentsEpargne(latest.id, { pieceIdentite: finalPieceFile ?? undefined, pieceIdentiteVerso: finalPieceVersoFile ?? undefined, ribDocument: finalRibFile ?? undefined });
       }
       localStorage.removeItem(DRAFT_KEY);
       await deleteFileFromIndexedDB("pieceIdentite");
+      await deleteFileFromIndexedDB("pieceIdentiteVerso");
       await deleteFileFromIndexedDB("rib");
       const msg = (garantieDeces || garantieFuneraires) ? "MAGIST'ASSUR ÉPARGNE + PRÉVOYANCE soumis avec succès !" : "MAGIST'ASSUR ÉPARGNE soumis avec succès !";
       toast.success(msg);
@@ -499,7 +512,7 @@ export default function SouscrirePage() {
 
   const renderStep = () => {
     switch (stepId) {
-      case "identite":        return <StepIdentite id={id} setId={setId} pieceIdentiteFile={pieceIdentiteFile} setPieceIdentiteFile={handleSetPieceIdentiteFile} />;
+      case "identite":        return <StepIdentite id={id} setId={setId} pieceIdentiteFile={pieceIdentiteFile} setPieceIdentiteFile={handleSetPieceIdentiteFile} pieceIdentiteVersoFile={pieceIdentiteVersoFile} setPieceIdentiteVersoFile={handleSetPieceIdentiteVersoFile} />;
       case "correspondants":  return <StepCorrespondants corresp1={corresp1} setCorresp1={setCorresp1} corresp2={corresp2} setCorresp2={setCorresp2} prevCorrespIdem={prevCorrespIdem} setPrevCorrespIdem={setPrevCorrespIdem} prevCorresp={prevCorresp} setPrevCorresp={setPrevCorresp} />;
       case "assure":          return <StepAssure assureIdem={assureIdem} setAssureIdem={setAssureIdem} assure={assure} setAssure={setAssure} />;
       case "cotisation":      return <StepCotisation cot={cot} setCot={setCot} dateNaissance={id.date_naissance} ribFile={ribFile} setRibFile={handleSetRibFile} />;

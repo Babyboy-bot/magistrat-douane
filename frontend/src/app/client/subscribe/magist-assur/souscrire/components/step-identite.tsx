@@ -9,9 +9,11 @@ interface Props {
   setId: (v: IdentiteState) => void;
   pieceIdentiteFile?: File | null;
   setPieceIdentiteFile?: (f: File | null) => void;
+  pieceIdentiteVersoFile?: File | null;
+  setPieceIdentiteVersoFile?: (f: File | null) => void;
 }
 
-export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFile }: Props) {
+export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFile, pieceIdentiteVersoFile, setPieceIdentiteVersoFile }: Props) {
   const s = (field: keyof IdentiteState, val: string) => setId({ ...id, [field]: val });
   const btn = (field: keyof IdentiteState, val: string) =>
     `border rounded-lg py-2 text-sm font-medium transition ${id[field] === val ? "bg-amber-600 text-white border-amber-600" : "border-gray-300 hover:border-amber-400"}`;
@@ -119,23 +121,43 @@ export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFil
         <div><Label>Résidence principale (Ville-Commune-Quartier-Rue-Lot-Ilot)</Label><Input value={id.residence_principale} onChange={e => s("residence_principale", e.target.value)} /></div>
         <div><Label>Autre(s) résidence(s)</Label><Input value={id.autre_residence} onChange={e => s("autre_residence", e.target.value)} /></div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-3">
           <p className="text-xs text-amber-800">
-            <strong>NB :</strong> Joindre obligatoirement une copie lisible recto/verso de la pièce d&apos;identité officielle en cours de validité.
+            <strong>NB :</strong> Joindre obligatoirement une copie lisible recto ET verso de la pièce d&apos;identité officielle en cours de validité.
           </p>
+          {/* Recto */}
           <div>
-            <p className="text-xs font-medium text-amber-900 mb-1">Importer la pièce d&apos;identité (recto/verso) *</p>
+            <p className="text-xs font-medium text-amber-900 mb-1">Recto de la pièce d&apos;identité <span className="text-red-500">*</span></p>
             <label className="inline-flex items-center gap-2 cursor-pointer bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition">
-              <span>Choisir un fichier</span>
+              <span>📷 Photographier / Choisir (recto)</span>
               <input
                 type="file"
                 accept="image/*,application/pdf"
+                capture="environment"
                 className="hidden"
                 onChange={e => setPieceIdentiteFile?.(e.target.files?.[0] ?? null)}
               />
             </label>
             {pieceIdentiteFile
               ? <p className="text-xs text-green-700 mt-1">✓ {pieceIdentiteFile.name}</p>
+              : <p className="text-xs text-gray-400 mt-1">Aucun fichier sélectionné</p>
+            }
+          </div>
+          {/* Verso */}
+          <div>
+            <p className="text-xs font-medium text-amber-900 mb-1">Verso de la pièce d&apos;identité <span className="text-red-500">*</span></p>
+            <label className="inline-flex items-center gap-2 cursor-pointer bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition">
+              <span>📷 Photographier / Choisir (verso)</span>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                capture="environment"
+                className="hidden"
+                onChange={e => setPieceIdentiteVersoFile?.(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            {pieceIdentiteVersoFile
+              ? <p className="text-xs text-green-700 mt-1">✓ {pieceIdentiteVersoFile.name}</p>
               : <p className="text-xs text-gray-400 mt-1">Aucun fichier sélectionné</p>
             }
           </div>

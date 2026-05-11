@@ -34,6 +34,7 @@ export function mapRequest(r: Record<string, unknown>): ClientRequest {
     status: r.status as RequestStatus,
     agentId: r.agent ? String(r.agent) : (r.agent_id ? String(r.agent_id) : undefined),
     agentNom: (r.agent_nom as string) || undefined,
+    agentTelephone: (r.agent_telephone as string) || undefined,
     documents: Array.isArray(r.documents) ? (r.documents as Record<string, unknown>[]).map(mapDocument) : [],
     livrables: Array.isArray(r.livrables) ? (r.livrables as Record<string, unknown>[]).map(mapDocument) : [],
     createdAt: fmtDate(r.created_at as string),
@@ -88,6 +89,43 @@ export const requestsApi = {
 
   async release(id: string | number): Promise<ClientRequest> {
     const raw = await apiFetch<Record<string, unknown>>(`/api/requests/${id}/release/`, { method: "POST" });
+    return mapRequest(raw);
+  },
+
+  async envoyerDevis(id: string | number, fichier: File, nom?: string): Promise<ClientRequest> {
+    const fd = new FormData();
+    fd.append("fichier", fichier);
+    if (nom) fd.append("nom", nom);
+    const raw = await apiFetch<Record<string, unknown>>(`/api/requests/${id}/envoyer-devis/`, { method: "POST", body: fd });
+    return mapRequest(raw);
+  },
+
+  async validerCotation(id: string | number): Promise<ClientRequest> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/requests/${id}/valider/`, { method: "POST" });
+    return mapRequest(raw);
+  },
+
+  async revisionCotation(id: string | number, note?: string): Promise<ClientRequest> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/requests/${id}/revision/`, {
+      method: "POST",
+      body: note ? JSON.stringify({ note }) : undefined,
+    });
+    return mapRequest(raw);
+  },
+
+  async refuserCotation(id: string | number, note?: string): Promise<ClientRequest> {
+    const raw = await apiFetch<Record<string, unknown>>(`/api/requests/${id}/refuser/`, {
+      method: "POST",
+      body: note ? JSON.stringify({ note }) : undefined,
+    });
+    return mapRequest(raw);
+  },
+
+  async envoyerAttestations(id: string | number, fichiers: File[], nom?: string): Promise<ClientRequest> {
+    const fd = new FormData();
+    fichiers.forEach(f => fd.append("fichiers", f));
+    if (nom) fd.append("nom", nom);
+    const raw = await apiFetch<Record<string, unknown>>(`/api/requests/${id}/envoyer-attestations/`, { method: "POST", body: fd });
     return mapRequest(raw);
   },
 

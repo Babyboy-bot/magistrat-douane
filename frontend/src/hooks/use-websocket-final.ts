@@ -342,6 +342,30 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
     ws.onerror = () => setIsConnected(false);
   }, [userId, disconnect, stopHeartbeat]);
 
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const syncFromApi = useCallback(() => {
+    if (!userId || !mountedRef.current) return;
+    fetchNotificationsApi().then((fetched) => {
+      if (!mountedRef.current) return;
+      const unread = fetched.filter((n) => !n.read_at && !readIdsRef.current.has(n.id));
+      setNotifications((prev) => {
+        const existingIds = new Set(prev.map((n) => n.id));
+        const newOnes = unread.filter((n) => !existingIds.has(n.id));
+        if (newOnes.length === 0) return prev;
+        newOnes.forEach((n) => {
+          playNotificationSound(n.type);
+          if (n.type === "success") toast.success(n.title, { description: n.message });
+          else if (n.type === "error") toast.error(n.title, { description: n.message });
+          else toast.info(n.title, { description: n.message });
+        });
+        const next = [...newOnes, ...prev].slice(0, 50);
+        if (userId) _notifCache.set(userId, next);
+        return next;
+      });
+    });
+  }, [userId]);
+
   useEffect(() => {
     if (userId) readIdsRef.current = loadReadIds(userId);
     mountedRef.current = true;
@@ -360,6 +384,9 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
     }
     connect();
 
+    // Polling de secours toutes les 10s (si le broadcast WS échoue silencieusement)
+    pollRef.current = setInterval(syncFromApi, 10_000);
+
     // Reconnecter quand l'onglet redevient visible (après mise en veille, changement d'onglet…)
     const handleVisibility = () => {
       if (document.visibilityState === "visible" && mountedRef.current) {
@@ -367,16 +394,18 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
           reconnectAttempts.current = 0;
           connect();
         }
+        syncFromApi();
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
       mountedRef.current = false;
       disconnect();
     };
-  }, [userId, connect, disconnect]);
+  }, [userId, connect, disconnect, syncFromApi]);
 
   const markAsRead = useCallback((id: string) => {
     if (userId) {

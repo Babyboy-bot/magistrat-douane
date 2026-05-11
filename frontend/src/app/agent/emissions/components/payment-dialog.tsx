@@ -152,11 +152,11 @@ export function PaymentDialog({ emission, formatCurrency, open, onClose, onSucce
               <Input value={emission.numPolice} readOnly disabled className="bg-gray-50 text-gray-500 cursor-not-allowed" />
             </div>
             <div className="space-y-1.5">
-              <Label>Date de règlement *</Label>
+              <Label>Date de règlement <span className="text-red-500">*</span></Label>
               <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Montant réglé (FCFA) *</Label>
+              <Label>Montant réglé (FCFA) <span className="text-red-500">*</span></Label>
               <Input
                 type="number"
                 placeholder="0"
@@ -171,7 +171,7 @@ export function PaymentDialog({ emission, formatCurrency, open, onClose, onSucce
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>Référence paiement *</Label>
+              <Label>Référence paiement <span className="text-red-500">*</span></Label>
               <Input placeholder="PAY-2025-XXX" value={paymentRef} onChange={(e) => setPaymentRef(e.target.value)} />
             </div>
             <div className="space-y-1.5">

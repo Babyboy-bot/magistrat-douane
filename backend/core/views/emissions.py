@@ -117,6 +117,8 @@ class EmissionListCreateView(generics.ListCreateAPIView):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         invalidate_emissions_cache(request.user.id)
+        if emission.client_id:
+            invalidate_emissions_cache(emission.client_id)
         return Response(EmissionSerializer(emission).data, status=status.HTTP_201_CREATED)
 
 
@@ -140,14 +142,22 @@ class EmissionDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def update(self, request, *args, **kwargs):
         self._check_write_permission()
+        emission = self.get_object()
+        client_id = emission.client_id
         response = super().update(request, *args, **kwargs)
         invalidate_emissions_cache(request.user.id)
+        if client_id:
+            invalidate_emissions_cache(client_id)
         return response
 
     def destroy(self, request, *args, **kwargs):
         self._check_write_permission()
+        emission = self.get_object()
+        client_id = emission.client_id
         response = super().destroy(request, *args, **kwargs)
         invalidate_emissions_cache(request.user.id)
+        if client_id:
+            invalidate_emissions_cache(client_id)
         return response
 
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Car, Home, Eye, EyeOff, Search, CheckCircle2, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { parseDisplayDate } from "@/lib/utils";
 
 export default function PortfolioPage() {
   const { user } = useAuthStore();
-  const { data: emissions, refetch } = useClientEmissions(user?.id || "");
+  const { data: emissions, loading, refetch } = useClientEmissions(user?.id || "");
 
   useEffect(() => {
     const handler = () => refetch();
@@ -86,7 +87,25 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {/* Desktop table */}
+      {/* Skeleton chargement */}
+      {loading && (
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-white rounded-xl shadow-sm p-4">
+              <div className="flex items-center gap-4">
+                <Skeleton className="h-5 w-5 rounded" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-20 ml-auto" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Contenu chargé */}
+      {!loading && <>
       <Card className="border-0 shadow-sm hidden lg:block">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -260,6 +279,7 @@ export default function PortfolioPage() {
           <p className="text-gray-400">Aucun contrat trouvé</p>
         </div>
       )}
+      </>}
     </div>
   );
 }

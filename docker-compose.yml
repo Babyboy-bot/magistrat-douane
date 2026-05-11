@@ -41,13 +41,13 @@ services:
       REDIS_URL: redis://redis:6379/0
       SECURE_SSL_REDIRECT: "False"
       USE_X_FORWARDED_HOST: "True"
-      ALLOWED_HOSTS: "*"
+      ALLOWED_HOSTS: "backend,localhost,127.0.0.1"
       WEB_CONCURRENCY: "3"
     volumes:
       - media_files:/app/media
       - static_files:/app/staticfiles
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     depends_on:
       db:
         condition: service_healthy

@@ -7,7 +7,7 @@ import type { CorrespondantState } from "./types";
 interface Props {
   corresp1: CorrespondantState; setCorresp1: (v: CorrespondantState) => void;
   corresp2: CorrespondantState; setCorresp2: (v: CorrespondantState) => void;
-  prevCorrespIdem: boolean; setPrevCorrespIdem: (v: boolean) => void;
+  prevCorrespIdem: boolean | null; setPrevCorrespIdem: (v: boolean | null) => void;
   prevCorresp: CorrespondantState; setPrevCorresp: (v: CorrespondantState) => void;
 }
 
@@ -62,20 +62,40 @@ export function StepCorrespondants({ corresp1, setCorresp1, corresp2, setCorresp
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
-            <Label className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">Identique au Correspondant 1 ?</Label>
-            <div className="flex gap-3">
-              <button type="button" onClick={() => setPrevCorrespIdem(true)} className={btn(prevCorrespIdem)}>Oui — même correspondant</button>
-              <button type="button" onClick={() => setPrevCorrespIdem(false)} className={btn(!prevCorrespIdem, "gray")}>Non — correspondant différent</button>
+            <Label className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">Prévoyez-vous souscrire à une garantie Prévoyance ?</Label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button type="button" onClick={() => setPrevCorrespIdem(null)}
+                className={`flex-1 border rounded-lg py-2 text-sm font-medium transition ${
+                  prevCorrespIdem === null
+                    ? "bg-gray-500 text-white border-gray-500"
+                    : "border-gray-300 hover:border-gray-400"
+                }`}>
+                Non concerné
+              </button>
+              <button type="button" onClick={() => setPrevCorrespIdem(true)}
+                className={btn(prevCorrespIdem === true)}>
+                Oui — même correspondant
+              </button>
+              <button type="button" onClick={() => setPrevCorrespIdem(false)}
+                className={btn(prevCorrespIdem === false, "gray")}>
+                Oui — correspondant différent
+              </button>
             </div>
           </div>
 
-          {prevCorrespIdem ? (
+          {prevCorrespIdem === null && (
+            <p className="text-xs text-gray-400 italic">Aucun correspondant prévoyance requis.</p>
+          )}
+
+          {prevCorrespIdem === true && (
             <div className="bg-amber-50 rounded-lg p-3 text-sm text-amber-800 space-y-1">
               <p className="font-semibold">{corresp1.nom} {corresp1.prenom}</p>
               {corresp1.domicile && <p className="text-xs text-gray-600">{corresp1.domicile}</p>}
               {corresp1.telephone && <p className="text-xs text-gray-600">Tél : {corresp1.telephone}</p>}
             </div>
-          ) : (
+          )}
+
+          {prevCorrespIdem === false && (
             <div className="space-y-3 pt-1">
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Nom <span className="text-red-500">*</span></Label><Input value={prevCorresp.nom} onChange={e => sp("nom", e.target.value)} /></div>

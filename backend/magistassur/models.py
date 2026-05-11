@@ -70,7 +70,12 @@ class ContratEpargne(models.Model):
     piece_identite = models.FileField(
         upload_to="magistassur/pieces_identite/",
         null=True, blank=True,
-        verbose_name="Pièce d'identité",
+        verbose_name="Pièce d'identité (recto)",
+    )
+    piece_identite_verso = models.FileField(
+        upload_to="magistassur/pieces_identite/",
+        null=True, blank=True,
+        verbose_name="Pièce d'identité (verso)",
     )
     rib_document = models.FileField(
         upload_to="magistassur/ribs/",

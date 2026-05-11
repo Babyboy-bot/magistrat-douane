@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -17,23 +18,12 @@ import { emissionsApi } from "@/lib/api";
 import { RISQUES, COMPAGNIES } from "@/lib/types";
 import type { User } from "@/lib/types";
 import { toast } from "sonner";
+import { emissionSchema, type EmissionValues } from "@/lib/validations";
 
-const defaultFormState = {
-  date: new Date().toISOString().split("T")[0],
-  situation: "",
-  client: "",
-  risque: "",
-  tauxCommission: 0,
-  compagnie: "",
-  numFacture: "",
-  numPolice: "",
-  effet: "",
-  echeance: "",
-  primeNette: "",
-  primeTtc: "",
-  marque: "",
-  immatriculation: "",
-};
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="text-xs text-red-500 mt-1">{message}</p>;
+}
 
 type EmissionFormDialogProps = {
   clients: User[];
@@ -44,48 +34,72 @@ type EmissionFormDialogProps = {
 };
 
 export function EmissionFormDialog({ clients, open, onOpenChange, onCreated, preselectedClientId }: EmissionFormDialogProps) {
-  const [form, setForm] = useState(defaultFormState);
   const [loading, setLoading] = useState(false);
+  const [tauxCommission, setTauxCommission] = useState(0);
+
+  const { register, control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<EmissionValues>({
+    resolver: zodResolver(emissionSchema),
+    defaultValues: {
+      date: new Date().toISOString().split("T")[0],
+      situation: "",
+      client: preselectedClientId ?? "",
+      risque: "",
+      compagnie: "",
+      numFacture: "",
+      numPolice: "",
+      effet: "",
+      echeance: "",
+      primeNette: "",
+      primeTtc: "",
+      marque: "",
+      immatriculation: "",
+    },
+  });
+
+  const primeNetteVal = watch("primeNette");
+  const primeTtcVal = watch("primeTtc");
 
   useEffect(() => {
     if (open) {
-      setForm((prev) => ({ ...defaultFormState, date: prev.date, client: preselectedClientId ?? "" }));
-    } else {
-      setForm((prev) => ({ ...defaultFormState, date: prev.date }));
+      reset({
+        date: new Date().toISOString().split("T")[0],
+        situation: "",
+        client: preselectedClientId ?? "",
+        risque: "",
+        compagnie: "",
+        numFacture: "",
+        numPolice: "",
+        effet: "",
+        echeance: "",
+        primeNette: "",
+        primeTtc: "",
+        marque: "",
+        immatriculation: "",
+      });
+      setTauxCommission(0);
     }
-  }, [open, preselectedClientId]);
+  }, [open, preselectedClientId, reset]);
 
-  const isValid = useMemo(() => {
-    return (
-      Boolean(form.client && form.risque && form.compagnie && form.numPolice && form.primeNette && form.primeTtc && form.effet && form.echeance)
-    );
-  }, [form]);
-
-  const handleSubmit = async () => {
-    if (!isValid) {
-      toast.error("Veuillez remplir tous les champs obligatoires");
-      return;
-    }
+  const onSubmit = async (values: EmissionValues) => {
     setLoading(true);
     try {
       await emissionsApi.create({
-        date: form.date,
-        situation: form.situation || "Affaire nouvelle",
-        clientId: String(form.client),
-        risque: form.risque,
-        compagnie: form.compagnie,
-        numFacture: form.numFacture,
-        numPolice: form.numPolice,
-        effet: form.effet,
-        echeance: form.echeance,
-        primeNette: Number(form.primeNette),
-        primeTtc: Number(form.primeTtc),
-        marque: form.marque || "-",
-        immatriculation: form.immatriculation || "-",
+        date: values.date,
+        situation: values.situation || "Affaire nouvelle",
+        clientId: String(values.client),
+        risque: values.risque,
+        compagnie: values.compagnie,
+        numFacture: values.numFacture ?? "",
+        numPolice: values.numPolice,
+        effet: values.effet,
+        echeance: values.echeance,
+        primeNette: Number(values.primeNette),
+        primeTtc: Number(values.primeTtc),
+        marque: values.marque || "-",
+        immatriculation: values.immatriculation || "-",
         paiements: [],
       });
       toast.success("Émission créée avec succès");
-      setForm(defaultFormState);
       onCreated();
       onOpenChange(false);
     } catch (err: unknown) {
@@ -104,138 +118,168 @@ export function EmissionFormDialog({ clients, open, onOpenChange, onCreated, pre
             Complétez les informations obligatoires concernant le client, les dates et les montants pour enregistrer une nouvelle émission.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 pt-2">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
           <div className="space-y-1.5">
-            <Label>Date de saisie *</Label>
-            <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+            <Label>Date de saisie <span className="text-red-500">*</span></Label>
+            <Input type="date" {...register("date")} className={errors.date ? "border-red-400" : ""} />
+            <FieldError message={errors.date?.message} />
           </div>
           <div className="space-y-1.5">
-            <Label>Situation *</Label>
-            <Select value={form.situation} onValueChange={(v) => setForm({ ...form, situation: v })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionnez..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Affaire nouvelle">Affaire nouvelle</SelectItem>
-                <SelectItem value="Incorporation">Incorporation</SelectItem>
-                <SelectItem value="Retrait">Retrait</SelectItem>
-                <SelectItem value="Renouvellement">Renouvellement</SelectItem>
-                <SelectItem value="Modification">Modification</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Situation</Label>
+            <Controller
+              name="situation"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger><SelectValue placeholder="Sélectionnez..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Affaire nouvelle">Affaire nouvelle</SelectItem>
+                    <SelectItem value="Incorporation">Incorporation</SelectItem>
+                    <SelectItem value="Retrait">Retrait</SelectItem>
+                    <SelectItem value="Renouvellement">Renouvellement</SelectItem>
+                    <SelectItem value="Modification">Modification</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
           {!preselectedClientId && (
             <div className="space-y-1.5">
-              <Label>Client *</Label>
-              <Select value={form.client} onValueChange={(v) => setForm({ ...form, client: v })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionnez un client..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nom} {c.prenoms} ({c.role === "prospect" ? "Prospect" : "Assuré"})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Client <span className="text-red-500">*</span></Label>
+              <Controller
+                name="client"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className={errors.client ? "border-red-400" : ""}>
+                      <SelectValue placeholder="Sélectionnez un client..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.nom} {c.prenoms} ({c.role === "prospect" ? "Prospect" : "Assuré"})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <FieldError message={errors.client?.message} />
             </div>
           )}
           <div className="space-y-1.5">
-            <Label>Risque *</Label>
-            <Select
-              value={form.risque}
-              onValueChange={(v) => {
-                const taux = RISQUES.find((r) => r.nom === v)?.tauxCommission ?? 0;
-                const nette = Number(form.primeNette);
-                const ttc = taux > 0 && nette > 0
-                  ? Math.round(nette / (1 - taux / 100))
-                  : Number(form.primeTtc) || 0;
-                setForm({ ...form, risque: v, tauxCommission: taux, primeTtc: ttc > 0 ? String(ttc) : form.primeTtc });
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionnez un risque..." />
-              </SelectTrigger>
-              <SelectContent>
-                {RISQUES.map((r) => (
-                  <SelectItem key={r.nom} value={r.nom}>
-                    {r.nom} ({r.tauxCommission}%)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Risque <span className="text-red-500">*</span></Label>
+            <Controller
+              name="risque"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(v) => {
+                    field.onChange(v);
+                    const taux = RISQUES.find((r) => r.nom === v)?.tauxCommission ?? 0;
+                    setTauxCommission(taux);
+                    const nette = Number(primeNetteVal);
+                    if (taux > 0 && nette > 0) {
+                      setValue("primeTtc", String(Math.round(nette / (1 - taux / 100))));
+                    }
+                  }}
+                >
+                  <SelectTrigger className={errors.risque ? "border-red-400" : ""}>
+                    <SelectValue placeholder="Sélectionnez un risque..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RISQUES.map((r) => (
+                      <SelectItem key={r.nom} value={r.nom}>
+                        {r.nom} ({r.tauxCommission}%)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <FieldError message={errors.risque?.message} />
           </div>
           <div className="space-y-1.5">
-            <Label>Compagnie *</Label>
-            <Select value={form.compagnie} onValueChange={(v) => setForm({ ...form, compagnie: v })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionnez..." />
-              </SelectTrigger>
-              <SelectContent>
-                {COMPAGNIES.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Compagnie <span className="text-red-500">*</span></Label>
+            <Controller
+              name="compagnie"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className={errors.compagnie ? "border-red-400" : ""}>
+                    <SelectValue placeholder="Sélectionnez..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMPAGNIES.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <FieldError message={errors.compagnie?.message} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>N° Facture *</Label>
-              <Input placeholder="FA-2025-XXXX" value={form.numFacture} onChange={(e) => setForm({ ...form, numFacture: e.target.value })} />
+              <Label>N° Facture</Label>
+              <Input placeholder="FA-2025-XXXX" {...register("numFacture")} />
             </div>
             <div className="space-y-1.5">
-              <Label>N° Police *</Label>
-              <Input placeholder="POL-XXXX-XXXXX" value={form.numPolice} onChange={(e) => setForm({ ...form, numPolice: e.target.value })} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Date d&apos;effet *</Label>
-              <Input type="date" value={form.effet} onChange={(e) => setForm({ ...form, effet: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Date d&apos;échéance *</Label>
-              <Input type="date" value={form.echeance} onChange={(e) => setForm({ ...form, echeance: e.target.value })} />
+              <Label>N° Police <span className="text-red-500">*</span></Label>
+              <Input placeholder="POL-XXXX-XXXXX" {...register("numPolice")} className={errors.numPolice ? "border-red-400" : ""} />
+              <FieldError message={errors.numPolice?.message} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Prime nette (FCFA) *</Label>
+              <Label>Date d&apos;effet <span className="text-red-500">*</span></Label>
+              <Input type="date" {...register("effet")} className={errors.effet ? "border-red-400" : ""} />
+              <FieldError message={errors.effet?.message} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Date d&apos;échéance <span className="text-red-500">*</span></Label>
+              <Input type="date" {...register("echeance")} className={errors.echeance ? "border-red-400" : ""} />
+              <FieldError message={errors.echeance?.message} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Prime nette (FCFA) <span className="text-red-500">*</span></Label>
               <Input
-                type="number" placeholder="0" value={form.primeNette}
+                type="number" min={0} placeholder="0"
+                {...register("primeNette")}
+                className={errors.primeNette ? "border-red-400" : ""}
                 onChange={(e) => {
+                  register("primeNette").onChange(e);
                   const nette = Number(e.target.value);
-                  const taux = form.tauxCommission;
-                  const ttc = taux > 0 && nette > 0 ? Math.round(nette / (1 - taux / 100)) : Number(form.primeTtc) || 0;
-                  setForm({ ...form, primeNette: e.target.value, primeTtc: ttc > 0 ? String(ttc) : form.primeTtc });
+                  if (tauxCommission > 0 && nette > 0) {
+                    setValue("primeTtc", String(Math.round(nette / (1 - tauxCommission / 100))));
+                  }
                 }}
               />
+              <FieldError message={errors.primeNette?.message} />
             </div>
             <div className="space-y-1.5">
-              <Label>Prime TTC (FCFA) *</Label>
-              <Input
-                type="number" placeholder="0" value={form.primeTtc}
-                onChange={(e) => setForm({ ...form, primeTtc: e.target.value })}
-              />
+              <Label>Prime TTC (FCFA) <span className="text-red-500">*</span></Label>
+              <Input type="number" min={0} placeholder="0" {...register("primeTtc")} className={errors.primeTtc ? "border-red-400" : ""} />
+              <FieldError message={errors.primeTtc?.message} />
             </div>
           </div>
           {/* Aperçu commission */}
-          {form.tauxCommission > 0 && Number(form.primeNette) > 0 && (
+          {tauxCommission > 0 && Number(primeNetteVal) > 0 && (
             <div className="rounded-lg bg-purple-50 border border-purple-200 px-3 py-2 text-sm">
               <span className="text-purple-700">
-                Commission ACS ({form.tauxCommission}%) :{" "}
+                Commission ACS ({tauxCommission}%) :{" "}
                 <strong>
                   {new Intl.NumberFormat("fr-FR").format(
-                    Math.round(Number(form.primeNette) * form.tauxCommission / 100)
+                    Math.round(Number(primeNetteVal) * tauxCommission / 100)
                   )}{" "}FCFA
                 </strong>
               </span>
-              {Number(form.primeTtc) > 0 && (
+              {Number(primeTtcVal) > 0 && (
                 <span className="text-purple-500 ml-2 text-xs">
-                  (prime nette insur. : {new Intl.NumberFormat("fr-FR").format(Number(form.primeTtc) - Math.round(Number(form.primeNette) * form.tauxCommission / 100))} FCFA)
+                  (prime nette insur. : {new Intl.NumberFormat("fr-FR").format(Number(primeTtcVal) - Math.round(Number(primeNetteVal) * tauxCommission / 100))} FCFA)
                 </span>
               )}
             </div>
@@ -243,17 +287,17 @@ export function EmissionFormDialog({ clients, open, onOpenChange, onCreated, pre
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Marque</Label>
-              <Input placeholder="Marque du véhicule" value={form.marque} onChange={(e) => setForm({ ...form, marque: e.target.value })} />
+              <Input placeholder="Marque du véhicule" {...register("marque")} />
             </div>
             <div className="space-y-1.5">
               <Label>Immatriculation</Label>
-              <Input placeholder="XXXX XX XX" value={form.immatriculation} onChange={(e) => setForm({ ...form, immatriculation: e.target.value })} />
+              <Input placeholder="XXXX XX XX" {...register("immatriculation")} />
             </div>
           </div>
-          <Button className="w-full bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)]" disabled={loading} onClick={handleSubmit}>
+          <Button type="submit" className="w-full bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)]" disabled={loading}>
             {loading ? "Enregistrement..." : "Enregistrer l'émission"}
           </Button>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

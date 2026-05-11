@@ -258,7 +258,7 @@ export default function AdminAgentsPage() {
               <div className="space-y-4 pt-2">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Nom *</Label>
+                    <Label>Nom <span className="text-red-500">*</span></Label>
                     <Input
                       value={form.nom}
                       onChange={(e) => setForm({ ...form, nom: e.target.value })}
@@ -266,7 +266,7 @@ export default function AdminAgentsPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Prénoms *</Label>
+                    <Label>Prénoms <span className="text-red-500">*</span></Label>
                     <Input
                       value={form.prenoms}
                       onChange={(e) => setForm({ ...form, prenoms: e.target.value })}
@@ -275,7 +275,7 @@ export default function AdminAgentsPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Email *</Label>
+                  <Label>Email <span className="text-red-500">*</span></Label>
                   <Input
                     type="email"
                     value={form.email}
@@ -292,7 +292,7 @@ export default function AdminAgentsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Mot de passe *</Label>
+                  <Label>Mot de passe <span className="text-red-500">*</span></Label>
                   <Input
                     type="password"
                     value={form.password}
@@ -392,7 +392,7 @@ export default function AdminAgentsPage() {
               <div className="space-y-4 pt-2">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Nom *</Label>
+                    <Label>Nom <span className="text-red-500">*</span></Label>
                     <Input
                       value={form.nom}
                       onChange={(e) => setForm({ ...form, nom: e.target.value })}
@@ -400,7 +400,7 @@ export default function AdminAgentsPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Prénoms *</Label>
+                    <Label>Prénoms <span className="text-red-500">*</span></Label>
                     <Input
                       value={form.prenoms}
                       onChange={(e) => setForm({ ...form, prenoms: e.target.value })}
@@ -409,7 +409,7 @@ export default function AdminAgentsPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Email *</Label>
+                  <Label>Email <span className="text-red-500">*</span></Label>
                   <Input
                     type="email"
                     value={form.email}

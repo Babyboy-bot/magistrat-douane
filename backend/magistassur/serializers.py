@@ -36,6 +36,7 @@ class ContratEpargneSerializer(serializers.ModelSerializer):
     taux_interet = serializers.ReadOnlyField()
     pris_en_charge_nom = serializers.SerializerMethodField()
     piece_identite_url = serializers.SerializerMethodField()
+    piece_identite_verso_url = serializers.SerializerMethodField()
     rib_document_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -53,6 +54,11 @@ class ContratEpargneSerializer(serializers.ModelSerializer):
     def get_piece_identite_url(self, obj):
         if obj.piece_identite:
             return obj.piece_identite.url
+        return None
+
+    def get_piece_identite_verso_url(self, obj):
+        if obj.piece_identite_verso:
+            return obj.piece_identite_verso.url
         return None
 
     def get_rib_document_url(self, obj):

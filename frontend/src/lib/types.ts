@@ -107,7 +107,7 @@ export type RequestType =
   | "changement_immatriculation"
   | "declaration_sinistre";
 
-export type RequestStatus = "en_attente" | "en_cours" | "traite";
+export type RequestStatus = "en_attente" | "en_cours" | "devis_envoye" | "en_revision" | "valide" | "refuse" | "traite";
 
 export interface ClientRequest {
   id: string;
@@ -118,6 +118,7 @@ export interface ClientRequest {
   status: RequestStatus;
   agentId?: string;
   agentNom?: string;
+  agentTelephone?: string;
   documents: Document[];
   livrables: Document[];
   createdAt: string;
@@ -208,9 +209,15 @@ export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   declaration_sinistre: "Déclaration de Sinistre",
 };
 
+export const COTATION_TYPES: RequestType[] = ["cotation_auto", "cotation_mrh"];
+
 export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   en_attente: "En attente",
   en_cours: "En cours",
+  devis_envoye: "Devis envoyé",
+  en_revision: "En révision",
+  valide: "Validé",
+  refuse: "Refusé",
   traite: "Traité",
 };
 
@@ -294,6 +301,7 @@ export interface ContratEpargne {
   emailPersonnel?: string;
   adressePostale?: string;
   pieceIdentiteUrl?: string;
+  pieceIdentiteVersoUrl?: string;
   ribDocumentUrl?: string;
   prisEnChargeId?: string;
 }

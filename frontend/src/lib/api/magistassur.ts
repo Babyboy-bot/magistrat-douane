@@ -73,6 +73,7 @@ function mapContratEpargne(r: Record<string, unknown>): ContratEpargne {
     emailPersonnel: (r.email_personnel as string) || undefined,
     adressePostale: (r.adresse_postale as string) || undefined,
     pieceIdentiteUrl: (r.piece_identite_url as string) || undefined,
+    pieceIdentiteVersoUrl: (r.piece_identite_verso_url as string) || undefined,
     ribDocumentUrl: (r.rib_document_url as string) || undefined,
     prisEnChargeId: r.pris_en_charge_par ? String(r.pris_en_charge_par) : undefined,
   };
@@ -222,9 +223,10 @@ export const magistassurApi = {
     return mapContratPrevoyance(raw);
   },
 
-  async uploadDocumentsEpargne(id: string, files: { pieceIdentite?: File; ribDocument?: File }): Promise<ContratEpargne> {
+  async uploadDocumentsEpargne(id: string, files: { pieceIdentite?: File; pieceIdentiteVerso?: File; ribDocument?: File }): Promise<ContratEpargne> {
     const fd = new FormData();
     if (files.pieceIdentite) fd.append("piece_identite", files.pieceIdentite);
+    if (files.pieceIdentiteVerso) fd.append("piece_identite_verso", files.pieceIdentiteVerso);
     if (files.ribDocument) fd.append("rib_document", files.ribDocument);
     const raw = await apiFetch<Record<string, unknown>>(`/api/magistassur/epargne/${id}/upload-documents/`, { method: "POST", body: fd });
     return mapContratEpargne(raw);

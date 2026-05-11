@@ -36,7 +36,7 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
       <CardContent className="space-y-4">
 
         <div>
-          <Label>1. Durée de cotisation *</Label>
+          <Label>1. Durée de cotisation <span className="text-red-500">*</span></Label>
           {maxAnnees !== null && (
             <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1 mt-1">
               Retraite à 65 ans — durée maximale : <strong>{maxAnnees} an{maxAnnees > 1 ? "s" : ""}</strong>
@@ -57,7 +57,7 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
         </div>
 
         <div>
-          <Label>2. Périodicité *</Label>
+          <Label>2. Périodicité <span className="text-red-500">*</span></Label>
           <div className="grid grid-cols-4 gap-2 mt-2">
             {Object.entries(PERIODICITE_LABELS).map(([k, v]) => (
               <button key={k} type="button" onClick={() => s("periodicite", k)}
@@ -69,12 +69,12 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>3. Date 1ère cotisation *</Label><Input type="date" value={cot.date_premiere_cotisation} onChange={e => s("date_premiere_cotisation", e.target.value)} /></div>
+          <div><Label>3. Date 1ère cotisation <span className="text-red-500">*</span></Label><Input type="date" value={cot.date_premiere_cotisation} onChange={e => s("date_premiere_cotisation", e.target.value)} /></div>
           <div><Label>Date d&apos;effet du contrat</Label><Input type="date" value={cot.date_effet} onChange={e => s("date_effet", e.target.value)} /></div>
         </div>
 
         <div>
-          <Label>4. Montant périodique *</Label>
+          <Label>4. Montant périodique <span className="text-red-500">*</span></Label>
           <div className="flex items-center gap-2 mt-1">
             <Input type="number" min={25000} step={5000} className="w-48" value={cot.montant_cotisation} onChange={e => s("montant_cotisation", e.target.value)} />
             <span className="text-sm text-gray-500">FCFA (min. 25 000)</span>

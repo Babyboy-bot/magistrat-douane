@@ -143,14 +143,14 @@ export default function AgentClientsPage() {
                 <DialogHeader><DialogTitle>Ajouter un client</DialogTitle></DialogHeader>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Nom *</Label><Input value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} /></div>
-                    <div><Label>Prénoms *</Label><Input value={form.prenoms} onChange={(e) => setForm({ ...form, prenoms: e.target.value })} /></div>
+                    <div><Label>Nom <span className="text-red-500">*</span></Label><Input value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} /></div>
+                    <div><Label>Prénoms <span className="text-red-500">*</span></Label><Input value={form.prenoms} onChange={(e) => setForm({ ...form, prenoms: e.target.value })} /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Téléphone *</Label><Input value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} /></div>
+                    <div><Label>Téléphone <span className="text-red-500">*</span></Label><Input value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} /></div>
                     <div><Label>Téléphone 2</Label><Input value={form.telephone2} onChange={(e) => setForm({ ...form, telephone2: e.target.value })} /></div>
                   </div>
-                  <div><Label>Email *</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+                  <div><Label>Email <span className="text-red-500">*</span></Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
                   <Button onClick={handleCreateClient} className="w-full">Enregistrer</Button>
                 </div>
               </DialogContent>

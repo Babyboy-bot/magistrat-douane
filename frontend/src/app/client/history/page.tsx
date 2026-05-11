@@ -1,6 +1,7 @@
 "use client";
 
-import { FileText, Clock, CheckCircle, AlertCircle, Search, Eye, Download, ThumbsUp } from "lucide-react";
+import { FileText, Clock, CheckCircle, AlertCircle, Search, Eye, Download, ThumbsUp, Phone, CheckCheck, XCircle, RefreshCw } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { downloadFile } from "@/lib/api";
 import { requestsApi } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientRequests } from "@/hooks/use-api-data";
-import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS } from "@/lib/types";
+import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS, COTATION_TYPES } from "@/lib/types";
 import { toast } from "sonner";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
@@ -21,9 +22,36 @@ function buildFileUrl(fichier: string): string {
 
 export default function HistoryPage() {
   const { user } = useAuthStore();
-  const { data: requests, refetch } = useClientRequests(user?.id || "");
+  const { data: requests, loading, refetch } = useClientRequests(user?.id || "");
   const [search, setSearch] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [cotationAction, setCotationAction] = useState<{ id: string; action: "valider" | "revision" | "refuser" } | null>(null);
+  const [cotationNote, setCotationNote] = useState("");
+  const [cotationLoading, setCotationLoading] = useState(false);
+
+  const handleCotationAction = async () => {
+    if (!cotationAction) return;
+    setCotationLoading(true);
+    try {
+      if (cotationAction.action === "valider") {
+        await requestsApi.validerCotation(cotationAction.id);
+        toast.success("Devis validé — l'agent va préparer vos attestations");
+      } else if (cotationAction.action === "revision") {
+        await requestsApi.revisionCotation(cotationAction.id, cotationNote);
+        toast.success("Révision demandée — l'agent va ajuster le devis");
+      } else {
+        await requestsApi.refuserCotation(cotationAction.id, cotationNote);
+        toast.success("Devis refusé");
+      }
+      refetch();
+      setCotationAction(null);
+      setCotationNote("");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setCotationLoading(false);
+    }
+  };
 
   const handleConfirm = async (documentId: string) => {
     setConfirming(documentId);
@@ -48,6 +76,10 @@ export default function HistoryPage() {
     switch (status) {
       case "en_attente": return <Clock className="h-4 w-4 text-yellow-500" />;
       case "en_cours": return <AlertCircle className="h-4 w-4 text-blue-500" />;
+      case "devis_envoye": return <FileText className="h-4 w-4 text-purple-500" />;
+      case "en_revision": return <RefreshCw className="h-4 w-4 text-orange-500" />;
+      case "valide": return <CheckCheck className="h-4 w-4 text-emerald-500" />;
+      case "refuse": return <XCircle className="h-4 w-4 text-red-500" />;
       case "traite": return <CheckCircle className="h-4 w-4 text-green-500" />;
       default: return <Clock className="h-4 w-4 text-gray-400" />;
     }
@@ -57,6 +89,10 @@ export default function HistoryPage() {
     switch (status) {
       case "en_attente": return "bg-yellow-100 text-yellow-800";
       case "en_cours": return "bg-blue-100 text-blue-800";
+      case "devis_envoye": return "bg-purple-100 text-purple-800";
+      case "en_revision": return "bg-orange-100 text-orange-800";
+      case "valide": return "bg-emerald-100 text-emerald-800";
+      case "refuse": return "bg-red-100 text-red-800";
       case "traite": return "bg-green-100 text-green-800";
       default: return "bg-gray-100 text-gray-800";
     }
@@ -64,6 +100,53 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-6">
+      {/* Modal action cotation */}
+      {cotationAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
+            <h3 className="font-semibold text-gray-900">
+              {cotationAction.action === "valider" && "Valider le devis"}
+              {cotationAction.action === "revision" && "Demander une révision"}
+              {cotationAction.action === "refuser" && "Refuser le devis"}
+            </h3>
+            {cotationAction.action !== "valider" && (
+              <div className="space-y-1.5">
+                <label className="text-sm text-gray-600">Motif (optionnel)</label>
+                <textarea
+                  className="w-full border rounded-lg p-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  rows={3}
+                  placeholder={cotationAction.action === "revision" ? "Ex : Veuillez revoir la prime TTC..." : "Ex : Prix trop élevé..."}
+                  value={cotationNote}
+                  onChange={e => setCotationNote(e.target.value)}
+                />
+              </div>
+            )}
+            {cotationAction.action === "valider" && (
+              <p className="text-sm text-gray-500">Vous confirmez accepter ce devis. L&apos;agent recevra une notification et vous enverra les attestations.</p>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => { setCotationAction(null); setCotationNote(""); }}
+                className="flex-1 border rounded-lg py-2 text-sm text-gray-600 hover:bg-gray-50"
+                disabled={cotationLoading}
+              >Annuler</button>
+              <button
+                onClick={handleCotationAction}
+                disabled={cotationLoading}
+                className={`flex-1 rounded-lg py-2 text-sm font-medium text-white ${
+                  cotationAction.action === "valider" ? "bg-emerald-600 hover:bg-emerald-700" :
+                  cotationAction.action === "revision" ? "bg-orange-500 hover:bg-orange-600" :
+                  "bg-red-600 hover:bg-red-700"
+                } disabled:opacity-50`}
+              >
+                {cotationLoading ? "..." :
+                  cotationAction.action === "valider" ? "Confirmer" :
+                  cotationAction.action === "revision" ? "Demander révision" : "Refuser"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Historique des opérations</h1>
@@ -81,7 +164,24 @@ export default function HistoryPage() {
       </div>
 
       <div className="space-y-3">
-        {filtered.map((r) => (
+        {loading && (
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white rounded-xl shadow-sm p-4 space-y-2">
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-4 w-4 rounded-full mt-0.5" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-3 w-64" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+        {!loading && filtered.map((r) => (
           <Card key={r.id} className="border-0 shadow-sm hover:shadow-md transition">
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
@@ -97,9 +197,25 @@ export default function HistoryPage() {
                     <p className="text-xs text-gray-500 mt-1">
                       {r.numero} • Soumis le {r.createdAt}
                     </p>
-                    {r.agentNom && (
+                    {r.agentNom && r.status === "en_cours" && (
+                      <div className="flex items-center gap-3 mt-1.5 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-blue-800">Agent en charge : {r.agentNom}</p>
+                          {r.agentTelephone && (
+                            <a
+                              href={`tel:${r.agentTelephone}`}
+                              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium mt-0.5"
+                            >
+                              <Phone className="h-3 w-3" />
+                              {r.agentTelephone}
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {r.agentNom && r.status === "traite" && (
                       <p className="text-xs text-gray-400 mt-0.5">
-                        Agent en charge : {r.agentNom}
+                        Traité par : {r.agentNom}
                       </p>
                     )}
                     {r.treatedAt && (
@@ -123,6 +239,33 @@ export default function HistoryPage() {
                   )}
                 </div>
               </div>
+
+              {/* Actions cotation — devis reçu */}
+              {COTATION_TYPES.includes(r.type) && r.status === "devis_envoye" && (
+                <div className="mt-3 pt-3 border-t">
+                  <p className="text-xs text-purple-700 font-medium mb-2">📄 Votre devis est disponible ci-dessous. Quelle est votre décision ?</p>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => setCotationAction({ id: r.id, action: "valider" })}
+                      className="flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 py-1.5 rounded-lg transition"
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" /> Valider
+                    </button>
+                    <button
+                      onClick={() => setCotationAction({ id: r.id, action: "revision" })}
+                      className="flex items-center gap-1.5 text-xs bg-orange-500 hover:bg-orange-600 text-white font-medium px-3 py-1.5 rounded-lg transition"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" /> Demander révision
+                    </button>
+                    <button
+                      onClick={() => setCotationAction({ id: r.id, action: "refuser" })}
+                      className="flex items-center gap-1.5 text-xs bg-red-600 hover:bg-red-700 text-white font-medium px-3 py-1.5 rounded-lg transition"
+                    >
+                      <XCircle className="h-3.5 w-3.5" /> Refuser
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Documents & Livrables */}
               {(r.documents.length > 0 || r.livrables.length > 0) && (
