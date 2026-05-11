@@ -36,7 +36,7 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
       <CardContent className="space-y-4">
 
         <div>
-          <Label>1. Durée de cotisation *</Label>
+          <Label>1. Durée de cotisation <span className="text-red-500">*</span></Label>
           {maxAnnees !== null && (
             <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1 mt-1">
               Retraite à 65 ans — durée maximale : <strong>{maxAnnees} an{maxAnnees > 1 ? "s" : ""}</strong>
@@ -57,7 +57,7 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
         </div>
 
         <div>
-          <Label>2. Périodicité *</Label>
+          <Label>2. Périodicité <span className="text-red-500">*</span></Label>
           <div className="grid grid-cols-4 gap-2 mt-2">
             {Object.entries(PERIODICITE_LABELS).map(([k, v]) => (
               <button key={k} type="button" onClick={() => s("periodicite", k)}
@@ -69,12 +69,12 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>3. Date 1ère cotisation *</Label><Input type="date" value={cot.date_premiere_cotisation} onChange={e => s("date_premiere_cotisation", e.target.value)} /></div>
+          <div><Label>3. Date 1ère cotisation <span className="text-red-500">*</span></Label><Input type="date" value={cot.date_premiere_cotisation} onChange={e => s("date_premiere_cotisation", e.target.value)} /></div>
           <div><Label>Date d&apos;effet du contrat</Label><Input type="date" value={cot.date_effet} onChange={e => s("date_effet", e.target.value)} /></div>
         </div>
 
         <div>
-          <Label>4. Montant périodique *</Label>
+          <Label>4. Montant périodique <span className="text-red-500">*</span></Label>
           <div className="flex items-center gap-2 mt-1">
             <Input type="number" min={25000} step={5000} className="w-48" value={cot.montant_cotisation} onChange={e => s("montant_cotisation", e.target.value)} />
             <span className="text-sm text-gray-500">FCFA (min. 25 000)</span>
@@ -102,19 +102,23 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
             </div>
           </div>
           <div>
-            <Label>N° de compte (joindre RIB)</Label>
+            <Label>N° de compte (joindre RIB) <span className="text-red-500">*</span></Label>
             <Input className="mt-1" placeholder="ex: CI093 00001 000000000001 12" value={cot.numero_compte} onChange={e => s("numero_compte", e.target.value)} />
             <div className="mt-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Importer le RIB *</label>
-              <input
-                type="file"
-                accept="image/*,application/pdf"
-                className="block w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-amber-600 file:text-white hover:file:bg-amber-700 cursor-pointer"
-                onChange={e => setRibFile?.(e.target.files?.[0] ?? null)}
-              />
-              {ribFile && (
-                <p className="text-xs text-green-700 mt-1">✓ {ribFile.name}</p>
-              )}
+              <p className="text-xs font-medium text-gray-700 mb-1">Importer le RIB *</p>
+              <label className="inline-flex items-center gap-2 cursor-pointer bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition">
+                <span>Choisir un fichier</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={e => setRibFile?.(e.target.files?.[0] ?? null)}
+                />
+              </label>
+              {ribFile
+                ? <p className="text-xs text-green-700 mt-1">✓ {ribFile.name}</p>
+                : <p className="text-xs text-gray-400 mt-1">Aucun fichier sélectionné</p>
+              }
             </div>
           </div>
         </div>

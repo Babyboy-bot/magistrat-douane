@@ -11,9 +11,13 @@ import { useRouter } from "next/navigation";
 function getRedirectUrl(notif: AppNotification, role?: string): string | null {
   const event = notif.data?.event as string | undefined;
   if (!event) return null;
-  if (event === "new_request") return role === "client" ? "/client/history" : "/agent/requests";
+  if (event === "new_request") {
+    if (role !== "client" && notif.data?.type === "souscription_magist") return "/agent/magistassur";
+    return role === "client" ? "/client/history" : "/agent/requests";
+  }
   if (event === "request_treated") return "/client/history";
   if (event === "livrable_added") return "/client/documents";
+  if (event === "magist_assur") return role === "client" ? null : "/agent/magistassur";
   return null;
 }
 

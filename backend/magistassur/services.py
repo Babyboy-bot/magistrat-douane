@@ -59,6 +59,8 @@ def assigner_police_epargne(contrat: ContratEpargne, num_police: str, code_inspe
 
 def changer_statut_epargne(contrat: ContratEpargne, nouveau_statut: str) -> None:
     """Change le statut d'un contrat épargne avec validation métier."""
+    if contrat.statut == ContratEpargne.Statut.CLOTURE:
+        raise ValueError("Ce contrat est clôturé définitivement. Son statut ne peut plus être modifié.")
     statuts_valides = [s.value for s in ContratEpargne.Statut]
     if nouveau_statut not in statuts_valides:
         raise ValueError(f"Statut invalide : {nouveau_statut}. Valeurs acceptées : {statuts_valides}")
@@ -125,6 +127,8 @@ def assigner_police_prevoyance(
 
 def changer_statut_prevoyance(contrat: ContratPrevoyance, nouveau_statut: str) -> None:
     """Change le statut d'un contrat prévoyance avec validation métier."""
+    if contrat.statut == ContratPrevoyance.Statut.CLOTURE:
+        raise ValueError("Ce contrat est clôturé définitivement. Son statut ne peut plus être modifié.")
     statuts_valides = [s.value for s in ContratPrevoyance.Statut]
     if nouveau_statut not in statuts_valides:
         raise ValueError(f"Statut invalide : {nouveau_statut}. Valeurs acceptées : {statuts_valides}")

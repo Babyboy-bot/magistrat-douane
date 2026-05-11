@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm, Controller, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Home, ArrowLeft, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,38 +13,40 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuthStore } from "@/stores/auth-store";
 import { requestsApi } from "@/lib/api";
 import { toast } from "sonner";
+import { cotationMRHSchema, type CotationMRHValues } from "@/lib/validations";
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="text-xs text-red-500 mt-1">{message}</p>;
+}
 
 export default function CotationMRHPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-
-  const [form, setForm] = useState({
-    nom: user ? `${user.nom} ${user.prenoms}` : "",
-    telephone: user?.telephone || "",
-    email: user?.email || "",
-    qualite: "" as "proprietaire" | "locataire" | "",
-    nature: "" as "villa" | "appartement" | "niveau" | "",
-    situationGeographique: "",
-    valeurBatiment: "",
-    loyerMensuel: "",
-    valeurContenu: "",
-    nombrePieces: "",
-  });
-
-  const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!form.nature || !form.qualite || !form.situationGeographique) {
-      toast.error("Veuillez renseigner les champs obligatoires");
-      return;
-    }
+  const { register, control, handleSubmit, formState: { errors } } = useForm<CotationMRHValues>({
+    resolver: zodResolver(cotationMRHSchema),
+    defaultValues: {
+      nom: user ? `${user.nom} ${user.prenoms}` : "",
+      telephone: user?.telephone || "",
+      email: user?.email || "",
+      qualite: "",
+      nature: "",
+      situationGeographique: "",
+      valeurBatiment: "",
+      loyerMensuel: "",
+      valeurContenu: "",
+      nombrePieces: "",
+    },
+  });
+
+  const qualite = useWatch({ control, name: "qualite" });
+
+  const onSubmit = async (values: CotationMRHValues) => {
     setLoading(true);
     try {
-      await requestsApi.create("cotation_mrh", { ...form });
+      await requestsApi.create("cotation_mrh", { ...values });
       toast.success("Votre demande de cotation MRH a été envoyée. Vous recevrez un devis sous 24h.");
       router.push("/client/history");
     } catch (err: unknown) {
@@ -79,76 +83,94 @@ export default function CotationMRHPage() {
           <CardTitle className="text-lg">Informations de l&apos;habitation</CardTitle>
           <CardDescription>Remplissez les champs ci-dessous pour recevoir votre devis.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Nom & Prénoms</Label>
-              <Input value={form.nom} onChange={(e) => handleChange("nom", e.target.value)} />
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Nom & Prénoms</Label>
+                <Input {...register("nom")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Téléphone</Label>
+                <Input {...register("telephone")} />
+              </div>
             </div>
+
             <div className="space-y-1.5">
-              <Label>Téléphone</Label>
-              <Input value={form.telephone} onChange={(e) => handleChange("telephone", e.target.value)} />
+              <Label>Qualité <span className="text-red-500">*</span></Label>
+              <Controller
+                name="qualite"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                    <SelectTrigger className={errors.qualite ? "border-red-400" : ""}><SelectValue placeholder="Sélectionnez..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="proprietaire">Propriétaire</SelectItem>
+                      <SelectItem value="locataire">Locataire</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <FieldError message={errors.qualite?.message} />
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label>Qualité *</Label>
-            <Select value={form.qualite} onValueChange={(v) => handleChange("qualite", v)}>
-              <SelectTrigger><SelectValue placeholder="Sélectionnez..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="proprietaire">Propriétaire</SelectItem>
-                <SelectItem value="locataire">Locataire</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Nature du risque *</Label>
-            <Select value={form.nature} onValueChange={(v) => handleChange("nature", v)}>
-              <SelectTrigger><SelectValue placeholder="Sélectionnez..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="villa">Villa</SelectItem>
-                <SelectItem value="appartement">Appartement</SelectItem>
-                <SelectItem value="niveau">Niveau (immeuble)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Situation géographique *</Label>
-            <Input
-              placeholder="Ex: Cocody Riviera 3, Abidjan"
-              value={form.situationGeographique}
-              onChange={(e) => handleChange("situationGeographique", e.target.value)}
-            />
-          </div>
-
-          {form.qualite === "proprietaire" ? (
             <div className="space-y-1.5">
-              <Label>Valeur du bâtiment (FCFA)</Label>
-              <Input type="number" placeholder="Ex: 80 000 000" value={form.valeurBatiment} onChange={(e) => handleChange("valeurBatiment", e.target.value)} />
+              <Label>Nature du risque <span className="text-red-500">*</span></Label>
+              <Controller
+                name="nature"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                    <SelectTrigger className={errors.nature ? "border-red-400" : ""}><SelectValue placeholder="Sélectionnez..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="villa">Villa</SelectItem>
+                      <SelectItem value="appartement">Appartement</SelectItem>
+                      <SelectItem value="niveau">Niveau (immeuble)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <FieldError message={errors.nature?.message} />
             </div>
-          ) : form.qualite === "locataire" ? (
-            <div className="space-y-1.5">
-              <Label>Loyer mensuel (FCFA)</Label>
-              <Input type="number" placeholder="Ex: 250 000" value={form.loyerMensuel} onChange={(e) => handleChange("loyerMensuel", e.target.value)} />
-            </div>
-          ) : null}
 
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Valeur du contenu (FCFA)</Label>
-              <Input type="number" placeholder="Ex: 15 000 000" value={form.valeurContenu} onChange={(e) => handleChange("valeurContenu", e.target.value)} />
+              <Label>Situation géographique <span className="text-red-500">*</span></Label>
+              <Input
+                placeholder="Ex: Cocody Riviera 3, Abidjan"
+                {...register("situationGeographique")}
+                className={errors.situationGeographique ? "border-red-400" : ""}
+              />
+              <FieldError message={errors.situationGeographique?.message} />
             </div>
-            <div className="space-y-1.5">
-              <Label>Nombre de pièces</Label>
-              <Input type="number" value={form.nombrePieces} onChange={(e) => handleChange("nombrePieces", e.target.value)} />
-            </div>
-          </div>
 
-          <Button onClick={handleSubmit} disabled={loading} className="w-full bg-amber-500 hover:bg-amber-600 text-white">
-            <Send className="h-4 w-4 mr-2" /> Demander la cotation
-          </Button>
+            {qualite === "proprietaire" && (
+              <div className="space-y-1.5">
+                <Label>Valeur du bâtiment (FCFA)</Label>
+                <Input type="number" min={0} placeholder="Ex: 80 000 000" {...register("valeurBatiment")} />
+              </div>
+            )}
+            {qualite === "locataire" && (
+              <div className="space-y-1.5">
+                <Label>Loyer mensuel (FCFA)</Label>
+                <Input type="number" min={0} placeholder="Ex: 250 000" {...register("loyerMensuel")} />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Valeur du contenu (FCFA)</Label>
+                <Input type="number" min={0} placeholder="Ex: 15 000 000" {...register("valeurContenu")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nombre de pièces</Label>
+                <Input type="number" min={1} {...register("nombrePieces")} />
+              </div>
+            </div>
+
+            <Button type="submit" disabled={loading} className="w-full bg-amber-500 hover:bg-amber-600 text-white">
+              <Send className="h-4 w-4 mr-2" /> {loading ? "Envoi en cours..." : "Demander la cotation"}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>

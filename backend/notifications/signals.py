@@ -133,17 +133,6 @@ def send_request_notifications(sender, instance: ClientRequest, created, **kwarg
             priority="medium",
             data=data,
         )
-        if instance.agent_id:
-            notification_service.send_notification_to_user(
-                user_id=instance.agent_id,
-                title="Requête clôturée",
-                message=(
-                    f"La demande {instance.numero} pour {instance.client.full_name} est maintenant clôturée."
-                ),
-                type="info",
-                priority="low",
-                data=data,
-            )
 
 
 # Connect signals

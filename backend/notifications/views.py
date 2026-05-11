@@ -46,6 +46,7 @@ class OnlineUsersView(APIView):
             return Response({"detail": "Permission refusée"}, status=status.HTTP_403_FORBIDDEN)
         from django.core.cache import cache
         from django.contrib.auth import get_user_model
+        from django.conf import settings
         import time
         User = get_user_model()
         members = cache.get(ONLINE_KEY) or {}
@@ -62,7 +63,7 @@ class OnlineUsersView(APIView):
             "email": u["email"],
             "role": u["role"],
             "profession_type": u["profession_type"],
-            "photo": u["photo"],
+            "photo": (settings.MEDIA_URL + u["photo"]) if u["photo"] else None,
             "connected_since": members.get(str(u["id"])),
         } for u in users])
 

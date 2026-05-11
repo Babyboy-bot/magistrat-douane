@@ -17,6 +17,11 @@ from .requests import (
     treat_request_view,
     claim_request_view,
     release_request_view,
+    envoyer_devis_view,
+    valider_cotation_view,
+    revision_cotation_view,
+    refuser_cotation_view,
+    envoyer_attestations_view,
 )
 from .documents import (
     RequestLivrablesView,

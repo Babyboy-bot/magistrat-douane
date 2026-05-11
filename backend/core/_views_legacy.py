@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from datetime import datetime, timedelta
 
-from django.db.models import DecimalField, F, Sum, Value
+from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -165,9 +165,17 @@ def emission_totals_view(request):
         prime_nette=Coalesce(Sum("prime_nette"), Value(0, output_field=DecimalField())),
         prime_ttc=Coalesce(Sum("prime_ttc"), Value(0, output_field=DecimalField())),
         total_paye=Coalesce(Sum("paiements__montant_regle"), Value(0, output_field=DecimalField())),
+        commission=Coalesce(
+            Sum(
+                ExpressionWrapper(
+                    F("prime_nette") * F("taux_commission") / 100,
+                    output_field=DecimalField(),
+                )
+            ),
+            Value(0, output_field=DecimalField()),
+        ),
     )
     totals["solde"] = totals["prime_ttc"] - totals["total_paye"]
-    totals["commission"] = totals["prime_ttc"] - totals["prime_nette"]
     totals["count"] = qs.count()
     return Response(totals)
 

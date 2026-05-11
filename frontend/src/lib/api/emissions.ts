@@ -1,5 +1,6 @@
 import { apiFetch, API_BASE } from "./client";
 import type { Emission, Paiement, PaginatedResponse } from "@/lib/types";
+import { fmtDate } from "@/lib/utils";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ function mapPaiement(p: Record<string, unknown>): Paiement {
   return {
     id: String(p.id),
     emissionId: String(p.emission),
-    dateReglement: (p.date_reglement as string) ?? "",
+    dateReglement: fmtDate(p.date_reglement as string),
     reference: (p.reference as string) ?? "",
     montantRegle: Number(p.montant_regle ?? 0),
     observations: (p.observations as string) ?? "",
@@ -41,15 +42,15 @@ function mapEmission(e: Record<string, unknown>): Emission {
     id: String(e.id),
     clientId: e.client ? String(e.client) : "",
     clientNom: (e.client_nom as string) ?? "",
-    date: (e.date as string) ?? "",
+    date: fmtDate(e.date as string),
     risque: (e.risque as string) ?? "",
     compagnie: (e.compagnie as string) ?? "",
     numFacture: (e.num_facture as string) ?? "",
     numPolice: (e.num_police as string) ?? "",
     marque: (e.marque as string) ?? "",
     immatriculation: (e.immatriculation as string) ?? "",
-    effet: (e.effet as string) ?? "",
-    echeance: (e.echeance as string) ?? "",
+    effet: fmtDate(e.effet as string),
+    echeance: fmtDate(e.echeance as string),
     primeNette: Number(e.prime_nette ?? 0),
     primeTTC: Number(e.prime_ttc ?? 0),
     tauxCommission: Number(e.taux_commission ?? 0),

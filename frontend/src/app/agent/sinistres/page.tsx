@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fmtDate } from "@/lib/utils";
 import { AlertTriangle, Search, Clock, Loader2, CheckCircle, Lock, Unlock, UserCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -70,7 +71,7 @@ function SinistreCard({
               <p className="text-xs text-gray-500 line-clamp-2">Circonstances : {circonstances}</p>
             )}
             <p className="text-xs text-gray-400">
-              Déclaré le {new Date(s.createdAt).toLocaleDateString("fr-FR")}
+              Déclaré le {fmtDate(s.createdAt)}
             </p>
             {s.agentNom && (
               <p className="text-xs text-blue-600 flex items-center gap-1">

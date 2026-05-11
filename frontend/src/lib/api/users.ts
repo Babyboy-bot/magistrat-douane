@@ -24,6 +24,7 @@ function mapAuditLog(entry: Record<string, unknown>): AuditLogEntry {
     metadata: (entry.metadata as Record<string, unknown>) || {},
     performedBy: (entry.performed_by as string) || null,
     targetUser: entry.target_user as string,
+    ipAddress: (entry.ip_address as string) || null,
     createdAt: entry.created_at as string,
   };
 }
@@ -161,5 +162,12 @@ export const auditLogsApi = {
     const url = q.toString() ? `/api/auth/audit-logs/?${q}` : "/api/auth/audit-logs/";
     const raw = await apiFetch<PaginatedResponse<Record<string, unknown>> | Record<string, unknown>[]>(url);
     return normalizePaginated(raw, mapAuditLog);
+  },
+
+  exportCsvUrl(action?: string): string {
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+    const q = new URLSearchParams();
+    if (action) q.append("action", action);
+    return `${API_BASE}/api/auth/audit-logs/export/${q.toString() ? "?" + q : ""}`;
   },
 };

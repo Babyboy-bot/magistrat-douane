@@ -100,6 +100,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         try:
             data = json.loads(text_data)
             if data.get("type") == "ping":
+                await _mark_online(self.user.id)
                 await self.send(text_data=json.dumps({"type": "pong"}))
         except (json.JSONDecodeError, KeyError):
             pass

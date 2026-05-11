@@ -9,6 +9,12 @@ User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     created_at = serializers.DateTimeField(source="date_joined", read_only=True)
+    photo = serializers.SerializerMethodField()
+
+    def get_photo(self, obj):
+        if obj.photo:
+            return obj.photo.url
+        return None
 
     class Meta:
         model = User
@@ -66,6 +72,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False, min_length=8)
+    photo = serializers.FileField(required=False, allow_null=True)
 
     class Meta:
         model = User
@@ -169,4 +176,4 @@ class UserAuditLogSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserAuditLog
-        fields = ["id", "action", "metadata", "performed_by", "target_user", "created_at"]
+        fields = ["id", "action", "metadata", "performed_by", "target_user", "ip_address", "created_at"]

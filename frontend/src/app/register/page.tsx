@@ -175,7 +175,7 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Vous êtes *</Label>
+                  <Label>Vous êtes <span className="text-red-500">*</span></Label>
                   <Select
                     value={form.professionType}
                     onValueChange={(v) => handleChange("professionType", v)}

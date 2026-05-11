@@ -1,8 +1,10 @@
+from django.core.exceptions import ValidationError
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Q
+from core.file_validators import validate_upload
 from core.permissions import IsAgentOrAdmin
 from .services import (
     assigner_police_epargne, changer_statut_epargne, ajouter_cotisation_epargne,
@@ -73,7 +75,7 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
     pagination_class = None
 
     def get_permissions(self):
-        if self.action == "create":
+        if self.action in ("create", "upload_documents"):
             return [IsAuthenticated()]
         return [IsAuthenticated(), IsAgentOrAdmin()]
 
@@ -150,9 +152,17 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
             permission_classes=[IsAuthenticated])
     def upload_documents(self, request, pk=None):
         """Upload pièce d'identité et/ou RIB pour un contrat épargne."""
+        for field in ("piece_identite", "piece_identite_verso", "rib_document"):
+            if field in request.FILES:
+                try:
+                    validate_upload(request.FILES[field])
+                except ValidationError as e:
+                    return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         contrat = self.get_object()
         if "piece_identite" in request.FILES:
             contrat.piece_identite = request.FILES["piece_identite"]
+        if "piece_identite_verso" in request.FILES:
+            contrat.piece_identite_verso = request.FILES["piece_identite_verso"]
         if "rib_document" in request.FILES:
             contrat.rib_document = request.FILES["rib_document"]
         contrat.save()

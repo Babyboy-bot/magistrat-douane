@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { ArrowLeft, ArrowRight, Loader2, CheckCircle, ChevronDown, ChevronUp, TrendingUp, Shield, Heart, Clock, FileText, CreditCard, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
@@ -24,6 +24,56 @@ import type {
 } from "./components/types";
 
 const DRAFT_KEY = "magistassur_unifie_draft";
+const FILES_DB_NAME = "magistassur_files";
+const FILES_STORE_NAME = "files";
+
+// IndexedDB helpers
+const openFilesDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(FILES_DB_NAME, 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(FILES_STORE_NAME)) {
+        db.createObjectStore(FILES_STORE_NAME);
+      }
+    };
+  });
+};
+
+const saveFileToIndexedDB = async (key: string, file: File): Promise<void> => {
+  const db = await openFilesDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([FILES_STORE_NAME], "readwrite");
+    const store = transaction.objectStore(FILES_STORE_NAME);
+    const request = store.put(file, key);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve();
+  });
+};
+
+const getFileFromIndexedDB = async (key: string): Promise<File | null> => {
+  const db = await openFilesDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([FILES_STORE_NAME], "readonly");
+    const store = transaction.objectStore(FILES_STORE_NAME);
+    const request = store.get(key);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result || null);
+  });
+};
+
+const deleteFileFromIndexedDB = async (key: string): Promise<void> => {
+  const db = await openFilesDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([FILES_STORE_NAME], "readwrite");
+    const store = transaction.objectStore(FILES_STORE_NAME);
+    const request = store.delete(key);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve();
+  });
+};
 
 const emptyId = (): IdentiteState => ({
   nom: "", prenoms: "", civilite: "", nom_epoux: "", date_naissance: "", pays_naissance: "",
@@ -97,7 +147,35 @@ export default function SouscrirePage() {
 
   /* ── Fichiers ── */
   const [pieceIdentiteFile, setPieceIdentiteFile] = useState<File | null>(null);
+  const [pieceIdentiteVersoFile, setPieceIdentiteVersoFile] = useState<File | null>(null);
   const [ribFile, setRibFile] = useState<File | null>(null);
+
+  const handleSetPieceIdentiteFile = useCallback(async (file: File | null) => {
+    setPieceIdentiteFile(file);
+    if (file) {
+      await saveFileToIndexedDB("pieceIdentite", file);
+    } else {
+      await deleteFileFromIndexedDB("pieceIdentite");
+    }
+  }, []);
+
+  const handleSetPieceIdentiteVersoFile = useCallback(async (file: File | null) => {
+    setPieceIdentiteVersoFile(file);
+    if (file) {
+      await saveFileToIndexedDB("pieceIdentiteVerso", file);
+    } else {
+      await deleteFileFromIndexedDB("pieceIdentiteVerso");
+    }
+  }, []);
+
+  const handleSetRibFile = useCallback(async (file: File | null) => {
+    setRibFile(file);
+    if (file) {
+      await saveFileToIndexedDB("rib", file);
+    } else {
+      await deleteFileFromIndexedDB("rib");
+    }
+  }, []);
 
   /* ── État Épargne ── */
   const [id, setId] = useState<IdentiteState>(emptyId());
@@ -116,7 +194,7 @@ export default function SouscrirePage() {
   const [garantieFuneraires, setGarantieFuneraires] = useState(false);
 
   /* ── Correspondant Prévoyance ── */
-  const [prevCorrespIdem, setPrevCorrespIdem] = useState(true);
+  const [prevCorrespIdem, setPrevCorrespIdem] = useState<boolean | null>(null);
   const [prevCorresp, setPrevCorresp] = useState<CorrespondantState>(emptyCorresp(0));
 
   /* ── État Prévoyance ── */
@@ -173,6 +251,9 @@ export default function SouscrirePage() {
         setHasDraft(true);
         setShowIntro(false);
         toast.info("Brouillon restauré — vous pouvez reprendre votre saisie.");
+        // Restaurer les fichiers depuis IndexedDB
+        getFileFromIndexedDB("pieceIdentite").then(setPieceIdentiteFile);
+        getFileFromIndexedDB("rib").then(setRibFile);
         return;
       } catch { /* brouillon corrompu */ }
     }
@@ -210,7 +291,15 @@ export default function SouscrirePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id.date_naissance]);
 
-  const clearDraft = () => { localStorage.removeItem(DRAFT_KEY); setHasDraft(false); toast.success("Brouillon effacé."); };
+  const clearDraft = async () => {
+    localStorage.removeItem(DRAFT_KEY);
+    await deleteFileFromIndexedDB("pieceIdentite");
+    await deleteFileFromIndexedDB("rib");
+    setPieceIdentiteFile(null);
+    setRibFile(null);
+    setHasDraft(false);
+    toast.success("Brouillon effacé.");
+  };
 
   const validateStep = (): boolean => {
     const isMaried = id.situation_matrimoniale === "marie" || id.situation_matrimoniale === "concubin";
@@ -228,13 +317,12 @@ export default function SouscrirePage() {
         if (!id.telephone.trim()) { toast.error("Le numéro de téléphone est obligatoire."); return false; }
         if (!id.statut_professionnel) { toast.error("Le statut professionnel est obligatoire."); return false; }
         if (!id.origine_revenu) { toast.error("L'origine des cotisations est obligatoire."); return false; }
-        if (!pieceIdentiteFile) { toast.error("La pièce d'identité (recto/verso) est obligatoire."); return false; }
         return true;
       case "correspondants":
         if (!corresp1.nom.trim()) { toast.error("Le nom du correspondant 1 est obligatoire."); return false; }
         if (!corresp1.prenom.trim()) { toast.error("Le prénom du correspondant 1 est obligatoire."); return false; }
         if (!corresp1.telephone.trim()) { toast.error("Le téléphone du correspondant 1 est obligatoire."); return false; }
-        if (!prevCorrespIdem) {
+        if (prevCorrespIdem === false) {
           if (!prevCorresp.nom.trim()) { toast.error("Correspondant Prévoyance — le nom est obligatoire."); return false; }
           if (!prevCorresp.prenom.trim()) { toast.error("Correspondant Prévoyance — le prénom est obligatoire."); return false; }
           if (!prevCorresp.domicile.trim()) { toast.error("Correspondant Prévoyance — le domicile est obligatoire."); return false; }
@@ -253,7 +341,6 @@ export default function SouscrirePage() {
         if (!cot.date_premiere_cotisation) { toast.error("La date de 1ère cotisation est obligatoire."); return false; }
         if (!cot.montant_cotisation || Number(cot.montant_cotisation) < 25000) { toast.error("Le montant doit être au minimum de 25 000 FCFA."); return false; }
         if (!cot.numero_compte.trim()) { toast.error("Le numéro de compte (RIB) est obligatoire."); return false; }
-        if (!ribFile) { toast.error("Le document RIB est obligatoire."); return false; }
         return true;
       case "benef-epargne": {
         const hasAny = benefConjoint_e || benefEnfants_e || autresBenef_e.some(b => b.nom.trim());
@@ -329,6 +416,13 @@ export default function SouscrirePage() {
   /* ── Soumission ── */
   const handleSubmit = async () => {
     if (!user) return;
+    // Tenter de récupérer depuis IndexedDB si le state est null (après refresh)
+    const finalPieceFile = pieceIdentiteFile ?? await getFileFromIndexedDB("pieceIdentite");
+    const finalPieceVersoFile = pieceIdentiteVersoFile ?? await getFileFromIndexedDB("pieceIdentiteVerso");
+    const finalRibFile = ribFile ?? await getFileFromIndexedDB("rib");
+    if (!finalPieceFile) { toast.error("La pièce d'identité (recto) est obligatoire."); return; }
+    if (!finalPieceVersoFile) { toast.error("La pièce d'identité (verso) est obligatoire."); return; }
+    if (!finalRibFile) { toast.error("Le document RIB est obligatoire."); return; }
     setLoading(true);
     try {
       const montant = Number(cot.montant_cotisation) || 0;
@@ -397,12 +491,15 @@ export default function SouscrirePage() {
         duree_annees: Number(cot.duree_annees),
       });
 
-      if (pieceIdentiteFile || ribFile) {
+      if (finalPieceFile || finalRibFile) {
         const epargnes = await magistassurApi.listEpargne({ clientId: String(user.id) });
         const latest = epargnes.sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-        if (latest) await magistassurApi.uploadDocumentsEpargne(latest.id, { pieceIdentite: pieceIdentiteFile ?? undefined, ribDocument: ribFile ?? undefined });
+        if (latest) await magistassurApi.uploadDocumentsEpargne(latest.id, { pieceIdentite: finalPieceFile ?? undefined, pieceIdentiteVerso: finalPieceVersoFile ?? undefined, ribDocument: finalRibFile ?? undefined });
       }
       localStorage.removeItem(DRAFT_KEY);
+      await deleteFileFromIndexedDB("pieceIdentite");
+      await deleteFileFromIndexedDB("pieceIdentiteVerso");
+      await deleteFileFromIndexedDB("rib");
       const msg = (garantieDeces || garantieFuneraires) ? "MAGIST'ASSUR ÉPARGNE + PRÉVOYANCE soumis avec succès !" : "MAGIST'ASSUR ÉPARGNE soumis avec succès !";
       toast.success(msg);
       router.push("/client/dashboard");
@@ -415,10 +512,10 @@ export default function SouscrirePage() {
 
   const renderStep = () => {
     switch (stepId) {
-      case "identite":        return <StepIdentite id={id} setId={setId} pieceIdentiteFile={pieceIdentiteFile} setPieceIdentiteFile={setPieceIdentiteFile} />;
+      case "identite":        return <StepIdentite id={id} setId={setId} pieceIdentiteFile={pieceIdentiteFile} setPieceIdentiteFile={handleSetPieceIdentiteFile} pieceIdentiteVersoFile={pieceIdentiteVersoFile} setPieceIdentiteVersoFile={handleSetPieceIdentiteVersoFile} />;
       case "correspondants":  return <StepCorrespondants corresp1={corresp1} setCorresp1={setCorresp1} corresp2={corresp2} setCorresp2={setCorresp2} prevCorrespIdem={prevCorrespIdem} setPrevCorrespIdem={setPrevCorrespIdem} prevCorresp={prevCorresp} setPrevCorresp={setPrevCorresp} />;
       case "assure":          return <StepAssure assureIdem={assureIdem} setAssureIdem={setAssureIdem} assure={assure} setAssure={setAssure} />;
-      case "cotisation":      return <StepCotisation cot={cot} setCot={setCot} dateNaissance={id.date_naissance} ribFile={ribFile} setRibFile={setRibFile} />;
+      case "cotisation":      return <StepCotisation cot={cot} setCot={setCot} dateNaissance={id.date_naissance} ribFile={ribFile} setRibFile={handleSetRibFile} />;
       case "benef-epargne":   return <StepBeneficiairesEpargne benefConjoint={benefConjoint_e} setBenefConjoint={setBenefConjoint_e} benefEnfants={benefEnfants_e} setBenefEnfants={setBenefEnfants_e} autresBenef={autresBenef_e} setAutresBenef={setAutresBenef_e} consentementDonnees={consentementDonnees} setConsentementDonnees={setConsentementDonnees} situationMatrimoniale={id.situation_matrimoniale} />;
       case "options":         return <StepOptionsPrevoyance garantieDeces={garantieDeces} setGarantieDeces={setGarantieDeces} garantieFuneraires={garantieFuneraires} setGarantieFuneraires={setGarantieFuneraires} cot={cot} />;
       case "garanties":       return <StepGaranties garantieDeces={garantieDeces} garantieFuneraires={garantieFuneraires} assuresAssocies={assuresAssocies} setAssuresAssocies={setAssuresAssocies} situationMatrimoniale={id.situation_matrimoniale} />;

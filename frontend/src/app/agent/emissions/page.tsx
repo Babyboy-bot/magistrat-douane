@@ -25,10 +25,12 @@ const RISQUE_OPTIONS = [
 
 const SITUATION_OPTIONS = [
   { label: "Toutes", value: "all" },
-  { label: "En cours", value: "en_cours" },
-  { label: "Soldée", value: "soldee" },
-  { label: "Annulée", value: "annulee" },
-  { label: "Suspendue", value: "suspendue" },
+  { label: "Affaire nouvelle", value: "Affaire nouvelle" },
+  { label: "Incorporation", value: "Incorporation" },
+  { label: "Renouvellement", value: "Renouvellement" },
+  { label: "Modification", value: "Modification" },
+  { label: "Retrait", value: "Retrait" },
+  { label: "Soldée ✓", value: "Soldée" },
 ];
 
 const buildQueryString = (filters: { compagnie: string; risque: string; situation: string }) => {

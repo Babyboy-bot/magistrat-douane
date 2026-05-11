@@ -2,62 +2,67 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Car, Upload, ArrowLeft, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuthStore } from "@/stores/auth-store";
 import { requestsApi, documentsApi } from "@/lib/api";
 import { toast } from "sonner";
+import { cotationAutoSchema, type CotationAutoValues } from "@/lib/validations";
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="text-xs text-red-500 mt-1">{message}</p>;
+}
 
 export default function CotationAutoPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [carteGriseFile, setCarteGriseFile] = useState<File | null>(null);
+  const [carteGriseError, setCarteGriseError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
 
-  const [form, setForm] = useState({
-    nom: user ? `${user.nom} ${user.prenoms}` : "",
-    telephone: user?.telephone || "",
-    email: user?.email || "",
-    marque: "",
-    immatriculation: "",
-    genre: "",
-    energie: "",
-    puissanceFiscale: "",
-    placesAssises: "",
-    dateMiseCirculation: "",
-    usage: "",
-    valeurNeuve: "",
-    valeurVenale: "",
+  const { register, control, handleSubmit, formState: { errors } } = useForm<CotationAutoValues>({
+    resolver: zodResolver(cotationAutoSchema),
+    defaultValues: {
+      nom: user ? `${user.nom} ${user.prenoms}` : "",
+      telephone: user?.telephone || "",
+      email: user?.email || "",
+      marque: "",
+      immatriculation: "",
+      genre: "",
+      energie: "",
+      puissanceFiscale: "",
+      placesAssises: "",
+      dateMiseCirculation: "",
+      usage: "",
+      valeurNeuve: "",
+      valeurVenale: "",
+    },
   });
-
-  const handleCarteGriseUpload = () => {
-    fileInputRef.current?.click();
-  };
 
   const handleCarteGriseSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setCarteGriseFile(file);
+    setCarteGriseError("");
     toast.success(`Carte grise "${file.name}" sélectionnée`);
   };
 
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async () => {
+  const onSubmit = async (values: CotationAutoValues) => {
     if (!carteGriseFile) {
-      toast.error("Veuillez sélectionner votre carte grise");
-      return;
-    }
-    if (!form.marque || !form.immatriculation) {
-      toast.error("Veuillez renseigner au minimum la marque et l'immatriculation");
+      setCarteGriseError("Veuillez sélectionner votre carte grise");
       return;
     }
     setLoading(true);
     try {
-      const created = await requestsApi.create("cotation_auto", { ...form });
+      const created = await requestsApi.create("cotation_auto", { ...values });
       await documentsApi.upload(carteGriseFile, created.id, false);
       toast.success("Votre demande de cotation automobile a été envoyée. Vous recevrez un devis sous 24h.");
       router.push("/client/history");
@@ -96,7 +101,6 @@ export default function CotationAutoPage() {
           <CardDescription>Uploadez votre carte grise (obligatoire) puis remplissez les informations.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Input file caché pour la carte grise */}
           <input
             ref={fileInputRef}
             type="file"
@@ -104,80 +108,121 @@ export default function CotationAutoPage() {
             onChange={handleCarteGriseSelected}
             className="hidden"
           />
-          
-          <div
-            className={`border-2 border-dashed rounded-xl p-6 text-center transition cursor-pointer ${
-              carteGriseFile
-                ? "border-green-300 bg-green-50"
-                : "border-gray-300 hover:border-blue-400 hover:bg-blue-50/50"
-            }`}
-            onClick={handleCarteGriseUpload}
-          >
-            <Upload className={`h-8 w-8 mx-auto mb-2 ${carteGriseFile ? "text-green-500" : "text-gray-400"}`} />
-            {carteGriseFile ? (
-              <p className="text-sm text-green-700 font-medium">✓ {carteGriseFile.name}</p>
-            ) : (
-              <>
-                <p className="text-sm font-medium text-gray-600">Cliquez pour uploader la carte grise</p>
-                <p className="text-xs text-gray-400 mt-1">PDF, JPG ou PNG (max 5MB)</p>
-              </>
-            )}
+
+          <div>
+            <div
+              className={`border-2 border-dashed rounded-xl p-6 text-center transition cursor-pointer ${
+                carteGriseFile
+                  ? "border-green-300 bg-green-50"
+                  : carteGriseError
+                  ? "border-red-300 bg-red-50"
+                  : "border-gray-300 hover:border-blue-400 hover:bg-blue-50/50"
+              }`}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className={`h-8 w-8 mx-auto mb-2 ${carteGriseFile ? "text-green-500" : "text-gray-400"}`} />
+              {carteGriseFile ? (
+                <p className="text-sm text-green-700 font-medium">✓ {carteGriseFile.name}</p>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-gray-600">Cliquez pour uploader la carte grise</p>
+                  <p className="text-xs text-gray-400 mt-1">PDF, JPG ou PNG (max 5MB)</p>
+                </>
+              )}
+            </div>
+            {carteGriseError && <p className="text-xs text-red-500 mt-1">{carteGriseError}</p>}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Nom & Prénoms</Label>
-              <Input value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} />
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Nom & Prénoms</Label>
+                <Input {...register("nom")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Téléphone</Label>
+                <Input {...register("telephone")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Marque / Modèle <span className="text-red-500">*</span></Label>
+                <Input {...register("marque")} className={errors.marque ? "border-red-400" : ""} />
+                <FieldError message={errors.marque?.message} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Immatriculation <span className="text-red-500">*</span></Label>
+                <Input {...register("immatriculation")} className={errors.immatriculation ? "border-red-400" : ""} />
+                <FieldError message={errors.immatriculation?.message} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Genre</Label>
+                <Controller
+                  name="genre"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                      <SelectTrigger><SelectValue placeholder="Sélectionnez..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Véhicule particulier">Véhicule particulier</SelectItem>
+                        <SelectItem value="Camionnette">Camionnette</SelectItem>
+                        <SelectItem value="Camion">Camion</SelectItem>
+                        <SelectItem value="Transport en commun">Transport en commun</SelectItem>
+                        <SelectItem value="2/3 roues motorisé">2/3 roues motorisé</SelectItem>
+                        <SelectItem value="Tracteur agricole">Tracteur agricole</SelectItem>
+                        <SelectItem value="Tracteur routier">Tracteur routier</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Énergie</Label>
+                <Controller
+                  name="energie"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                      <SelectTrigger><SelectValue placeholder="Sélectionnez..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Essence">Essence</SelectItem>
+                        <SelectItem value="Diesel">Diesel</SelectItem>
+                        <SelectItem value="Hybride">Hybride</SelectItem>
+                        <SelectItem value="Électrique">Électrique</SelectItem>
+                        <SelectItem value="GPL">GPL</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Puissance fiscale (CV)</Label>
+                <Input {...register("puissanceFiscale")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Places assises</Label>
+                <Input {...register("placesAssises")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Date mise en circulation</Label>
+                <Input type="date" {...register("dateMiseCirculation")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Usage</Label>
+                <Input placeholder="Ex : Promenade, Affaire…" {...register("usage")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Valeur neuve (FCFA)</Label>
+                <Input type="number" min={0} {...register("valeurNeuve")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Valeur vénale (FCFA)</Label>
+                <Input type="number" min={0} {...register("valeurVenale")} />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Téléphone</Label>
-              <Input value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Marque / Modèle *</Label>
-              <Input value={form.marque} onChange={(e) => setForm({ ...form, marque: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Immatriculation *</Label>
-              <Input value={form.immatriculation} onChange={(e) => setForm({ ...form, immatriculation: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Genre</Label>
-              <Input value={form.genre} onChange={(e) => setForm({ ...form, genre: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Énergie</Label>
-              <Input value={form.energie} onChange={(e) => setForm({ ...form, energie: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Puissance fiscale (CV)</Label>
-              <Input value={form.puissanceFiscale} onChange={(e) => setForm({ ...form, puissanceFiscale: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Places assises</Label>
-              <Input value={form.placesAssises} onChange={(e) => setForm({ ...form, placesAssises: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Date mise en circulation</Label>
-              <Input type="date" value={form.dateMiseCirculation} onChange={(e) => setForm({ ...form, dateMiseCirculation: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Usage</Label>
-              <Input value={form.usage} onChange={(e) => setForm({ ...form, usage: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Valeur neuve (FCFA)</Label>
-              <Input type="number" value={form.valeurNeuve} onChange={(e) => setForm({ ...form, valeurNeuve: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Valeur vénale (FCFA)</Label>
-              <Input type="number" value={form.valeurVenale} onChange={(e) => setForm({ ...form, valeurVenale: e.target.value })} />
-            </div>
-          </div>
 
-          <Button onClick={handleSubmit} disabled={loading} className="w-full bg-amber-500 hover:bg-amber-600 text-white">
-            <Send className="h-4 w-4 mr-2" /> {loading ? "Envoi en cours..." : "Demander la cotation"}
-          </Button>
+            <Button type="submit" disabled={loading} className="w-full bg-amber-500 hover:bg-amber-600 text-white">
+              <Send className="h-4 w-4 mr-2" /> {loading ? "Envoi en cours..." : "Demander la cotation"}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>

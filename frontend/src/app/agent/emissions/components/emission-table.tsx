@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Emission } from "@/lib/types";
+import { parseDisplayDate } from "@/lib/utils";
 
 interface EmissionTotals {
   prime_nette: number;
@@ -65,7 +66,7 @@ export function EmissionTable({ emissions, formatCurrency, onRequestPayment, onV
                 const totalPaid = emission.totalPaye ?? 0;
                 const solde = emission.solde ?? 0;
                 const commission = emission.montantCommission ?? 0;
-                const isExpired = new Date(emission.echeance) < new Date();
+                const isExpired = parseDisplayDate(emission.echeance) < new Date();
 
                 return (
                   <tr key={emission.id} className="border-b last:border-0 hover:bg-gray-50/50">
@@ -83,7 +84,7 @@ export function EmissionTable({ emissions, formatCurrency, onRequestPayment, onV
                     <td className="px-4 py-3 text-right text-sm font-semibold">{formatCurrency(emission.primeTTC)}</td>
                     <td className="px-4 py-3 text-right text-sm text-green-600">{formatCurrency(totalPaid)}</td>
                     <td className={`px-4 py-3 text-right text-sm font-semibold ${solde > 0 ? "text-red-600" : "text-green-600"}`}>
-                      {formatCurrency(solde)}
+                      {solde === 0 ? "Soldé" : formatCurrency(solde)}
                     </td>
                     <td className="px-4 py-3 text-right text-sm text-purple-600">{formatCurrency(commission)}</td>
                     <td className="px-4 py-3 text-center">

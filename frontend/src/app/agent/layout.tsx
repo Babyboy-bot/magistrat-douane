@@ -13,10 +13,9 @@ import {
   LogOut,
   Menu,
   X,
-  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useAuthStore } from "@/stores/auth-store";
 import { NotificationsDropdown } from "@/components/notifications-dropdown";
@@ -27,7 +26,6 @@ const navigation = [
   { name: "Assurés / Prospects", href: "/agent/clients", icon: Users },
   { name: "Émissions", href: "/agent/emissions", icon: FileSpreadsheet },
   { name: "Requêtes clients", href: "/agent/requests", icon: ClipboardList },
-  { name: "Sinistres", href: "/agent/sinistres", icon: AlertTriangle },
   { name: "MAGIST'ASSUR", href: "/agent/magistassur", icon: Heart },
 ];
 
@@ -75,6 +73,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
       <div className="p-4">
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10 bg-amber-400/20 border border-amber-400/30">
+            {user?.photo && <AvatarImage src={user.photo} alt="Photo" className="object-cover" />}
             <AvatarFallback className="bg-amber-400/20 text-amber-400 text-sm font-semibold">
               {initials}
             </AvatarFallback>
@@ -172,6 +171,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
                 {user?.nom} {user?.prenoms}
               </span>
               <Avatar className="h-8 w-8">
+                {user?.photo && <AvatarImage src={user.photo} alt="Photo" className="object-cover" />}
                 <AvatarFallback className="bg-[hsl(222,47%,20%)] text-white text-xs">
                   {initials}
                 </AvatarFallback>

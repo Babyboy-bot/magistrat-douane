@@ -6,6 +6,7 @@ import threading
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 from django.forms.models import model_to_dict
+from django.db.models.fields.files import FieldFile
 
 _audit_ctx = threading.local()
 
@@ -31,7 +32,9 @@ def _serialize(instance):
     raw = model_to_dict(instance)
     result = {}
     for k, v in raw.items():
-        if hasattr(v, "pk"):
+        if isinstance(v, FieldFile):
+            result[k] = v.name if v.name else None
+        elif hasattr(v, "pk"):
             result[k] = v.pk
         elif hasattr(v, "__iter__") and not isinstance(v, (str, bytes)):
             result[k] = [x.pk if hasattr(x, "pk") else x for x in v]

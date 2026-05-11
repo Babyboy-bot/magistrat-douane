@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fmtDate } from "@/lib/utils";
 import {
   Users,
   Plus,
@@ -87,7 +88,11 @@ export default function AdminAgentsPage() {
   const [selectedAgent, setSelectedAgent] = useState<User | null>(null);
   const [form, setForm] = useState<AgentForm>({ ...emptyForm });
 
-  const agents = paginatedAgents.results ?? [];
+  const [localOverrides, setLocalOverrides] = useState<Map<string, boolean>>(new Map());
+
+  const agents = (paginatedAgents.results ?? []).map((a) =>
+    localOverrides.has(a.id) ? { ...a, is_active: localOverrides.get(a.id)! } : a
+  );
   const totalCount = paginatedAgents.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
@@ -196,8 +201,10 @@ export default function AdminAgentsPage() {
   };
 
   const handleToggle = async (agent: User) => {
+    const newStatus = !agent.is_active;
+    const action = newStatus ? "activé" : "désactivé";
+    setLocalOverrides((prev) => new Map(prev).set(agent.id, newStatus));
     try {
-      const newStatus = !agent.is_active;
       await agentsApi.update(Number(agent.id), {
         nom: agent.nom,
         prenoms: agent.prenoms,
@@ -205,11 +212,10 @@ export default function AdminAgentsPage() {
         telephone: agent.telephone,
         is_active: newStatus,
       });
-      
-      const action = newStatus ? "activé" : "désactivé";
       toast.success(`Agent ${agent.nom} ${agent.prenoms} ${action}`);
       refetchUsers();
     } catch (err: unknown) {
+      setLocalOverrides((prev) => { const m = new Map(prev); m.delete(agent.id); return m; });
       toast.error(err instanceof Error ? err.message : "Erreur lors de la modification");
     }
   };
@@ -252,7 +258,7 @@ export default function AdminAgentsPage() {
               <div className="space-y-4 pt-2">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Nom *</Label>
+                    <Label>Nom <span className="text-red-500">*</span></Label>
                     <Input
                       value={form.nom}
                       onChange={(e) => setForm({ ...form, nom: e.target.value })}
@@ -260,7 +266,7 @@ export default function AdminAgentsPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Prénoms *</Label>
+                    <Label>Prénoms <span className="text-red-500">*</span></Label>
                     <Input
                       value={form.prenoms}
                       onChange={(e) => setForm({ ...form, prenoms: e.target.value })}
@@ -269,7 +275,7 @@ export default function AdminAgentsPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Email *</Label>
+                  <Label>Email <span className="text-red-500">*</span></Label>
                   <Input
                     type="email"
                     value={form.email}
@@ -286,7 +292,7 @@ export default function AdminAgentsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Mot de passe *</Label>
+                  <Label>Mot de passe <span className="text-red-500">*</span></Label>
                   <Input
                     type="password"
                     value={form.password}
@@ -386,7 +392,7 @@ export default function AdminAgentsPage() {
               <div className="space-y-4 pt-2">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Nom *</Label>
+                    <Label>Nom <span className="text-red-500">*</span></Label>
                     <Input
                       value={form.nom}
                       onChange={(e) => setForm({ ...form, nom: e.target.value })}
@@ -394,7 +400,7 @@ export default function AdminAgentsPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Prénoms *</Label>
+                    <Label>Prénoms <span className="text-red-500">*</span></Label>
                     <Input
                       value={form.prenoms}
                       onChange={(e) => setForm({ ...form, prenoms: e.target.value })}
@@ -403,7 +409,7 @@ export default function AdminAgentsPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Email *</Label>
+                  <Label>Email <span className="text-red-500">*</span></Label>
                   <Input
                     type="email"
                     value={form.email}
@@ -534,7 +540,7 @@ export default function AdminAgentsPage() {
                   <div>
                     <span className="text-gray-400">Membre depuis</span>
                     <p className="font-semibold">
-                      {a.createdAt ? new Date(a.createdAt).toLocaleDateString('fr-FR') : '—'}
+                      {a.createdAt ? fmtDate(a.createdAt) : '—'}
                     </p>
                   </div>
                 </div>

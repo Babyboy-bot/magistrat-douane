@@ -49,7 +49,7 @@ class NotificationService:
     def send_notification_to_user(user_id, title, message, type='info', priority='medium', data=None):
         """Send notification to specific user via WebSocket."""
         try:
-            notification = Notification.objects.create_notification(
+            notification = Notification.create_notification(
                 user_id=user_id,
                 title=title,
                 message=message,

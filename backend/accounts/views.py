@@ -30,6 +30,7 @@ from .throttles import LoginRateThrottle
 from .audit import (
     log_login_success,
     log_login_failed,
+    log_logout,
     log_register,
     log_verify,
     log_password_change,
@@ -194,7 +195,7 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         log_register(user, get_client_ip(request))
-        log_user_action(request.user, user, "creation", {"role": user.role})
+        log_user_action(request.user, user, "creation", {"role": user.role}, ip=get_client_ip(request))
         send_welcome_email(user)
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
@@ -210,8 +211,13 @@ class LogoutView(APIView):
         if raw_refresh:
             try:
                 token = RefreshToken(raw_refresh)
+                user_id = token.get("user_id")
                 token.blacklist()
-            except TokenError:
+                if user_id:
+                    user_obj = User.objects.filter(pk=user_id).first()
+                    if user_obj:
+                        log_logout(user_obj, get_client_ip(request))
+            except (TokenError, Exception):
                 pass
         response = Response({"detail": "Déconnecté"}, status=status.HTTP_200_OK)
         return _clear_auth_cookies(response)
@@ -243,16 +249,17 @@ class MeView(generics.RetrieveUpdateAPIView):
     def perform_update(self, serializer):
         old_is_active = serializer.instance.is_active
         instance = serializer.save()
+        _ip = get_client_ip(self.request)
 
         if "is_active" in serializer.validated_data and instance.is_active != old_is_active:
             action = "activation" if instance.is_active else "deactivation"
             log_user_action(self.request.user, instance, action, {
                 "from": old_is_active,
                 "to": instance.is_active,
-            })
+            }, ip=_ip)
 
         if serializer.validated_data.get("password"):
-            log_user_action(self.request.user, instance, "password_reset", {})
+            log_user_action(self.request.user, instance, "password_reset", {}, ip=_ip)
 
 
 class ChangePasswordView(generics.GenericAPIView):
@@ -264,7 +271,7 @@ class ChangePasswordView(generics.GenericAPIView):
         request.user.set_password(serializer.validated_data["new_password"])
         request.user.save()
         log_password_change(request.user, get_client_ip(request))
-        log_user_action(request.user, request.user, "password_reset", {"self": True})
+        log_user_action(request.user, request.user, "password_reset", {"self": True}, ip=get_client_ip(request))
         return Response({"detail": "Mot de passe modifié avec succès"})
 
 
@@ -332,16 +339,17 @@ class AgentDetailView(generics.RetrieveUpdateAPIView):
     def perform_update(self, serializer):
         old_is_active = serializer.instance.is_active
         instance = serializer.save()
+        _ip = get_client_ip(self.request)
 
         if "is_active" in serializer.validated_data and instance.is_active != old_is_active:
             action = "activation" if instance.is_active else "deactivation"
             log_user_action(self.request.user, instance, action, {
                 "from": old_is_active,
                 "to": instance.is_active,
-            })
+            }, ip=_ip)
 
         if serializer.validated_data.get("password"):
-            log_user_action(self.request.user, instance, "password_reset", {})
+            log_user_action(self.request.user, instance, "password_reset", {}, ip=_ip)
 
 
 class AuditLogListView(generics.ListAPIView):
@@ -357,6 +365,35 @@ class AuditLogListView(generics.ListAPIView):
         if action:
             qs = qs.filter(action=action)
         return qs
+
+
+class AuditLogCsvExportView(APIView):
+    """Export all audit logs as CSV (admin only)."""
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        import csv
+        from django.http import HttpResponse
+        qs = UserAuditLog.objects.select_related("performed_by", "target_user").order_by("-created_at")
+        action = request.query_params.get("action")
+        if action:
+            qs = qs.filter(action=action)
+
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="audit_logs.csv"'
+        response.write("\ufeff")  # BOM pour Excel
+        writer = csv.writer(response)
+        writer.writerow(["Date", "Action", "Effectué par", "Cible", "IP", "Détails"])
+        for entry in qs:
+            writer.writerow([
+                entry.created_at.strftime("%d/%m/%Y %H:%M"),
+                entry.get_action_display(),
+                entry.performed_by.full_name if entry.performed_by else "Système",
+                entry.target_user.full_name if entry.target_user_id else "—",
+                entry.ip_address or "—",
+                json.dumps(entry.metadata, ensure_ascii=False) if entry.metadata else "",
+            ])
+        return response
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -435,7 +472,7 @@ def admin_delete_user_view(request, pk):
         name = target.full_name
         target.is_active = False
         target.save(update_fields=["is_active"])
-        log_user_action(request.user, target, "deactivation", {"reason": "admin_delete"})
+        log_user_action(request.user, target, "deactivation", {"reason": "admin_delete"}, ip=get_client_ip(request))
         return Response({"detail": f"Compte de {name} désactivé"})
     
     elif request.method == "PATCH":
@@ -445,17 +482,18 @@ def admin_delete_user_view(request, pk):
             old_is_active = target.is_active
             old_role = target.role
             serializer.save()
+            _ip = get_client_ip(request)
             if "is_active" in serializer.validated_data and target.is_active != old_is_active:
                 action = "activation" if target.is_active else "deactivation"
                 log_user_action(request.user, target, action, {
                     "from": old_is_active,
                     "to": target.is_active,
-                })
+                }, ip=_ip)
             if "role" in serializer.validated_data and target.role != old_role:
                 log_user_action(request.user, target, "role_change", {
                     "from": old_role,
                     "to": target.role,
-                })
+                }, ip=_ip)
             return Response(UserSerializer(target).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

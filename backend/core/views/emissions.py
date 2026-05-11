@@ -6,7 +6,7 @@ from io import BytesIO
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.db.models import DecimalField, F, Q, Sum, Value
+from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -116,6 +116,9 @@ class EmissionListCreateView(generics.ListCreateAPIView):
             )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        invalidate_emissions_cache(request.user.id)
+        if emission.client_id:
+            invalidate_emissions_cache(emission.client_id)
         return Response(EmissionSerializer(emission).data, status=status.HTTP_201_CREATED)
 
 
@@ -139,14 +142,22 @@ class EmissionDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def update(self, request, *args, **kwargs):
         self._check_write_permission()
+        emission = self.get_object()
+        client_id = emission.client_id
         response = super().update(request, *args, **kwargs)
         invalidate_emissions_cache(request.user.id)
+        if client_id:
+            invalidate_emissions_cache(client_id)
         return response
 
     def destroy(self, request, *args, **kwargs):
         self._check_write_permission()
+        emission = self.get_object()
+        client_id = emission.client_id
         response = super().destroy(request, *args, **kwargs)
         invalidate_emissions_cache(request.user.id)
+        if client_id:
+            invalidate_emissions_cache(client_id)
         return response
 
 
@@ -167,6 +178,9 @@ class PaiementCreateView(generics.CreateAPIView):
             )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        invalidate_emissions_cache(request.user.id)
+        if emission.client_id:
+            invalidate_emissions_cache(emission.client_id)
         return Response(PaiementSerializer(paiement).data, status=status.HTTP_201_CREATED)
 
 
@@ -197,9 +211,17 @@ def emission_totals_view(request):
         prime_nette=Coalesce(Sum("prime_nette"), Value(0, output_field=DecimalField())),
         prime_ttc=Coalesce(Sum("prime_ttc"), Value(0, output_field=DecimalField())),
         total_paye=Coalesce(Sum("paiements__montant_regle"), Value(0, output_field=DecimalField())),
+        commission=Coalesce(
+            Sum(
+                ExpressionWrapper(
+                    F("prime_nette") * F("taux_commission") / 100,
+                    output_field=DecimalField(),
+                )
+            ),
+            Value(0, output_field=DecimalField()),
+        ),
     )
     totals["solde"] = totals["prime_ttc"] - totals["total_paye"]
-    totals["commission"] = totals["prime_ttc"] - totals["prime_nette"]
     totals["count"] = qs.count()
     return Response(totals)
 

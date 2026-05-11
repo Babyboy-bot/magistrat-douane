@@ -1,9 +1,11 @@
 "use client";
 
 import { Wallet, AlertCircle, FileText, Car, Home, Shield, RefreshCw, AlertTriangle, Download, Eye, Clock, CheckCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useEffect } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientStats, useClientRequests } from "@/hooks/use-api-data";
 import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS, Emission, ClientRequest } from "@/lib/types";
@@ -41,8 +43,14 @@ function urgencyBadge(days: number) {
 export default function ClientDashboard() {
   const { user } = useAuthStore();
   const clientId = user?.id || "";
-  const { stats, emissions } = useClientStats(clientId);
+  const { stats, emissions, loading: statsLoading, refetch } = useClientStats(clientId);
   const { data: requests } = useClientRequests(clientId);
+
+  useEffect(() => {
+    const handler = () => refetch();
+    window.addEventListener("emission_paiement_updated", handler);
+    return () => window.removeEventListener("emission_paiement_updated", handler);
+  }, [refetch]);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("fr-FR").format(amount) + " FCFA";
@@ -175,7 +183,22 @@ export default function ClientDashboard() {
       )}
 
       {/* Stats cards - seulement pour les vérifiés */}
-      {user?.verified && (
+      {user?.verified && statsLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-7 w-40" />
+                </div>
+                <Skeleton className="h-12 w-12 rounded-xl" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {user?.verified && !statsLoading && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="border-0 shadow-sm">
             <CardContent className="pt-6">

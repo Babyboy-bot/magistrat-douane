@@ -36,6 +36,7 @@ class ContratEpargneSerializer(serializers.ModelSerializer):
     taux_interet = serializers.ReadOnlyField()
     pris_en_charge_nom = serializers.SerializerMethodField()
     piece_identite_url = serializers.SerializerMethodField()
+    piece_identite_verso_url = serializers.SerializerMethodField()
     rib_document_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -52,14 +53,17 @@ class ContratEpargneSerializer(serializers.ModelSerializer):
 
     def get_piece_identite_url(self, obj):
         if obj.piece_identite:
-            request = self.context.get("request")
-            return request.build_absolute_uri(obj.piece_identite.url) if request else obj.piece_identite.url
+            return obj.piece_identite.url
+        return None
+
+    def get_piece_identite_verso_url(self, obj):
+        if obj.piece_identite_verso:
+            return obj.piece_identite_verso.url
         return None
 
     def get_rib_document_url(self, obj):
         if obj.rib_document:
-            request = self.context.get("request")
-            return request.build_absolute_uri(obj.rib_document.url) if request else obj.rib_document.url
+            return obj.rib_document.url
         return None
 
     def get_prime_annuelle(self, obj):

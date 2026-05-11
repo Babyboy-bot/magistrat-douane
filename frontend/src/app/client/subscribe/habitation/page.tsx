@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Home, ArrowLeft, ArrowRight, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,41 +14,57 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuthStore } from "@/stores/auth-store";
 import { requestsApi } from "@/lib/api";
 import { toast } from "sonner";
+import {
+  mrhSouscripteurSchema,
+  mrhRisqueSchema,
+  type MRHSouscripteurValues,
+  type MRHRisqueValues,
+} from "@/lib/validations";
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="text-xs text-red-500 mt-1">{message}</p>;
+}
 
 export default function HabitationSubscriptionPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [step, setStep] = useState(1);
 
-  const [souscripteur, setSouscripteur] = useState({
-    nom: "",
-    profession: "",
-    adressePostale: "",
-    telephone: "",
-    qualite: "" as "proprietaire" | "locataire" | "",
+  const step1Form = useForm<MRHSouscripteurValues>({
+    resolver: zodResolver(mrhSouscripteurSchema),
+    defaultValues: { nom: "", profession: "", adressePostale: "", telephone: "", qualite: "" },
+  });
+
+  const step2Form = useForm<MRHRisqueValues>({
+    resolver: zodResolver(mrhRisqueSchema),
+    defaultValues: {
+      qualite: "",
+      nature: "",
+      nombreNiveaux: "",
+      situationGeographique: "",
+      valeurBatiment: "",
+      loyerMensuel: "",
+      valeurContenu: "",
+      nombrePieces: "",
+      superficieDeveloppee: "",
+    },
   });
 
   useEffect(() => {
     if (!user) return;
-    setSouscripteur(prev => ({
-      ...prev,
+    step1Form.reset({
       nom: `${user.nom || ""} ${user.prenoms || ""}`.trim(),
-      profession: user.profession || prev.profession,
-      telephone: user.telephone || prev.telephone,
-    }));
+      profession: user.profession || "",
+      adressePostale: "",
+      telephone: user.telephone || "",
+      qualite: "",
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  const [risque, setRisque] = useState({
-    nature: "" as "villa" | "appartement" | "niveau" | "",
-    nombreNiveaux: "",
-    situationGeographique: "",
-    valeurBatiment: "",
-    loyerMensuel: "",
-    valeurContenu: "",
-    nombrePieces: "",
-    superficieDeveloppee: "",
-  });
+  const qualiteValue = step1Form.watch("qualite");
+  const natureValue = step2Form.watch("nature");
 
   const [securite, setSecurite] = useState({
     moyensIncendie: "Néant",
@@ -71,9 +89,18 @@ export default function HabitationSubscriptionPage() {
 
   const [loading, setLoading] = useState(false);
 
+  const onStep1Next = step1Form.handleSubmit((data) => {
+    step2Form.setValue("qualite", data.qualite);
+    setStep(2);
+  });
+
+  const onStep2Next = step2Form.handleSubmit(() => setStep(3));
+
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      const souscripteur = step1Form.getValues();
+      const risque = step2Form.getValues();
       await requestsApi.create("souscription_mrh", {
         souscripteur,
         risque,
@@ -121,76 +148,58 @@ export default function HabitationSubscriptionPage() {
             <CardTitle className="text-lg">1 — Identification du souscripteur</CardTitle>
             <CardDescription>Informations pré-remplies, modifiables si nécessaire.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Nom & Prénoms *</Label>
-              <Input
-                value={souscripteur.nom}
-                onChange={(e) => setSouscripteur({ ...souscripteur, nom: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Profession *</Label>
-              <Input
-                value={souscripteur.profession}
-                onChange={(e) => setSouscripteur({ ...souscripteur, profession: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Adresse postale *</Label>
-              <Input
-                placeholder="Votre adresse"
-                value={souscripteur.adressePostale}
-                onChange={(e) => setSouscripteur({ ...souscripteur, adressePostale: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Téléphone *</Label>
-              <Input
-                value={souscripteur.telephone}
-                onChange={(e) => setSouscripteur({ ...souscripteur, telephone: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Qualité par rapport au bâtiment *</Label>
-              <div className="flex gap-6 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="qualite"
-                    checked={souscripteur.qualite === "proprietaire"}
-                    onChange={() => setSouscripteur({ ...souscripteur, qualite: "proprietaire" })}
-                    className="accent-[hsl(222,47%,20%)]"
-                  />
-                  <span className="text-sm">Propriétaire</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="qualite"
-                    checked={souscripteur.qualite === "locataire"}
-                    onChange={() => setSouscripteur({ ...souscripteur, qualite: "locataire" })}
-                    className="accent-[hsl(222,47%,20%)]"
-                  />
-                  <span className="text-sm">Locataire</span>
-                </label>
+          <CardContent>
+            <form onSubmit={onStep1Next} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Nom & Prénoms <span className="text-red-500">*</span></Label>
+                <Input {...step1Form.register("nom")} className={step1Form.formState.errors.nom ? "border-red-400" : ""} />
+                <FieldError message={step1Form.formState.errors.nom?.message} />
               </div>
-            </div>
-            <div className="flex justify-end pt-2">
-              <Button
-                onClick={() => {
-                  if (!souscripteur.nom.trim()) { toast.error("Le nom & prénoms est obligatoire"); return; }
-                  if (!souscripteur.profession.trim()) { toast.error("La profession est obligatoire"); return; }
-                  if (!souscripteur.adressePostale.trim()) { toast.error("L'adresse postale est obligatoire"); return; }
-                  if (!souscripteur.telephone.trim()) { toast.error("Le téléphone est obligatoire"); return; }
-                  if (!souscripteur.qualite) { toast.error("Veuillez sélectionner votre qualité (propriétaire / locataire)"); return; }
-                  setStep(2);
-                }}
-                className="bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)]"
-              >
-                Suivant <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
+              <div className="space-y-1.5">
+                <Label>Profession <span className="text-red-500">*</span></Label>
+                <Input {...step1Form.register("profession")} className={step1Form.formState.errors.profession ? "border-red-400" : ""} />
+                <FieldError message={step1Form.formState.errors.profession?.message} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Adresse postale <span className="text-red-500">*</span></Label>
+                <Input placeholder="Votre adresse" {...step1Form.register("adressePostale")} className={step1Form.formState.errors.adressePostale ? "border-red-400" : ""} />
+                <FieldError message={step1Form.formState.errors.adressePostale?.message} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Téléphone <span className="text-red-500">*</span></Label>
+                <Input {...step1Form.register("telephone")} className={step1Form.formState.errors.telephone ? "border-red-400" : ""} />
+                <FieldError message={step1Form.formState.errors.telephone?.message} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Qualité par rapport au bâtiment <span className="text-red-500">*</span></Label>
+                <div className="flex gap-6 pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="proprietaire"
+                      {...step1Form.register("qualite")}
+                      className="accent-[hsl(222,47%,20%)]"
+                    />
+                    <span className="text-sm">Propriétaire</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="locataire"
+                      {...step1Form.register("qualite")}
+                      className="accent-[hsl(222,47%,20%)]"
+                    />
+                    <span className="text-sm">Locataire</span>
+                  </label>
+                </div>
+                <FieldError message={step1Form.formState.errors.qualite?.message} />
+              </div>
+              <div className="flex justify-end pt-2">
+                <Button type="submit" className="bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)]">
+                  Suivant <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       )}
@@ -201,110 +210,75 @@ export default function HabitationSubscriptionPage() {
           <CardHeader>
             <CardTitle className="text-lg">2 — Identification du risque</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Nature du risque *</Label>
-              <div className="flex gap-4 pt-1 flex-wrap">
-                {(["villa", "appartement", "niveau"] as const).map((n) => (
-                  <label key={n} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="nature"
-                      checked={risque.nature === n}
-                      onChange={() => setRisque({ ...risque, nature: n })}
-                      className="accent-[hsl(222,47%,20%)]"
-                    />
-                    <span className="text-sm capitalize">{n === "niveau" ? "Niveau (immeuble)" : n}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            {risque.nature === "niveau" && (
+          <CardContent>
+            <form onSubmit={onStep2Next} className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Nombre de niveaux *</Label>
-                <Input
-                  type="number"
-                  value={risque.nombreNiveaux}
-                  onChange={(e) => setRisque({ ...risque, nombreNiveaux: e.target.value })}
-                />
+                <Label>Nature du risque <span className="text-red-500">*</span></Label>
+                <div className="flex gap-4 pt-1 flex-wrap">
+                  {(["villa", "appartement", "niveau"] as const).map((n) => (
+                    <label key={n} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        value={n}
+                        {...step2Form.register("nature")}
+                        className="accent-[hsl(222,47%,20%)]"
+                      />
+                      <span className="text-sm capitalize">{n === "niveau" ? "Niveau (immeuble)" : n}</span>
+                    </label>
+                  ))}
+                </div>
+                <FieldError message={step2Form.formState.errors.nature?.message} />
               </div>
-            )}
-            <div className="space-y-1.5">
-              <Label>Situation géographique *</Label>
-              <Input
-                placeholder="Ex: Cocody Riviera 3, Abidjan"
-                value={risque.situationGeographique}
-                onChange={(e) => setRisque({ ...risque, situationGeographique: e.target.value })}
-              />
-            </div>
-            {souscripteur.qualite === "proprietaire" ? (
+              {natureValue === "niveau" && (
+                <div className="space-y-1.5">
+                  <Label>Nombre de niveaux <span className="text-red-500">*</span></Label>
+                  <Input type="number" min={1} {...step2Form.register("nombreNiveaux")} className={step2Form.formState.errors.nombreNiveaux ? "border-red-400" : ""} />
+                  <FieldError message={step2Form.formState.errors.nombreNiveaux?.message} />
+                </div>
+              )}
               <div className="space-y-1.5">
-                <Label>Valeur du bâtiment (FCFA) *</Label>
-                <Input
-                  type="number"
-                  placeholder="Ex: 80 000 000"
-                  value={risque.valeurBatiment}
-                  onChange={(e) => setRisque({ ...risque, valeurBatiment: e.target.value })}
-                />
+                <Label>Situation géographique <span className="text-red-500">*</span></Label>
+                <Input placeholder="Ex: Cocody Riviera 3, Abidjan" {...step2Form.register("situationGeographique")} className={step2Form.formState.errors.situationGeographique ? "border-red-400" : ""} />
+                <FieldError message={step2Form.formState.errors.situationGeographique?.message} />
               </div>
-            ) : (
+              {qualiteValue === "proprietaire" ? (
+                <div className="space-y-1.5">
+                  <Label>Valeur du bâtiment (FCFA) <span className="text-red-500">*</span></Label>
+                  <Input type="number" min={0} placeholder="Ex: 80 000 000" {...step2Form.register("valeurBatiment")} className={step2Form.formState.errors.valeurBatiment ? "border-red-400" : ""} />
+                  <FieldError message={step2Form.formState.errors.valeurBatiment?.message} />
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label>Loyer mensuel (FCFA) <span className="text-red-500">*</span></Label>
+                  <Input type="number" min={0} placeholder="Ex: 250 000" {...step2Form.register("loyerMensuel")} className={step2Form.formState.errors.loyerMensuel ? "border-red-400" : ""} />
+                  <FieldError message={step2Form.formState.errors.loyerMensuel?.message} />
+                </div>
+              )}
               <div className="space-y-1.5">
-                <Label>Loyer mensuel (FCFA) *</Label>
-                <Input
-                  type="number"
-                  placeholder="Ex: 250 000"
-                  value={risque.loyerMensuel}
-                  onChange={(e) => setRisque({ ...risque, loyerMensuel: e.target.value })}
-                />
+                <Label>Valeur du contenu (mobilier, appareils, effets personnels) <span className="text-red-500">*</span></Label>
+                <Input type="number" min={0} placeholder="Ex: 15 000 000" {...step2Form.register("valeurContenu")} className={step2Form.formState.errors.valeurContenu ? "border-red-400" : ""} />
+                <FieldError message={step2Form.formState.errors.valeurContenu?.message} />
               </div>
-            )}
-            <div className="space-y-1.5">
-              <Label>Valeur du contenu (mobilier, appareils, effets personnels) *</Label>
-              <Input
-                type="number"
-                placeholder="Ex: 15 000 000"
-                value={risque.valeurContenu}
-                onChange={(e) => setRisque({ ...risque, valeurContenu: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Nombre de pièces *</Label>
-                <Input
-                  type="number"
-                  value={risque.nombrePieces}
-                  onChange={(e) => setRisque({ ...risque, nombrePieces: e.target.value })}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Nombre de pièces <span className="text-red-500">*</span></Label>
+                  <Input type="number" min={1} {...step2Form.register("nombrePieces")} className={step2Form.formState.errors.nombrePieces ? "border-red-400" : ""} />
+                  <FieldError message={step2Form.formState.errors.nombrePieces?.message} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Superficie développée (m²)</Label>
+                  <Input type="number" min={0} placeholder="Optionnel" {...step2Form.register("superficieDeveloppee")} />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Superficie développée (m²)</Label>
-                <Input
-                  type="number"
-                  placeholder="Optionnel"
-                  value={risque.superficieDeveloppee}
-                  onChange={(e) => setRisque({ ...risque, superficieDeveloppee: e.target.value })}
-                />
+              <div className="flex justify-between pt-2">
+                <Button type="button" variant="outline" onClick={() => setStep(1)} disabled={loading}>
+                  <ArrowLeft className="h-4 w-4 mr-2" /> Précédent
+                </Button>
+                <Button type="submit" className="bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)]" disabled={loading}>
+                  Suivant <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
               </div>
-            </div>
-            <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={() => setStep(1)} disabled={loading}>
-                <ArrowLeft className="h-4 w-4 mr-2" /> Précédent
-              </Button>
-              <Button
-                onClick={() => {
-                  if (!risque.nature) { toast.error("Veuillez sélectionner la nature du risque"); return; }
-                  if (!risque.situationGeographique.trim()) { toast.error("La situation géographique est obligatoire"); return; }
-                  if (souscripteur.qualite === "proprietaire" && !risque.valeurBatiment) { toast.error("La valeur du bâtiment est obligatoire"); return; }
-                  if (souscripteur.qualite === "locataire" && !risque.loyerMensuel) { toast.error("Le loyer mensuel est obligatoire"); return; }
-                  if (!risque.valeurContenu) { toast.error("La valeur du contenu est obligatoire"); return; }
-                  if (!risque.nombrePieces) { toast.error("Le nombre de pièces est obligatoire"); return; }
-                  setStep(3);
-                }}
-                className="bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)]" disabled={loading}
-              >
-                Suivant <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
+            </form>
           </CardContent>
         </Card>
       )}
@@ -321,7 +295,7 @@ export default function HabitationSubscriptionPage() {
               <Input value="Néant" disabled className="bg-gray-50" />
             </div>
             <div className="space-y-1.5">
-              <Label>Moyens de sécurité contre le vol *</Label>
+              <Label>Moyens de sécurité contre le vol <span className="text-red-500">*</span></Label>
               <Select
                 value={securite.moyensVol}
                 onValueChange={(v) => setSecurite({ ...securite, moyensVol: v as "oui" | "non" })}

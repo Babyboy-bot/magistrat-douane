@@ -85,6 +85,22 @@ def notify_client_paiement(emission, montant_regle, solde_restant) -> None:
     _send(f"user_{emission.client_id}_notifications", payload)
 
 
+def notify_client_emission_created(emission) -> None:
+    """Notifie le client qu'une nouvelle émission a été créée pour lui."""
+    if not emission.client_id:
+        return
+    fmt = lambda v: f"{v:,.0f}".replace(",", " ")
+    payload = {
+        "event": "emission_created",
+        "emission_id": emission.id,
+        "num_police": emission.num_police or f"#{emission.id}",
+        "risque": emission.risque or "",
+        "compagnie": emission.compagnie or "",
+        "prime_ttc": float(emission.prime_ttc or 0),
+    }
+    _send(f"user_{emission.client_id}_notifications", payload)
+
+
 def notify_client_livrable_added(request_obj, document_obj) -> None:
     """Notifie le client qu'un nouveau document est disponible pour lui."""
     payload = {
