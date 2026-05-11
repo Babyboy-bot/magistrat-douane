@@ -70,8 +70,8 @@ def _set_auth_cookies(response, access: str, refresh: str):
 
 def _clear_auth_cookies(response):
     """Delete both auth cookies."""
-    response.delete_cookie(conf.ACCESS_TOKEN_COOKIE, path=conf.COOKIE_PATH)
-    response.delete_cookie(conf.REFRESH_TOKEN_COOKIE, path=conf.COOKIE_PATH)
+    response.delete_cookie(conf.ACCESS_TOKEN_COOKIE, path=conf.COOKIE_PATH, samesite=conf.COOKIE_SAMESITE)
+    response.delete_cookie(conf.REFRESH_TOKEN_COOKIE, path=conf.COOKIE_PATH, samesite=conf.COOKIE_SAMESITE)
     return response
 
 

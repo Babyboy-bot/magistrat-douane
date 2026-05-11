@@ -102,6 +102,7 @@ export const apiFetch = async <T = unknown>(
     if (refreshed) {
       res = await fetch(url(path), init());
     } else {
+      fetch(`${API_BASE}/api/auth/logout/`, { method: "POST", credentials: "include" }).catch(() => {});
       localStorage.removeItem("auth-storage");
       const publicPaths = ["/login", "/register", "/reset-password"];
       const isPublic = publicPaths.some((p) => window.location.pathname.startsWith(p));
