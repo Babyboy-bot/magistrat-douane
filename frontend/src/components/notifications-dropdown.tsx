@@ -219,20 +219,6 @@ export function NotificationsDropdown() {
             )}
           </div>
 
-          {/* Footer */}
-          <div className="p-3 border-t border-gray-200">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full text-blue-600 hover:text-blue-700"
-              onClick={() => {
-                // Later: redirect to full notifications page
-                console.log("Voir toutes les notifications");
-              }}
-            >
-              Voir toutes les notifications
-            </Button>
-          </div>
         </div>
       )}
     </div>
