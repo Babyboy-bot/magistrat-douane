@@ -354,14 +354,8 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
         const existingIds = new Set(prev.map((n) => n.id));
         const newOnes = unread.filter((n) => !existingIds.has(n.id));
         if (newOnes.length === 0) return prev;
-        newOnes.forEach((n) => {
-          if (_shownToastIds.has(n.id)) return;
-          _shownToastIds.add(n.id);
-          playNotificationSound(n.type);
-          if (n.type === "success") toast.success(n.title, { description: n.message });
-          else if (n.type === "error") toast.error(n.title, { description: n.message });
-          else toast.info(n.title, { description: n.message });
-        });
+        // Sync silencieuse : mise à jour du badge/dropdown uniquement, pas de toast
+        // Les toasts sont réservés aux notifications reçues en temps réel via WS
         const next = [...newOnes, ...prev].slice(0, 50);
         if (userId) _notifCache.set(userId, next);
         return next;
