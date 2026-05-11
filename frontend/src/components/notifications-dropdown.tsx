@@ -24,8 +24,10 @@ function getRedirectUrl(notif: AppNotification, role?: string): string | null {
       return requestId ? `/client/history?id=${requestId}` : "/client/history";
     return requestId ? `/agent/requests?id=${requestId}` : "/agent/requests";
   }
-  if (event === "request_treated")
+  if (event === "request_treated" || event === "sinistre_cloture" || event === "attestations_envoyees" || event === "devis_envoye" || event === "request_claimed")
     return requestId ? `/client/history?id=${requestId}` : "/client/history";
+  if (event === "devis_valide" || event === "devis_revision" || event === "devis_refuse")
+    return requestId ? `/agent/requests?id=${requestId}` : "/agent/requests";
   if (event === "livrable_added")
     return requestId ? `/client/documents?request=${requestId}` : "/client/documents";
   if (event === "emission_created" || event === "emission_paiement")

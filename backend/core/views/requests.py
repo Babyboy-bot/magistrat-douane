@@ -122,7 +122,7 @@ def claim_request_view(request, pk):
             ),
             type="info",
             priority="medium",
-            data={"request_id": req.id, "numero": req.numero, "agent_telephone": tel},
+            data={"event": "request_claimed", "request_id": req.id, "numero": req.numero, "agent_telephone": tel},
         )
     except Exception:
         pass
