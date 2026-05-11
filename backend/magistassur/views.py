@@ -22,7 +22,7 @@ from .models import (
 )
 
 
-def _notify_client_epargne(contrat, title, message, notif_type="info"):
+def _notify_client_epargne(contrat, title, message, notif_type="info", contrat_type="epargne"):
     try:
         if contrat.client_id:
             from notifications.models import Notification
@@ -33,6 +33,7 @@ def _notify_client_epargne(contrat, title, message, notif_type="info"):
             try:
                 send_notification_to_user(contrat.client_id, {
                     "event": "magist_assur", "id": str(notif.id),
+                    "contrat_id": str(contrat.id), "contrat_type": contrat_type,
                     "title": title, "message": message, "type": notif_type,
                 })
             except Exception:
@@ -41,7 +42,7 @@ def _notify_client_epargne(contrat, title, message, notif_type="info"):
         pass
 
 
-def _notify_agents_epargne(contrat, title, message):
+def _notify_agents_epargne(contrat, title, message, contrat_type="epargne"):
     try:
         from accounts.models import User
         from notifications.models import Notification
@@ -54,6 +55,7 @@ def _notify_agents_epargne(contrat, title, message):
             try:
                 send_notification_to_user(agent.id, {
                     "event": "magist_assur", "id": str(notif.id),
+                    "contrat_id": str(contrat.id), "contrat_type": contrat_type,
                     "title": title, "message": message, "type": "info",
                 })
             except Exception:

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { fmtDate } from "@/lib/utils";
 import { Shield, Search, TrendingUp, Heart, RefreshCw, ChevronDown, ChevronRight, Clock, CheckCircle2, KeyRound, Settings2, FileSpreadsheet, FileDown, Lock as LockIcon, FileText, CreditCard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,6 +52,9 @@ type PoliceForm = { numPolice: string; codeInspection: string; dateEffet: string
 
 export default function AgentMagistAssurPage() {
   const { isAuthenticated, user } = useAuthStore();
+  const searchParams = useSearchParams();
+  const targetContratId = searchParams.get("contrat");
+  const targetContratType = searchParams.get("type");
   const [tab, setTab] = useState<"attente" | "dossiers">("attente");
   const [search, setSearch] = useState("");
   const [loadingEpargne, setLoadingEpargne] = useState(false);
@@ -103,6 +107,28 @@ export default function AgentMagistAssurPage() {
     loadEpargne();
     loadPrevoyance();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!targetContratId) return;
+    const isPrev = targetContratType === "prevoyance";
+    const allContrats = isPrev ? prevoyances : epargnes;
+    if (allContrats.length === 0) return;
+    const found = allContrats.find((c) => String(c.id) === String(targetContratId));
+    if (!found) return;
+    const prefix = isPrev ? "p-" : "e-";
+    const hasPolice = !!(found as ContratEpargne).numPolice || !!(found as ContratPrevoyance).numPolice;
+    if (hasPolice) {
+      setTab("dossiers");
+      setExpandedDossierId(String(found.clientId));
+    } else {
+      setTab("attente");
+      setExpandedAttenteId(String(found.clientId));
+    }
+    setExpandedId(prefix + targetContratId);
+    setTimeout(() => {
+      document.getElementById(`contrat-${targetContratId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 250);
+  }, [targetContratId, targetContratType, epargnes, prevoyances]);
 
   const getForm = (id: string): PoliceForm =>
     policeForms[id] ?? { numPolice: "", codeInspection: "", dateEffet: "", loading: false };
@@ -387,7 +413,7 @@ export default function AgentMagistAssurPage() {
                             </p>
                             <div className="divide-y divide-orange-100">
                               {d.epargnes.map(e => (
-                                <div key={e.id}>
+                                <div key={e.id} id={`contrat-${e.id}`}>
                                   <button className="w-full text-left p-4 hover:bg-orange-50 transition flex items-center justify-between"
                                     onClick={() => setExpandedId(expandedId === "e-" + e.id ? null : "e-" + e.id)}>
                                     <div className="flex items-center gap-3">

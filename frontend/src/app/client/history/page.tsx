@@ -7,7 +7,8 @@ import { requestsApi } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientRequests } from "@/hooks/use-api-data";
 import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS, COTATION_TYPES } from "@/lib/types";
@@ -23,8 +24,17 @@ function buildFileUrl(fichier: string): string {
 export default function HistoryPage() {
   const { user } = useAuthStore();
   const { data: requests, loading, refetch } = useClientRequests(user?.id || "");
+  const searchParams = useSearchParams();
+  const targetId = searchParams.get("id");
   const [search, setSearch] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!targetId || loading || requests.length === 0) return;
+    setTimeout(() => {
+      document.getElementById(`request-${targetId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
+  }, [targetId, loading, requests]);
   const [cotationAction, setCotationAction] = useState<{ id: string; action: "valider" | "revision" | "refuser" } | null>(null);
   const [cotationNote, setCotationNote] = useState("");
   const [cotationLoading, setCotationLoading] = useState(false);
@@ -182,7 +192,7 @@ export default function HistoryPage() {
           </>
         )}
         {!loading && filtered.map((r) => (
-          <Card key={r.id} className="border-0 shadow-sm hover:shadow-md transition">
+          <Card key={r.id} id={`request-${r.id}`} className={`border-0 shadow-sm hover:shadow-md transition ${String(r.id) === String(targetId) ? "ring-2 ring-blue-400 bg-blue-50" : ""}`}>
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">

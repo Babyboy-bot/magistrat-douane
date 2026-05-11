@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Car, Home, Eye, EyeOff, Search, CheckCircle2, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,15 +15,30 @@ import { parseDisplayDate } from "@/lib/utils";
 export default function PortfolioPage() {
   const { user } = useAuthStore();
   const { data: emissions, loading, refetch } = useClientEmissions(user?.id || "");
+  const searchParams = useSearchParams();
+  const targetEmissionId = searchParams.get("emission");
 
   useEffect(() => {
     const handler = () => refetch();
     window.addEventListener("emission_paiement_updated", handler);
     return () => window.removeEventListener("emission_paiement_updated", handler);
   }, [refetch]);
+
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"actifs" | "soldes">("actifs");
+
+  useEffect(() => {
+    if (!targetEmissionId || loading || emissions.length === 0) return;
+    const target = emissions.find((e) => String(e.id) === String(targetEmissionId));
+    if (!target) return;
+    const solde = target.solde ?? (target.primeTTC - target.totalPaye);
+    setTab(solde <= 0 ? "soldes" : "actifs");
+    setExpandedId(String(targetEmissionId));
+    setTimeout(() => {
+      document.getElementById(`emission-${targetEmissionId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
+  }, [targetEmissionId, loading, emissions]);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("fr-FR").format(amount) + " FCFA";
@@ -131,8 +147,9 @@ export default function PortfolioPage() {
                   const solde = e.solde ?? (e.primeTTC - e.totalPaye);
                   const isExpanded = expandedId === e.id;
 
+                  const isHighlighted = String(e.id) === String(targetEmissionId);
                   return (
-                    <tr key={e.id} className="border-b last:border-0 hover:bg-gray-50/50">
+                    <tr key={e.id} id={`emission-${e.id}`} className={`border-b last:border-0 hover:bg-gray-50/50 transition-colors ${isHighlighted ? "bg-blue-50 ring-2 ring-inset ring-blue-400" : ""}`}>
                       <td className="px-4 py-3 text-sm">{e.date}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">

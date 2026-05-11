@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ClipboardList,
   Search,
@@ -73,10 +73,24 @@ const today = new Date().toISOString().split("T")[0];
 
 export default function AgentRequestsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const targetId = searchParams.get("id");
   const { user } = useAuthStore();
   const { data: allRequests, loading: requestsLoading, refetch: refetchRequests } = useRequests();
   const [search, setSearch] = useState("");
   const [selectedRequest, setSelectedRequest] = useState<ClientRequest | null>(null);
+
+  useEffect(() => {
+    if (!targetId || requestsLoading || allRequests.length === 0) return;
+    const target = allRequests.find((r) => String(r.id) === String(targetId));
+    if (!target) return;
+    if (target.status === "traite" || target.status === "refuse") setActiveTab("traite");
+    else if (target.status === "en_cours") setActiveTab("en_cours");
+    else setActiveTab("disponibles");
+    setTimeout(() => {
+      document.getElementById(`request-${targetId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 200);
+  }, [targetId, requestsLoading, allRequests]);
   const [showDetail, setShowDetail] = useState(false);
   const [showEmission, setShowEmission] = useState(false);
   const [emissionLoading, setEmissionLoading] = useState(false);
@@ -316,11 +330,13 @@ export default function AgentRequestsPage() {
     request: ClientRequest;
   }) => {
     const isClaimedByOther = request.status === "en_cours" && request.agentId && request.agentId !== String(user?.id);
+    const isHighlighted = String(request.id) === String(targetId);
     return (
       <Card
+        id={`request-${request.id}`}
         className={`border-0 shadow-sm hover:shadow-md transition cursor-pointer ${
           isClaimedByOther ? "opacity-70" : ""
-        }`}
+        } ${isHighlighted ? "ring-2 ring-blue-400 bg-blue-50" : ""}`}
         onClick={() => openDetail(request)}
       >
         <CardContent className="p-4">

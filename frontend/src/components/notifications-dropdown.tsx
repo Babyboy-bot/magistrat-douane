@@ -11,13 +11,32 @@ import { useRouter } from "next/navigation";
 function getRedirectUrl(notif: AppNotification, role?: string): string | null {
   const event = notif.data?.event as string | undefined;
   if (!event) return null;
+
+  const requestId = notif.data?.request_id;
+  const emissionId = notif.data?.emission_id;
+  const contratId = notif.data?.contrat_id;
+  const contratType = notif.data?.contrat_type as string | undefined;
+
   if (event === "new_request") {
-    if (role !== "client" && notif.data?.type === "souscription_magist") return "/agent/magistassur";
-    return role === "client" ? "/client/history" : "/agent/requests";
+    if (role !== "client" && notif.data?.type === "souscription_magist")
+      return contratId ? `/agent/magistassur?contrat=${contratId}&type=epargne` : "/agent/magistassur";
+    if (role === "client")
+      return requestId ? `/client/history?id=${requestId}` : "/client/history";
+    return requestId ? `/agent/requests?id=${requestId}` : "/agent/requests";
   }
-  if (event === "request_treated") return "/client/history";
-  if (event === "livrable_added") return "/client/documents";
-  if (event === "magist_assur") return role === "client" ? null : "/agent/magistassur";
+  if (event === "request_treated")
+    return requestId ? `/client/history?id=${requestId}` : "/client/history";
+  if (event === "livrable_added")
+    return requestId ? `/client/documents?request=${requestId}` : "/client/documents";
+  if (event === "emission_created" || event === "emission_paiement")
+    return emissionId ? `/client/portfolio?emission=${emissionId}` : "/client/portfolio";
+  if (event === "magist_assur") {
+    if (role === "client")
+      return contratId && contratType ? `/client/subscribe/magist-assur?contrat=${contratId}&type=${contratType}` : null;
+    return contratId && contratType
+      ? `/agent/magistassur?contrat=${contratId}&type=${contratType}`
+      : "/agent/magistassur";
+  }
   return null;
 }
 
