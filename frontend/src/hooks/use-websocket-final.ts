@@ -211,6 +211,7 @@ function playNotificationSound(type: "info" | "success" | "warning" | "error") {
 // ── Cache module-level (survit aux remontages React) ────────────────────────
 const _notifCache = new Map<string, AppNotification[]>();
 const _loadedUsers = new Set<string>();
+const _shownToastIds = new Set<string>();
 
 export function useWebSocket(userId?: string): UseWebSocketReturn {
   const [notifications, setNotifications] = useState<AppNotification[]>(
@@ -354,6 +355,8 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
         const newOnes = unread.filter((n) => !existingIds.has(n.id));
         if (newOnes.length === 0) return prev;
         newOnes.forEach((n) => {
+          if (_shownToastIds.has(n.id)) return;
+          _shownToastIds.add(n.id);
           playNotificationSound(n.type);
           if (n.type === "success") toast.success(n.title, { description: n.message });
           else if (n.type === "error") toast.error(n.title, { description: n.message });
@@ -428,6 +431,7 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
         apiMarkAllRead();
         _loadedUsers.delete(userId);
         _notifCache.set(userId, []);
+        _shownToastIds.clear();
       }
       return [];
     });
@@ -439,6 +443,7 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
       saveReadIds(userId, readIdsRef.current);
       _loadedUsers.delete(userId);
       _notifCache.set(userId, []);
+      _shownToastIds.clear();
     }
     setNotifications([]);
   }, [userId]);
