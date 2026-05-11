@@ -84,8 +84,8 @@ export default function AgentRequestsPage() {
     if (!targetId || requestsLoading || allRequests.length === 0) return;
     const target = allRequests.find((r) => String(r.id) === String(targetId));
     if (!target) return;
-    if (target.status === "traite" || target.status === "refuse") setActiveTab("traite");
-    else if (target.status === "en_cours") setActiveTab("en_cours");
+    if (["traite", "refuse"].includes(target.status)) setActiveTab("traite");
+    else if (["en_cours", "devis_envoye", "en_revision", "valide"].includes(target.status)) setActiveTab("en_cours");
     else setActiveTab("disponibles");
     setTimeout(() => {
       document.getElementById(`request-${targetId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
