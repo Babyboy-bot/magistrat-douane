@@ -54,7 +54,14 @@ def send_payment_notifications(sender, instance: Paiement, created, **kwargs):
     montant = instance.montant_regle or Decimal(0)
     solde = emission.solde if emission else Decimal(0)
 
-    data = {
+    data_client = {
+        "event": "emission_paiement",
+        "emission_id": emission.id if emission else None,
+        "paiement_id": instance.id,
+        "reference": instance.reference,
+    }
+    data_agent = {
+        "event": "emission_paiement_agent",
         "emission_id": emission.id if emission else None,
         "paiement_id": instance.id,
         "reference": instance.reference,
@@ -70,7 +77,7 @@ def send_payment_notifications(sender, instance: Paiement, created, **kwargs):
             ),
             type="success",
             priority="medium",
-            data=data,
+            data=data_client,
         )
 
     if agent:
@@ -83,7 +90,7 @@ def send_payment_notifications(sender, instance: Paiement, created, **kwargs):
             ),
             type="info",
             priority="medium",
-            data=data,
+            data=data_agent,
         )
 
 
@@ -101,7 +108,7 @@ def store_previous_request_status(sender, instance: ClientRequest, **kwargs):
 
 @receiver(post_save, sender=ClientRequest, dispatch_uid="notifications_request_status")
 def send_request_notifications(sender, instance: ClientRequest, created, **kwargs):
-    data = {"request_id": instance.id, "numero": instance.numero, "type": instance.type}
+    data = {"event": "new_request", "request_id": instance.id, "numero": instance.numero, "type": instance.type}
 
     if created:
         notification_service.send_notification_to_role(

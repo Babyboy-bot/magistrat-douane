@@ -30,6 +30,8 @@ function getRedirectUrl(notif: AppNotification, role?: string): string | null {
     return requestId ? `/client/documents?request=${requestId}` : "/client/documents";
   if (event === "emission_created" || event === "emission_paiement")
     return emissionId ? `/client/portfolio?emission=${emissionId}` : "/client/portfolio";
+  if (event === "emission_paiement_agent")
+    return emissionId ? `/agent/emissions?emission=${emissionId}` : "/agent/emissions";
   if (event === "magist_assur") {
     if (role === "client")
       return contratId && contratType ? `/client/subscribe/magist-assur?contrat=${contratId}&type=${contratType}` : null;
