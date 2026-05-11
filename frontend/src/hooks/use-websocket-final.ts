@@ -326,9 +326,29 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
       if (!mountedRef.current) return;
       stopHeartbeat();
       setIsConnected(false);
-      // Ne pas retenter : démontage volontaire (1000) ou auth échouée (4401)
-      if (event.code === 1000 || event.code === 4401) {
+      // Démontage volontaire → on arrête
+      if (event.code === 1000) {
         setIsReconnecting(false);
+        return;
+      }
+      // Token expiré (4401) : tenter refresh puis reconnecter une fois
+      if (event.code === 4401) {
+        setIsReconnecting(true);
+        fetch(`${API_BASE}/api/auth/token/refresh/`, { method: "POST", credentials: "include" })
+          .then((r) => {
+            if (!mountedRef.current) return;
+            if (r.ok) {
+              // Token rafraîchi → reconnecter
+              reconnectAttempts.current = 0;
+              reconnectTimerRef.current = setTimeout(() => {
+                if (mountedRef.current) connect();
+              }, 500);
+            } else {
+              // Session définitivement expirée
+              setIsReconnecting(false);
+            }
+          })
+          .catch(() => { if (mountedRef.current) setIsReconnecting(false); });
         return;
       }
       // Retenter indéfiniment avec backoff exponentiel plafonné à 30s
