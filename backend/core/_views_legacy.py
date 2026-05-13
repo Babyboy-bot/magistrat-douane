@@ -453,7 +453,7 @@ class CompagnieListView(APIView):
         for name in COMPAGNIES_DATA:
             if search and search not in name.lower():
                 continue
-            results.append({"id": slugify(name), "name": name})
+            results.append(name)
         return Response(results)
 
 

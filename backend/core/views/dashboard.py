@@ -20,7 +20,7 @@ class CompagnieListView(APIView):
     def get(self, request):
         search = request.query_params.get("search", "").strip().lower()
         results = [
-            {"id": slugify(name), "name": name}
+            name
             for name in COMPAGNIES_DATA
             if not search or search in name.lower()
         ]

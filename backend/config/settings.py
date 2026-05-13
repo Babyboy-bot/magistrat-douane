@@ -26,7 +26,7 @@ SECRET_KEY = _secret
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = ['*'] if DEBUG else config(
     'ALLOWED_HOSTS',
-    default='127.0.0.1,localhost,localhost:8080,backend,django_backend',
+    default='127.0.0.1,localhost,localhost:8080,acs.localhost,backend,django_backend',
     cast=Csv()
 )
 
