@@ -150,7 +150,7 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
             try:
-                contrat = self.get_queryset().select_for_update().get(pk=pk)
+                contrat = ContratEpargne.objects.select_for_update().get(pk=pk)
             except ContratEpargne.DoesNotExist:
                 return Response({"detail": "Contrat introuvable."}, status=status.HTTP_404_NOT_FOUND)
             if (
@@ -347,7 +347,7 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
         with transaction.atomic():
             try:
-                contrat = self.get_queryset().select_for_update().get(pk=pk)
+                contrat = ContratPrevoyance.objects.select_for_update().get(pk=pk)
             except ContratPrevoyance.DoesNotExist:
                 return Response({"detail": "Contrat introuvable."}, status=status.HTTP_404_NOT_FOUND)
             if (
