@@ -1,4 +1,4 @@
-import { apiFetch } from "./client";
+import { apiFetch, downloadBlob } from "./client";
 import type { ContratEpargne, ContratPrevoyance } from "@/lib/types";
 
 type AssureAssocieType = "conjoint" | "enfant" | "pere" | "mere";
@@ -256,38 +256,18 @@ export const magistassurApi = {
   },
 
   async exportEpargneExcel(id: string): Promise<void> {
-    const res = await fetch(`/api/magistassur/epargne/${id}/export-excel/`, { credentials: "include" });
-    if (!res.ok) throw new Error("Erreur export Excel");
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `epargne_${id}.xlsx`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); window.URL.revokeObjectURL(url);
+    await downloadBlob(`/api/magistassur/epargne/${id}/export-excel/`, `epargne_${id}.xlsx`);
   },
 
   async exportEpargnePdf(id: string): Promise<void> {
-    const res = await fetch(`/api/magistassur/epargne/${id}/export-pdf/`, { credentials: "include" });
-    if (!res.ok) throw new Error("Erreur export PDF");
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `epargne_${id}.pdf`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); window.URL.revokeObjectURL(url);
+    await downloadBlob(`/api/magistassur/epargne/${id}/export-pdf/`, `epargne_${id}.pdf`);
   },
 
   async exportPrevoyanceExcel(id: string): Promise<void> {
-    const res = await fetch(`/api/magistassur/prevoyance/${id}/export-excel/`, { credentials: "include" });
-    if (!res.ok) throw new Error("Erreur export Excel");
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `prevoyance_${id}.xlsx`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); window.URL.revokeObjectURL(url);
+    await downloadBlob(`/api/magistassur/prevoyance/${id}/export-excel/`, `prevoyance_${id}.xlsx`);
   },
 
   async exportPrevoyancePdf(id: string): Promise<void> {
-    const res = await fetch(`/api/magistassur/prevoyance/${id}/export-pdf/`, { credentials: "include" });
-    if (!res.ok) throw new Error("Erreur export PDF");
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `prevoyance_${id}.pdf`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); window.URL.revokeObjectURL(url);
+    await downloadBlob(`/api/magistassur/prevoyance/${id}/export-pdf/`, `prevoyance_${id}.pdf`);
   },
 };

@@ -182,7 +182,7 @@ export default function AgentMagistAssurPage() {
       const updated = await magistassurApi.priseEnChargeEpargne(e.id);
       setEpargnes(prev => prev.map(x => x.id === e.id ? updated : x));
       toast.success(`Dossier pris en charge.`);
-    } catch { toast.error("Erreur prise en charge"); }
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Erreur prise en charge"); }
     finally { setPriseEnChargeLoading(null); }
   };
 
@@ -192,7 +192,7 @@ export default function AgentMagistAssurPage() {
       const updated = await magistassurApi.libererEpargne(e.id);
       setEpargnes(prev => prev.map(x => x.id === e.id ? updated : x));
       toast.success("Dossier libéré.");
-    } catch { toast.error("Erreur libération"); }
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Erreur libération"); }
     finally { setPriseEnChargeLoading(null); }
   };
 
@@ -202,7 +202,7 @@ export default function AgentMagistAssurPage() {
       const updated = await magistassurApi.priseEnChargePrevoyance(p.id);
       setPrevoyances(prev => prev.map(x => x.id === p.id ? updated : x));
       toast.success(`Dossier pris en charge.`);
-    } catch { toast.error("Erreur prise en charge"); }
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Erreur prise en charge"); }
     finally { setPriseEnChargeLoading(null); }
   };
 
@@ -212,7 +212,7 @@ export default function AgentMagistAssurPage() {
       const updated = await magistassurApi.libererPrevoyance(p.id);
       setPrevoyances(prev => prev.map(x => x.id === p.id ? updated : x));
       toast.success("Dossier libéré.");
-    } catch { toast.error("Erreur libération"); }
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Erreur libération"); }
     finally { setPriseEnChargeLoading(null); }
   };
 
@@ -747,7 +747,6 @@ export default function AgentMagistAssurPage() {
                                                     <SelectItem value="arrive_terme">Arrivé à terme</SelectItem>
                                                     <SelectItem value="rachete">Racheté</SelectItem>
                                                     <SelectItem value="suspendu">Suspendu</SelectItem>
-                                                    <SelectItem value="resilie">Résilié</SelectItem>
                                                     <SelectItem value="cloture">Clôturé (définitif)</SelectItem>
                                                   </SelectContent>
                                                 </Select>

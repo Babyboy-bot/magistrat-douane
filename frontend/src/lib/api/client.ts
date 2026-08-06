@@ -29,8 +29,18 @@ export function extractErrorMessage(data: unknown): string | undefined {
 }
 
 export async function downloadFile(url: string, nom: string): Promise<void> {
+  const doFetch = () => fetch(url, { credentials: "include" });
   try {
-    const res = await fetch(url, { credentials: "include" });
+    let res = await doFetch();
+    if (res.status === 401) {
+      const refreshed = await refreshOnce();
+      if (refreshed) {
+        res = await doFetch();
+      } else {
+        throw new Error("Session expirée");
+      }
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const blob = await res.blob();
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -43,6 +53,30 @@ export async function downloadFile(url: string, nom: string): Promise<void> {
   } catch {
     window.open(url, "_blank");
   }
+}
+
+export async function downloadBlob(path: string, nom: string): Promise<void> {
+  const url = `${API_BASE}${path}`;
+  const doFetch = () => fetch(url, { credentials: "include" });
+  let res = await doFetch();
+  if (res.status === 401) {
+    const refreshed = await refreshOnce();
+    if (refreshed) {
+      res = await doFetch();
+    } else {
+      throw new Error("Session expirée");
+    }
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = nom;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(blobUrl);
 }
 
 // ── Token refresh (race-condition safe) ──────────────────────────────────────

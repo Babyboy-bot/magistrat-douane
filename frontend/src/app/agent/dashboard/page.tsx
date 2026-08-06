@@ -33,16 +33,20 @@ export default function AgentDashboard() {
   }, []);
 
   const totalContrats = epargne.length + prevoyance.length;
-  const enAttente = [...epargne, ...prevoyance].filter((c) => c.statut === "en_attente").length;
-  const enCours = [...epargne, ...prevoyance].filter((c) => c.statut === "en_cours" || c.statut === "en_revision").length;
-  const actifs = [...epargne, ...prevoyance].filter((c) => c.statut === "actif").length;
+  const enAttente = [...epargne, ...prevoyance].filter((c) => !(c as Record<string, unknown>).numPolice).length;
+  const actifs = [...epargne, ...prevoyance].filter((c) => (c as Record<string, unknown>).numPolice && (c as Record<string, unknown>).statut === "en_cours").length;
+  const autres = [...epargne, ...prevoyance].filter((c) => (c as Record<string, unknown>).numPolice && (c as Record<string, unknown>).statut !== "en_cours").length;
 
-  const statutBadge = (statut: string) => {
+  const statutBadge = (statut: string, hasPolice?: boolean) => {
+    if (!hasPolice) return <Badge className="bg-orange-100 text-orange-800">En attente</Badge>;
     switch (statut) {
-      case "en_attente": return <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>;
-      case "en_cours": return <Badge className="bg-blue-100 text-blue-800">En cours</Badge>;
-      case "en_revision": return <Badge className="bg-orange-100 text-orange-800">En révision</Badge>;
-      case "actif": return <Badge className="bg-green-100 text-green-800">Actif</Badge>;
+      case "en_cours": return <Badge className="bg-green-100 text-green-800">En cours</Badge>;
+      case "rachete": return <Badge className="bg-orange-100 text-orange-800">Racheté</Badge>;
+      case "arrive_terme": return <Badge className="bg-blue-100 text-blue-800">Arrivé à terme</Badge>;
+      case "suspendu": return <Badge className="bg-yellow-100 text-yellow-800">Suspendu</Badge>;
+      case "sinistre": return <Badge className="bg-red-100 text-red-800">Sinistre</Badge>;
+      case "expire": return <Badge className="bg-gray-100 text-gray-600">Expiré</Badge>;
+      case "resilie": return <Badge className="bg-red-100 text-red-800">Résilié</Badge>;
       case "cloture": return <Badge className="bg-gray-100 text-gray-800">Clôturé</Badge>;
       default: return <Badge className="bg-gray-100 text-gray-800">{statut}</Badge>;
     }
@@ -107,11 +111,11 @@ export default function AgentDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">En traitement</p>
-                  <p className="text-3xl font-bold text-blue-600 mt-1">{enCours}</p>
+                  <p className="text-sm text-gray-500 font-medium">Contrats actifs</p>
+                  <p className="text-3xl font-bold text-green-600 mt-1">{actifs}</p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <AlertCircle className="h-6 w-6 text-blue-600" />
+                <div className="h-12 w-12 rounded-xl bg-green-50 flex items-center justify-center">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
                 </div>
               </div>
             </CardContent>
@@ -121,11 +125,11 @@ export default function AgentDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">Contrats actifs</p>
-                  <p className="text-3xl font-bold text-green-600 mt-1">{actifs}</p>
+                  <p className="text-sm text-gray-500 font-medium">Autres statuts</p>
+                  <p className="text-3xl font-bold text-gray-500 mt-1">{autres}</p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-green-50 flex items-center justify-center">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
+                <div className="h-12 w-12 rounded-xl bg-gray-100 flex items-center justify-center">
+                  <AlertCircle className="h-6 w-6 text-gray-500" />
                 </div>
               </div>
             </CardContent>
@@ -185,7 +189,7 @@ export default function AgentDashboard() {
                     <p className="text-xs text-gray-500">{c.clientNom as string || "Client"}</p>
                   </div>
                 </div>
-                {statutBadge(c.statut as string)}
+                {statutBadge(c.statut as string, Boolean(c.numPolice))}
               </div>
             ))}
             {prevoyance.slice(0, 3).map((c) => (
@@ -199,7 +203,7 @@ export default function AgentDashboard() {
                     <p className="text-xs text-gray-500">{c.clientNom as string || "Client"}</p>
                   </div>
                 </div>
-                {statutBadge(c.statut as string)}
+                {statutBadge(c.statut as string, Boolean(c.numPolice))}
               </div>
             ))}
             {totalContrats === 0 && (

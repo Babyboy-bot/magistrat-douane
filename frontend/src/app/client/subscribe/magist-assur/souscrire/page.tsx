@@ -266,6 +266,13 @@ export default function SouscrirePage() {
       email_personnel: user.email || "",
       profession_detail: user.profession || "",
     }));
+    setCorresp1(p => ({
+      ...p,
+      nom: user.nom || "",
+      prenom: user.prenoms || "",
+      telephone: user.telephone || "",
+      email: user.email || "",
+    }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -292,11 +299,20 @@ export default function SouscrirePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id.date_naissance]);
 
+  useEffect(() => {
+    if (cot.date_premiere_cotisation && !cot.date_effet) {
+      setCot(prev => ({ ...prev, date_effet: prev.date_premiere_cotisation }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cot.date_premiere_cotisation]);
+
   const clearDraft = async () => {
     localStorage.removeItem(DRAFT_KEY);
     await deleteFileFromIndexedDB("pieceIdentite");
+    await deleteFileFromIndexedDB("pieceIdentiteVerso");
     await deleteFileFromIndexedDB("rib");
     setPieceIdentiteFile(null);
+    setPieceIdentiteVersoFile(null);
     setRibFile(null);
     setHasDraft(false);
     toast.success("Brouillon effacé.");
@@ -346,6 +362,7 @@ export default function SouscrirePage() {
       case "benef-epargne": {
         const hasAny = benefConjoint_e || benefEnfants_e || autresBenef_e.some(b => b.nom.trim());
         if (!hasAny) { toast.error("Désignez au moins un bénéficiaire."); return false; }
+        if (consentementDonnees === null) { toast.error("Veuillez indiquer votre consentement au traitement de vos données personnelles (OUI ou NON)."); return false; }
         for (let i = 0; i < autresBenef_e.length; i++) {
           const b = autresBenef_e[i];
           if (!b.nom.trim()) continue;
@@ -365,6 +382,14 @@ export default function SouscrirePage() {
           }
         }
         return true;
+      case "benef-prev": {
+        for (let i = 0; i < autresBenef_p.length; i++) {
+          const b = autresBenef_p[i];
+          if (!b.nom.trim()) continue;
+          if (!b.en_qualite_de.trim()) { toast.error(`Bénéficiaire prévoyance ${i + 1} — « En qualité de » est obligatoire.`); return false; }
+        }
+        return true;
+      }
       case "questionnaire": {
         if (!q.taille_cm) { toast.error("La taille est obligatoire."); return false; }
         if (!q.poids_kg) { toast.error("Le poids est obligatoire."); return false; }
@@ -427,7 +452,7 @@ export default function SouscrirePage() {
     setLoading(true);
     try {
       const montant = Number(cot.montant_cotisation) || 0;
-      await magistassurApi.createEpargne({
+      const epargneContrat = await magistassurApi.createEpargne({
         client: user.id, ...id,
         date_naissance: id.date_naissance || null,
         validite_piece: id.validite_piece || null,
@@ -445,43 +470,48 @@ export default function SouscrirePage() {
         beneficiaires: [
           ...(benefConjoint_e ? [{ conjoint_corps: true, enfants_nes: false, nom: "", taux_repartition: 0, domicile: "", adresse_postale: "", telephone: "", email: "", en_qualite_de: "Conjoint(e) du souscripteur" }] : []),
           ...(benefEnfants_e ? [{ conjoint_corps: false, enfants_nes: true, nom: "", taux_repartition: 0, domicile: "", adresse_postale: "", telephone: "", email: "", en_qualite_de: "Enfants nés ou à naître" }] : []),
-          ...autresBenef_e.filter(b => b.nom).map(b => ({ ...b, conjoint_corps: false, enfants_nes: false, taux_repartition: Number(b.taux_repartition) || 0 })),
+          ...autresBenef_e.filter(b => b.nom).map(b => ({ ...b, date_naissance: b.date_naissance || null, conjoint_corps: false, enfants_nes: false, taux_repartition: Number(b.taux_repartition) || 0 })),
         ],
         consentement_donnees: consentementDonnees,
       });
 
+      let prevoyanceError: string | null = null;
       if (garantieDeces || garantieFuneraires) {
-        await magistassurApi.createPrevoyance({
-          client: user.id, ...id,
-          date_naissance: id.date_naissance || null,
-          validite_piece: id.validite_piece || null,
-          ...((): Record<string, string> => {
-            const c = prevCorrespIdem ? corresp1 : prevCorresp;
-            return {
-              corresp_nom: c.nom, corresp_prenom: c.prenom,
-              corresp_domicile: c.domicile, corresp_adresse_postale: c.adresse_postale,
-              corresp_telephone: c.telephone, corresp_email: c.email,
-              corresp_whatsapp: c.whatsapp, corresp_facebook: c.facebook,
-              corresp_linkedin: c.linkedin, corresp_autres_reseaux: c.autres_reseaux,
-            };
-          })(),
-          garantie_prevoyance_deces: garantieDeces,
-          garantie_frais_funeraires: garantieFuneraires,
-          assures_associes: assuresAssocies.map(a => ({ ...a, date_naissance: a.date_naissance || null, montant_indemnite: ({ conjoint: 1_000_000, enfant: 500_000, pere: 750_000, mere: 750_000 })[a.lien_parente] })),
-          beneficiaires: [
-            ...(benefConjoint_p ? [{ conjoint_corps: true, enfants_nes: false, nom: "", taux_repartition: 0, telephone: "", en_qualite_de: "Conjoint(e)" }] : []),
-            ...(benefEnfants_p ? [{ conjoint_corps: false, enfants_nes: true, nom: "", taux_repartition: 0, telephone: "", en_qualite_de: "Enfants nés ou à naître" }] : []),
-            ...autresBenef_p.filter(b => b.nom).map(b => ({ ...b, conjoint_corps: false, enfants_nes: false, taux_repartition: Number(b.taux_repartition) || 0 })),
-          ],
-          questionnaire_medical: {
-            taille_cm: q.taille_cm ? Number(q.taille_cm) : null,
-            poids_kg: q.poids_kg ? Number(q.poids_kg) : null,
-            tension_arterielle: q.tension_arterielle, fumeur: q.fumeur,
-            cigarettes_par_jour: q.cigarettes_par_jour ? Number(q.cigarettes_par_jour) : null,
-            alcool: q.alcool, distractions: q.distractions, sport: q.sport, sport_titre: q.sport_titre,
-            invalidite: q.invalidite, invalidite_nature: q.invalidite_nature, invalidite_date: q.invalidite_date || null, antecedents,
-          },
-        });
+        try {
+          await magistassurApi.createPrevoyance({
+            client: user.id, ...id,
+            date_naissance: id.date_naissance || null,
+            validite_piece: id.validite_piece || null,
+            ...((): Record<string, string> => {
+              const c = prevCorrespIdem ? corresp1 : prevCorresp;
+              return {
+                corresp_nom: c.nom, corresp_prenom: c.prenom,
+                corresp_domicile: c.domicile, corresp_adresse_postale: c.adresse_postale,
+                corresp_telephone: c.telephone, corresp_email: c.email,
+                corresp_whatsapp: c.whatsapp, corresp_facebook: c.facebook,
+                corresp_linkedin: c.linkedin, corresp_autres_reseaux: c.autres_reseaux,
+              };
+            })(),
+            garantie_prevoyance_deces: garantieDeces,
+            garantie_frais_funeraires: garantieFuneraires,
+            assures_associes: assuresAssocies.map(a => ({ ...a, date_naissance: a.date_naissance || null, montant_indemnite: ({ conjoint: 1_000_000, enfant: 500_000, pere: 750_000, mere: 750_000 })[a.lien_parente] })),
+            beneficiaires: [
+              ...(benefConjoint_p ? [{ conjoint_corps: true, enfants_nes: false, nom: "", taux_repartition: 0, telephone: "", en_qualite_de: "Conjoint(e)" }] : []),
+              ...(benefEnfants_p ? [{ conjoint_corps: false, enfants_nes: true, nom: "", taux_repartition: 0, telephone: "", en_qualite_de: "Enfants nés ou à naître" }] : []),
+              ...autresBenef_p.filter(b => b.nom).map(b => ({ ...b, date_naissance: b.date_naissance || null, conjoint_corps: false, enfants_nes: false, taux_repartition: Number(b.taux_repartition) || 0 })),
+            ],
+            questionnaire_medical: {
+              taille_cm: q.taille_cm ? Number(q.taille_cm) : null,
+              poids_kg: q.poids_kg ? Number(q.poids_kg) : null,
+              tension_arterielle: q.tension_arterielle, fumeur: q.fumeur,
+              cigarettes_par_jour: q.cigarettes_par_jour ? Number(q.cigarettes_par_jour) : null,
+              alcool: q.alcool, distractions: q.distractions, sport: q.sport, sport_titre: q.sport_titre,
+              invalidite: q.invalidite, invalidite_nature: q.invalidite_nature, invalidite_date: q.invalidite_date || null, antecedents,
+            },
+          });
+        } catch (err) {
+          prevoyanceError = err instanceof Error ? err.message : "Erreur prévoyance";
+        }
       }
 
       const produits = ["Épargne", ...(garantieDeces ? ["Prévoyance Décès"] : []), ...(garantieFuneraires ? ["Frais Funéraires"] : [])];
@@ -493,16 +523,18 @@ export default function SouscrirePage() {
       });
 
       if (finalPieceFile || finalRibFile) {
-        const epargnes = await magistassurApi.listEpargne({ clientId: String(user.id) });
-        const latest = epargnes.sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-        if (latest) await magistassurApi.uploadDocumentsEpargne(latest.id, { pieceIdentite: finalPieceFile ?? undefined, pieceIdentiteVerso: finalPieceVersoFile ?? undefined, ribDocument: finalRibFile ?? undefined });
+        await magistassurApi.uploadDocumentsEpargne(epargneContrat.id, { pieceIdentite: finalPieceFile ?? undefined, pieceIdentiteVerso: finalPieceVersoFile ?? undefined, ribDocument: finalRibFile ?? undefined });
       }
       localStorage.removeItem(DRAFT_KEY);
       await deleteFileFromIndexedDB("pieceIdentite");
       await deleteFileFromIndexedDB("pieceIdentiteVerso");
       await deleteFileFromIndexedDB("rib");
-      const msg = (garantieDeces || garantieFuneraires) ? "MAGIST'ASSUR ÉPARGNE + PRÉVOYANCE soumis avec succès !" : "MAGIST'ASSUR ÉPARGNE soumis avec succès !";
-      toast.success(msg);
+      if (prevoyanceError) {
+        toast.warning(`Épargne soumis avec succès, mais la prévoyance a échoué : ${prevoyanceError}. Vous pourrez retenter la prévoyance séparément.`);
+      } else {
+        const msg = (garantieDeces || garantieFuneraires) ? "MAGIST'ASSUR ÉPARGNE + PRÉVOYANCE soumis avec succès !" : "MAGIST'ASSUR ÉPARGNE soumis avec succès !";
+        toast.success(msg);
+      }
       router.push("/client/dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de la souscription");

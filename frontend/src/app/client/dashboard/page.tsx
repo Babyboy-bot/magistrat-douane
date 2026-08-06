@@ -79,8 +79,8 @@ export default function ClientDashboard() {
     .slice(0, 5);
 
   const totalContrats = epargne.length + prevoyance.length;
-  const contratsEnAttente = [...epargne, ...prevoyance].filter((c) => c.statut === "en_attente").length;
-  const contratsActifs = [...epargne, ...prevoyance].filter((c) => c.statut === "actif" || c.statut === "en_cours").length;
+  const contratsEnAttente = [...epargne, ...prevoyance].filter((c) => !(c as Record<string, unknown>).numPolice).length;
+  const contratsActifs = [...epargne, ...prevoyance].filter((c) => (c as Record<string, unknown>).numPolice && (c as Record<string, unknown>).statut === "en_cours").length;
 
   return (
     <div className="space-y-6">
