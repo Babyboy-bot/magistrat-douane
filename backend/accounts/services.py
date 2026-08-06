@@ -60,11 +60,13 @@ def verify_prospect(target: User, agent: User) -> None:
 
 def reject_prospect(target: User, agent: User) -> None:
     """
-    Rejette un prospect : désactive son compte.
-    Lève ValueError si la cible n'est pas un prospect.
+    Rejette un prospect ou un client non vérifié : désactive son compte.
+    Lève ValueError si la cible est déjà vérifiée ou est un agent/admin.
     """
-    if target.role != "prospect":
-        raise ValueError("Seuls les prospects peuvent être rejetés.")
+    if target.role not in ("prospect", "client"):
+        raise ValueError("Seuls les prospects et clients non vérifiés peuvent être rejetés.")
+    if target.verified:
+        raise ValueError("Impossible de rejeter un compte déjà vérifié.")
     target.is_active = False
     target.save(update_fields=["is_active"])
     log_verify(agent, target, "reject")

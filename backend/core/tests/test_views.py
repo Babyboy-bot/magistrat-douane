@@ -175,9 +175,17 @@ class TestClientRequestView:
         assert resp.status_code == 201
         assert resp.data["numero"].startswith("RQ-")
 
-    def test_agent_treats_request(self, api_client, agent, client_request):
+    def test_agent_treats_sinistre_request(self, api_client, agent, client_user):
+        from core.models import ClientRequest
+        req = ClientRequest.objects.create(
+            client=client_user,
+            type="declaration_sinistre",
+            details={"nature": "accident"},
+            agent=agent,
+            status=ClientRequest.Status.EN_COURS,
+        )
         force_login(api_client, agent)
-        resp = api_client.post(f"/api/requests/{client_request.id}/treat/")
+        resp = api_client.post(f"/api/requests/{req.id}/treat/", {"note": "Clôturé"}, format="json")
         assert resp.status_code == 200
         assert resp.data["status"] == "traite"
 

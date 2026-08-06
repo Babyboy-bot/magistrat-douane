@@ -94,8 +94,11 @@ class Notification(models.Model):
         return notification
     
     @classmethod
-    def create_bulk_notifications(cls, users, title, message, type='info', priority='medium', data=None):
+    def create_bulk_notifications(cls, users, title, message, type='info', priority='medium', data=None, expires_in=None):
         """Create notifications for multiple users."""
+        expires_at = None
+        if expires_in:
+            expires_at = timezone.now() + timedelta(minutes=expires_in)
         notifications = []
         for user in users:
             notifications.append(cls(
@@ -104,9 +107,9 @@ class Notification(models.Model):
                 message=message,
                 type=type,
                 priority=priority,
-                data=data or {}
-            )
-        )
+                data=data or {},
+                expires_at=expires_at,
+            ))
         return cls.objects.bulk_create(notifications)
     
     @classmethod

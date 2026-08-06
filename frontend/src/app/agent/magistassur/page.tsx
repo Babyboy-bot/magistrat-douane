@@ -252,7 +252,7 @@ export default function AgentMagistAssurPage() {
   const isMyEpargne = (e: ContratEpargne) =>
     isAdmin || e.agentId === userId || e.prisEnChargeId === userId;
   const isMyPrevoyance = (p: ContratPrevoyance) =>
-    isAdmin || p.agentId === userId || p.prisEnChargeNom === `${user?.nom ?? ""} ${user?.prenoms ?? ""}`.trim();
+    isAdmin || p.agentId === userId || p.prisEnChargeId === userId;
 
   const match = (nom: string, police: string) =>
     !search || nom.toLowerCase().includes(search.toLowerCase()) || police.includes(search);

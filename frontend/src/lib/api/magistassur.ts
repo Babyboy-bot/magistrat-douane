@@ -145,6 +145,7 @@ function mapContratPrevoyance(r: Record<string, unknown>): ContratPrevoyance {
     correspTelephone: (r.corresp_telephone as string) || undefined,
     correspEmail: (r.corresp_email as string) || undefined,
     correspWhatsapp: (r.corresp_whatsapp as string) || undefined,
+    prisEnChargeId: r.pris_en_charge_par ? String(r.pris_en_charge_par) : undefined,
   };
 }
 
@@ -155,9 +156,13 @@ export const magistassurApi = {
     const q = new URLSearchParams();
     if (params?.clientId) q.append("client_id", params.clientId);
     if (params?.statut) q.append("statut", params.statut);
-    const url = q.toString() ? `/api/magistassur/epargne/?${q}` : "/api/magistassur/epargne/";
-    const raw = await apiFetch<Record<string, unknown>[]>(url);
-    return (raw || []).map(mapContratEpargne);
+    q.append("page_size", "200");
+    const url = `/api/magistassur/epargne/?${q}`;
+    const raw = await apiFetch<unknown>(url);
+    const arr = raw && typeof raw === "object" && "results" in raw
+      ? (Array.isArray((raw as { results: unknown }).results) ? (raw as { results: Record<string, unknown>[] }).results : [])
+      : (Array.isArray(raw) ? raw as Record<string, unknown>[] : []);
+    return arr.map(mapContratEpargne);
   },
 
   async createEpargne(data: Record<string, unknown>): Promise<ContratEpargne> {
@@ -174,9 +179,13 @@ export const magistassurApi = {
     const q = new URLSearchParams();
     if (params?.clientId) q.append("client_id", params.clientId);
     if (params?.statut) q.append("statut", params.statut);
-    const url = q.toString() ? `/api/magistassur/prevoyance/?${q}` : "/api/magistassur/prevoyance/";
-    const raw = await apiFetch<Record<string, unknown>[]>(url);
-    return (raw || []).map(mapContratPrevoyance);
+    q.append("page_size", "200");
+    const url = `/api/magistassur/prevoyance/?${q}`;
+    const raw = await apiFetch<unknown>(url);
+    const arr = raw && typeof raw === "object" && "results" in raw
+      ? (Array.isArray((raw as { results: unknown }).results) ? (raw as { results: Record<string, unknown>[] }).results : [])
+      : (Array.isArray(raw) ? raw as Record<string, unknown>[] : []);
+    return arr.map(mapContratPrevoyance);
   },
 
   async createPrevoyance(data: Record<string, unknown>): Promise<ContratPrevoyance> {

@@ -26,6 +26,8 @@ export default function ChangePage() {
   const { user } = useAuthStore();
   const [carteGriseFile, setCarteGriseFile] = useState<File | null>(null);
   const [carteGriseError, setCarteGriseError] = useState("");
+  const [nouveauNom, setNouveauNom] = useState("");
+  const [nouveauNomError, setNouveauNomError] = useState("");
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -62,11 +64,16 @@ export default function ChangePage() {
       setImmatError("Veuillez sélectionner ou saisir l'immatriculation concernée");
       return;
     }
+    if (values.changement === "nom" && !nouveauNom.trim()) {
+      setNouveauNomError("Veuillez saisir le nouveau nom");
+      return;
+    }
     if (!carteGriseFile) {
-      setCarteGriseError("Veuillez uploader la nouvelle carte grise");
+      setCarteGriseError(values.changement === "nom" ? "Veuillez uploader le justificatif (acte civil, acte de mariage...)" : "Veuillez uploader la nouvelle carte grise");
       return;
     }
     setImmatError("");
+    setNouveauNomError("");
     setCarteGriseError("");
     setLoading(true);
     try {
@@ -75,9 +82,13 @@ export default function ChangePage() {
         immatriculation: "changement_immatriculation",
       };
       const details: Record<string, unknown> = {};
+      if (values.changement === "nom") {
+        details.nouveau_nom = nouveauNom.trim();
+      }
       if (values.changement === "immatriculation") {
         details.immatriculation = immatriculationFinale.trim();
         if (selectedVehicle) {
+          details.emission_id = selectedVehicle.id;
           details.marque = selectedVehicle.marque;
           details.compagnie = selectedVehicle.compagnie;
           details.num_police = selectedVehicle.numPolice;
@@ -200,8 +211,21 @@ export default function ChangePage() {
               </div>
             )}
 
+            {changement === "nom" && (
+              <div className="space-y-1.5">
+                <Label>Nouveau nom complet <span className="text-red-500">*</span></Label>
+                <Input
+                  placeholder="Ex : KOUAMÉ Jean-Baptiste"
+                  value={nouveauNom}
+                  onChange={e => { setNouveauNom(e.target.value); setNouveauNomError(""); }}
+                  className={nouveauNomError ? "border-red-400" : ""}
+                />
+                {nouveauNomError && <p className="text-xs text-red-500">{nouveauNomError}</p>}
+              </div>
+            )}
+
             <div className="space-y-1.5">
-              <Label>Nouvelle carte grise <span className="text-red-500">*</span></Label>
+              <Label>{changement === "nom" ? "Justificatif (acte civil, mariage…)" : "Nouvelle carte grise"} <span className="text-red-500">*</span></Label>
               <input
                 ref={fileInputRef}
                 type="file"

@@ -26,8 +26,11 @@ def traiter_requete_magist(client_id, agent) -> None:
             req.agent = agent
             req.treated_at = timezone.now()
             req.save(update_fields=["status", "agent", "treated_at"])
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger("magistassur").warning(
+            "traiter_requete_magist failed for client_id=%s: %s", client_id, e
+        )
 
 
 # ── Épargne ──────────────────────────────────────────────────────────────────
@@ -76,8 +79,16 @@ def ajouter_cotisation_epargne(contrat: ContratEpargne, data: dict) -> Cotisatio
         raise ValueError("Cotisation impossible : le contrat n'est pas en cours.")
     if not contrat.num_police:
         raise ValueError("Cotisation impossible : numéro de police manquant.")
-    montant = data.get("montant", 0)
+    try:
+        from decimal import Decimal as _Decimal, InvalidOperation
+        montant = _Decimal(str(data.get("montant") or 0))
+    except (TypeError, ValueError, InvalidOperation):
+        raise ValueError("Le montant doit être un nombre valide.")
+    if montant <= 0:
+        raise ValueError("Le montant de cotisation doit être strictement positif.")
     date_echeance = data.get("date_echeance")
+    if not date_echeance:
+        raise ValueError("La date d'échéance est obligatoire.")
     cotisation = CotisationEpargne.objects.create(
         contrat=contrat,
         montant=montant,
@@ -118,7 +129,10 @@ def assigner_police_prevoyance(
         try:
             d = date_type.fromisoformat(date_effet_raw)
             contrat.date_effet = d
-            contrat.date_echeance = d.replace(year=d.year + 1)
+            try:
+                contrat.date_echeance = d.replace(year=d.year + 1)
+            except ValueError:
+                contrat.date_echeance = d.replace(year=d.year + 1, day=28)
         except ValueError:
             pass
     contrat.save(update_fields=["num_police", "code_inspection", "statut", "agent", "date_effet", "date_echeance"])

@@ -64,7 +64,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             profession_type=validated_data.get("profession_type", "autre"),
             telephone=validated_data.get("telephone", ""),
             telephone2=validated_data.get("telephone2", ""),
-            role="prospect",
+            role="client",
             verified=False,
         )
         return user
@@ -76,9 +76,10 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["nom", "prenoms", "profession", "telephone", "telephone2", "photo", "is_active", "password"]
+        fields = ["nom", "prenoms", "profession", "telephone", "telephone2", "photo", "is_active", "role", "password"]
         extra_kwargs = {
             'telephone': {'required': False, 'allow_blank': True},
+            'role': {'required': False},
         }
 
     def validate(self, attrs):
@@ -96,6 +97,34 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         if password:
             instance.set_password(password)
         
+        return super().update(instance, validated_data)
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """Serializer pour les self-updates via MeView. is_active exclu."""
+    password = serializers.CharField(write_only=True, required=False, min_length=8)
+    photo = serializers.FileField(required=False, allow_null=True)
+
+    class Meta:
+        model = User
+        fields = ["nom", "prenoms", "profession", "telephone", "telephone2", "photo", "password"]
+        extra_kwargs = {
+            'telephone': {'required': False, 'allow_blank': True},
+        }
+
+    def validate(self, attrs):
+        password = attrs.get('password')
+        if password and not self.instance.is_active:
+            raise serializers.ValidationError(
+                "Impossible de modifier le mot de passe d'un utilisateur inactif. "
+                "Veuillez d'abord réactiver le compte."
+            )
+        return attrs
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        if password:
+            instance.set_password(password)
         return super().update(instance, validated_data)
 
 

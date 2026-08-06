@@ -13,21 +13,24 @@ from .models import Emission, Paiement, ClientRequest, Document
 # ── Helpers async/sync ───────────────────────────────────────────────────────
 
 
-def _dispatch(task_func, sync_func, *args):
+def _dispatch(task_func, sync_fallback, *task_args):
     """
     Envoie une tâche via Celery si un broker est configuré,
-    sinon exécute en synchrone (mode dégradé / dev sans Redis).
+    sinon exécute le sync_fallback (une lambda ou callable sans argument).
+    task_args : les arguments sérialisables pour la tâche Celery (IDs).
+    sync_fallback : callable qui fait le travail directement avec les objets.
     """
     from django.conf import settings
     broker = getattr(settings, "CELERY_BROKER_URL", "")
     if broker:
         try:
-            task_func.delay(*args)
+            task_func.delay(*task_args)
             return
         except Exception:
             pass
+    # Fallback sync — sync_fallback est un callable prêt à l'emploi
     try:
-        sync_func(*args)
+        sync_fallback()
     except Exception:
         pass
 
@@ -39,8 +42,8 @@ def notify_new_request(request_obj: ClientRequest) -> None:
     """Envoie les emails et notifications WS après création d'une requête."""
     from notifications.tasks import send_request_acknowledgment_async, send_new_request_alert_async
     from notifications.emails import send_request_acknowledgment, send_new_request_alert_to_agents
-    _dispatch(send_request_acknowledgment_async, send_request_acknowledgment, request_obj.id)
-    _dispatch(send_new_request_alert_async, send_new_request_alert_to_agents, request_obj.id)
+    _dispatch(send_request_acknowledgment_async, lambda: send_request_acknowledgment(request_obj), request_obj.id)
+    _dispatch(send_new_request_alert_async, lambda: send_new_request_alert_to_agents(request_obj), request_obj.id)
     try:
         from notifications.ws import notify_agents_new_request
         notify_agents_new_request(request_obj)
@@ -52,7 +55,7 @@ def notify_request_treated(request_obj: ClientRequest) -> None:
     """Envoie les notifications WS + email après traitement d'une requête."""
     from notifications.tasks import send_request_treated_async
     from notifications.emails import send_request_treated
-    _dispatch(send_request_treated_async, send_request_treated, request_obj.id)
+    _dispatch(send_request_treated_async, lambda: send_request_treated(request_obj), request_obj.id)
     try:
         from notifications.ws import notify_client_request_treated
         notify_client_request_treated(request_obj)
@@ -93,14 +96,20 @@ def notify_paiement(emission: Emission, montant_regle, solde_restant) -> None:
         pass
 
 
-def notify_livrable_added(request_obj: ClientRequest) -> None:
+def notify_livrable_added(request_obj: ClientRequest, document_obj=None) -> None:
     """Notifie le client qu'un livrable a été ajouté à sa requête."""
     from notifications.tasks import send_livrable_notification_async
     from notifications.emails import send_livrable_notification
-    _dispatch(send_livrable_notification_async, send_livrable_notification, request_obj.id)
+    doc_id = document_obj.id if document_obj else None
+    _dispatch(
+        send_livrable_notification_async,
+        lambda: send_livrable_notification(request_obj, document_obj) if document_obj else None,
+        request_obj.id, doc_id,
+    )
     try:
         from notifications.ws import notify_client_livrable_added
-        notify_client_livrable_added(request_obj)
+        if document_obj:
+            notify_client_livrable_added(request_obj, document_obj)
     except Exception:
         pass
 
@@ -116,9 +125,15 @@ def create_emission(validated_data: dict, agent) -> Emission:
     Atomique : toute erreur rollback la création.
     """
     echeance = validated_data.get("echeance")
-    date = validated_data.get("date")
-    if echeance and date and echeance <= date:
-        raise ValueError("La date d'échéance doit être postérieure à la date d'effet.")
+    effet = validated_data.get("effet") or validated_data.get("date")
+    if echeance and effet:
+        from datetime import datetime as _dt
+        if isinstance(echeance, str):
+            echeance = _dt.strptime(echeance, "%Y-%m-%d").date()
+        if isinstance(effet, str):
+            effet = _dt.strptime(effet, "%Y-%m-%d").date()
+        if echeance <= effet:
+            raise ValueError("La date d'échéance doit être postérieure à la date d'effet.")
 
     prime_ttc = validated_data.get("prime_ttc", 0)
     if prime_ttc is not None and prime_ttc < 0:
@@ -239,11 +254,16 @@ def get_dashboard_stats(user) -> dict:
     from django.contrib.auth import get_user_model
     User = get_user_model()
 
-    if user.role in ("agent", "admin"):
+    if user.role == "admin":
         emissions = Emission.objects.all()
         total_clients = User.objects.filter(role="client").count()
         total_prospects = User.objects.filter(role="prospect").count()
         total_agents = User.objects.filter(role="agent").count()
+    elif user.role == "agent":
+        emissions = Emission.objects.filter(agent=user)
+        total_clients = emissions.values_list("client_id", flat=True).distinct().count()
+        total_prospects = User.objects.filter(role="prospect").count()
+        total_agents = 0
     else:
         emissions = Emission.objects.filter(client=user)
         total_clients = total_prospects = total_agents = 0

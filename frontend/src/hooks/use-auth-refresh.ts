@@ -29,13 +29,7 @@ export function useAuthRefresh(): UseAuthRefreshReturn {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        
-        // Mettre à jour le user store avec les nouvelles données
-        if (data.access) {
-          // Le token est rafraîchi, l'utilisateur est toujours authentifié
-          return true;
-        }
+        return true;
       }
 
       // Si le rafraîchissement échoue, déconnecter l'utilisateur

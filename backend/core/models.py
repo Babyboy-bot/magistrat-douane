@@ -95,7 +95,8 @@ class Emission(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        if not self.taux_commission and self.risque:
+        is_new = self.pk is None
+        if is_new and self.taux_commission == 0 and self.risque:
             self.taux_commission = COMMISSION_RATES.get(self.risque, 0)
         super().save(*args, **kwargs)
 

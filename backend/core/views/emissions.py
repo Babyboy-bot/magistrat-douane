@@ -1,6 +1,7 @@
 import csv
 import io
 from datetime import datetime, timedelta
+from decimal import Decimal
 from io import BytesIO
 
 from django.contrib.auth import get_user_model
@@ -53,6 +54,15 @@ def invalidate_emissions_cache(user_id: int) -> None:
         cache.set(key, 1, timeout=None)
 
 
+def invalidate_admin_emissions_cache() -> None:
+    """Invalide le cache émissions pour tous les admins actifs."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    admin_ids = User.objects.filter(role="admin", is_active=True).values_list("id", flat=True)
+    for admin_id in admin_ids:
+        invalidate_emissions_cache(admin_id)
+
+
 class EmissionListCreateView(generics.ListCreateAPIView):
     serializer_class = EmissionSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -69,9 +79,6 @@ class EmissionListCreateView(generics.ListCreateAPIView):
         cache.set(cache_key, response.data, timeout=300)
         return response
 
-    def perform_create(self, serializer):
-        super().perform_create(serializer)
-        invalidate_emissions_cache(self.request.user.id)
     filterset_fields = {
         "client": ["exact"],
         "agent": ["exact"],
@@ -119,6 +126,7 @@ class EmissionListCreateView(generics.ListCreateAPIView):
         invalidate_emissions_cache(request.user.id)
         if emission.client_id:
             invalidate_emissions_cache(emission.client_id)
+        invalidate_admin_emissions_cache()
         return Response(EmissionSerializer(emission).data, status=status.HTTP_201_CREATED)
 
 
@@ -148,6 +156,7 @@ class EmissionDetailView(generics.RetrieveUpdateDestroyAPIView):
         invalidate_emissions_cache(request.user.id)
         if client_id:
             invalidate_emissions_cache(client_id)
+        invalidate_admin_emissions_cache()
         return response
 
     def destroy(self, request, *args, **kwargs):
@@ -158,6 +167,7 @@ class EmissionDetailView(generics.RetrieveUpdateDestroyAPIView):
         invalidate_emissions_cache(request.user.id)
         if client_id:
             invalidate_emissions_cache(client_id)
+        invalidate_admin_emissions_cache()
         return response
 
 
@@ -188,7 +198,12 @@ class PaiementCreateView(generics.CreateAPIView):
 @permission_classes([permissions.IsAuthenticated])
 def emission_totals_view(request):
     user = request.user
-    qs = Emission.objects.all() if user.role in ("agent", "admin") else Emission.objects.filter(client=user)
+    if user.role == "admin":
+        qs = Emission.objects.all()
+    elif user.role == "agent":
+        qs = Emission.objects.filter(agent=user)
+    else:
+        qs = Emission.objects.filter(client=user)
     p = request.query_params
     if p.get("client"): qs = qs.filter(client=p["client"])
     if p.get("agent"): qs = qs.filter(agent=p["agent"])
@@ -233,6 +248,8 @@ def emission_balance_view(request, pk):
     user = request.user
     if user.role not in ("agent", "admin") and emission.client != user:
         return Response({"detail": "Permission refusée"}, status=status.HTTP_403_FORBIDDEN)
+    if user.role == "agent" and emission.agent != user:
+        return Response({"detail": "Permission refusée"}, status=status.HTTP_403_FORBIDDEN)
     total_paye = emission.paiements.aggregate(total=Sum("montant_regle"))["total"] or 0
     return Response({
         "emission_id": emission.pk,
@@ -249,6 +266,8 @@ def export_emissions(request):
         return Response({"detail": "Permission refusée"}, status=status.HTTP_403_FORBIDDEN)
 
     qs = Emission.objects.select_related("client").prefetch_related("paiements")
+    if request.user.role == "agent":
+        qs = qs.filter(agent=request.user)
     p = request.query_params
     if p.get("compagnie"): qs = qs.filter(compagnie__icontains=p["compagnie"])
     if p.get("risque"): qs = qs.filter(risque__icontains=p["risque"])
@@ -351,18 +370,30 @@ class EmissionImportView(APIView):
                     marque=row.get("marque", "-").strip() or "-",
                     immatriculation=row.get("immatriculation", "-").strip() or "-",
                     effet=self._parse_date(row["effet"]), echeance=self._parse_date(row["echeance"]),
-                    prime_nette=int(float(str(row["prime_nette"]).replace(" ", "").replace(",", "."))),
-                    prime_ttc=int(float(str(row["prime_ttc"]).replace(" ", "").replace(",", "."))),
+                    prime_nette=int(Decimal(str(row["prime_nette"]).replace(" ", "").replace(",", "."))),
+                    prime_ttc=int(Decimal(str(row["prime_ttc"]).replace(" ", "").replace(",", "."))),
                     situation=row.get("situation", "Affaire nouvelle").strip() or "Affaire nouvelle",
                 )
                 created += 1
             except Exception as exc:
                 errors.append(f"Ligne {i} : {exc}")
 
+        if created > 0:
+            invalidate_emissions_cache(request.user.id)
+            invalidate_admin_emissions_cache()
         return Response({"created": created, "skipped": skipped, "errors": errors, "total_rows": created + skipped + len(errors)})
 
     def _parse_csv(self, file):
-        return list(csv.DictReader(io.StringIO(file.read().decode("utf-8-sig")), delimiter=";"))
+        content = file.read().decode("utf-8-sig")
+        import csv as _csv
+        sample = content[:2048]
+        try:
+            dialect = _csv.Sniffer().sniff(sample, delimiters=";,")
+        except _csv.Error:
+            dialect = None
+        if dialect:
+            return list(_csv.DictReader(io.StringIO(content), dialect=dialect))
+        return list(_csv.DictReader(io.StringIO(content), delimiter=";"))
 
     def _parse_xlsx(self, file):
         from openpyxl import load_workbook

@@ -48,7 +48,7 @@ export function mapRequest(r: Record<string, unknown>): ClientRequest {
 
 export const requestsApi = {
   async list(clientId?: string): Promise<ClientRequest[]> {
-    const url = clientId ? `/api/requests/?client_id=${clientId}` : "/api/requests/";
+    const url = clientId ? `/api/requests/?client_id=${clientId}&page_size=200` : "/api/requests/";
     try {
       const raw = await apiFetch(url);
       const arr = raw && typeof raw === "object" && "results" in raw
@@ -146,6 +146,54 @@ export const requestsApi = {
     fd.append("type_fichier", file.type);
     const raw = await apiFetch<Record<string, unknown>>(`/api/requests/${id}/livrables/`, { method: "POST", body: fd });
     return mapDocument(raw);
+  },
+
+  async cloturerChangement(
+    id: string | number,
+    fichiers: File[],
+    newImmatriculation?: string
+  ): Promise<ClientRequest> {
+    const fd = new FormData();
+    fichiers.forEach(f => fd.append("fichiers", f));
+    if (newImmatriculation) fd.append("new_immatriculation", newImmatriculation);
+    const raw = await apiFetch<Record<string, unknown>>(`/api/requests/${id}/cloturer-changement/`, { method: "POST", body: fd });
+    return mapRequest(raw);
+  },
+
+  async cloturerSouscription(
+    id: string | number,
+    fichiers: File[],
+    emission: {
+      numPolice: string;
+      numFacture?: string;
+      compagnie: string;
+      risque?: string;
+      marque?: string;
+      immatriculation?: string;
+      date?: string;
+      effet?: string;
+      echeance: string;
+      primeNette?: number;
+      primeTtc: number;
+      situation?: string;
+    }
+  ): Promise<ClientRequest> {
+    const fd = new FormData();
+    fichiers.forEach(f => fd.append("fichiers", f));
+    fd.append("num_police", emission.numPolice);
+    if (emission.numFacture) fd.append("num_facture", emission.numFacture);
+    fd.append("compagnie", emission.compagnie);
+    if (emission.risque) fd.append("risque", emission.risque);
+    if (emission.marque) fd.append("marque", emission.marque);
+    if (emission.immatriculation) fd.append("immatriculation", emission.immatriculation);
+    if (emission.date) fd.append("date", emission.date);
+    if (emission.effet) fd.append("effet", emission.effet);
+    fd.append("echeance", emission.echeance);
+    if (emission.primeNette) fd.append("prime_nette", String(emission.primeNette));
+    fd.append("prime_ttc", String(emission.primeTtc));
+    if (emission.situation) fd.append("situation", emission.situation);
+    const raw = await apiFetch<Record<string, unknown>>(`/api/requests/${id}/cloturer-souscription/`, { method: "POST", body: fd });
+    return mapRequest(raw);
   },
 };
 

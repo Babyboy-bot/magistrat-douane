@@ -41,7 +41,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       SECURE_SSL_REDIRECT: "False"
       USE_X_FORWARDED_HOST: "True"
-      ALLOWED_HOSTS: "backend,localhost,127.0.0.1,acs.localhost"
+      ALLOWED_HOSTS: "backend,localhost,127.0.0.1,acs.localhost,192.168.1.50"
       WEB_CONCURRENCY: "3"
     volumes:
       - media_files:/app/media
@@ -123,6 +123,7 @@ services:
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_BASE: ""
+      HOSTNAME: 0.0.0.0
     depends_on:
       - backend
 

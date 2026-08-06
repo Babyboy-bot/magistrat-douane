@@ -12,14 +12,14 @@ def force_login(api_client, user):
 
 @pytest.mark.django_db
 class TestRegisterView:
-    def test_register_creates_prospect(self, api_client):
+    def test_register_creates_client(self, api_client):
         resp = api_client.post("/api/auth/register/", {
             "nom": "Kouassi", "prenoms": "Jean",
             "telephone": "0102030405", "password": "SecurePass123!",
         }, format="json")
         assert resp.status_code == 201
         user = User.objects.get(telephone="0102030405")
-        assert user.role == "prospect"
+        assert user.role == "client"
         assert user.verified is False
 
     def test_duplicate_telephone_rejected(self, api_client, client_user):
@@ -106,19 +106,18 @@ class TestVerifyUserView:
 
 @pytest.mark.django_db
 class TestResetPasswordView:
-    def test_reset_returns_temp_password(self, api_client, client_user):
+    def test_reset_returns_generic_message(self, api_client, client_user):
         resp = api_client.post("/api/auth/reset-password/", {
             "identifier": client_user.email,
         }, format="json")
         assert resp.status_code == 200
-        assert "temp_password" in resp.data
-        assert len(resp.data["temp_password"]) >= 10
+        assert "detail" in resp.data
 
-    def test_unknown_identifier_returns_404(self, api_client):
+    def test_unknown_identifier_returns_200_anti_enumeration(self, api_client):
         resp = api_client.post("/api/auth/reset-password/", {
             "identifier": "nobody@nowhere.ci",
         }, format="json")
-        assert resp.status_code == 404
+        assert resp.status_code == 200
 
 
 @pytest.mark.django_db

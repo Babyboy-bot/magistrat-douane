@@ -76,3 +76,8 @@ redis_data/
 # ── Logs ──
 *.log
 logs/
+
+# ── Playwright / Tests ──
+frontend/test-results/
+frontend/playwright-report/
+frontend/tests/.auth/

@@ -36,10 +36,12 @@ const SINISTRE_STATUS: Record<string, { label: string; color: string; icon: Reac
 };
 
 const NATURE_LABELS: Record<string, string> = {
-  collision: "Collision",
+  accident: "Accident de circulation",
   vol: "Vol",
   incendie: "Incendie",
-  bris_glace: "Bris de glace",
+  degats_eaux: "Dégâts des eaux",
+  bris_glaces: "Bris de glaces",
+  vandalisme: "Vandalisme",
   catastrophe_naturelle: "Catastrophe naturelle",
   autre: "Autre",
 };

@@ -1,5 +1,7 @@
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from rest_framework import viewsets, status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -47,13 +49,21 @@ def _notify_agents_epargne(contrat, title, message, contrat_type="epargne"):
         from accounts.models import User
         from notifications.models import Notification
         from notifications.ws import send_notification_to_user
-        agents = User.objects.filter(role__in=("agent", "admin"), is_active=True)
-        for agent in agents:
-            notif = Notification.create_notification(
-                user_id=agent.id, title=title, message=message, type="info"
+        agents = list(User.objects.filter(role__in=("agent", "admin"), is_active=True))
+        bulk = [
+            Notification(
+                user=agent,
+                title=title,
+                message=message,
+                type="info",
+                data={"event": "magist_assur", "contrat_id": str(contrat.id), "contrat_type": contrat_type},
             )
+            for agent in agents
+        ]
+        created = Notification.objects.bulk_create(bulk)
+        for notif in created:
             try:
-                send_notification_to_user(agent.id, {
+                send_notification_to_user(notif.user_id, {
                     "event": "magist_assur", "id": str(notif.id),
                     "contrat_id": str(contrat.id), "contrat_type": contrat_type,
                     "title": title, "message": message, "type": "info",
@@ -72,9 +82,15 @@ from .serializers import (
 
 
 
+class MagistassurPagination(PageNumberPagination):
+    page_size = 30
+    page_size_query_param = "page_size"
+    max_page_size = 200
+
+
 class ContratEpargneViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAgentOrAdmin]
-    pagination_class = None
+    pagination_class = MagistassurPagination
 
     def get_permissions(self):
         if self.action in ("create", "upload_documents"):
@@ -132,9 +148,22 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         """Marque le contrat comme étant traité par cet agent."""
         if request.user.role not in ("agent", "admin"):
             return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
-        contrat = self.get_object()
-        contrat.pris_en_charge_par = request.user
-        contrat.save(update_fields=["pris_en_charge_par"])
+        with transaction.atomic():
+            try:
+                contrat = self.get_queryset().select_for_update().get(pk=pk)
+            except ContratEpargne.DoesNotExist:
+                return Response({"detail": "Contrat introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            if (
+                contrat.pris_en_charge_par
+                and contrat.pris_en_charge_par != request.user
+                and request.user.role != "admin"
+            ):
+                return Response(
+                    {"detail": f"Ce contrat est déjà pris en charge par {contrat.pris_en_charge_par.full_name}."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            contrat.pris_en_charge_par = request.user
+            contrat.save(update_fields=["pris_en_charge_par"])
         return Response(ContratEpargneSerializer(contrat).data)
 
     @action(detail=True, methods=["post"], url_path="liberer",
@@ -146,6 +175,8 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         contrat = self.get_object()
         if contrat.statut == "cloture":
             return Response({"detail": "Un contrat clôturé ne peut pas être libéré."}, status=status.HTTP_400_BAD_REQUEST)
+        if request.user.role == "agent" and contrat.pris_en_charge_par and contrat.pris_en_charge_par != request.user:
+            return Response({"detail": "Vous ne pouvez libérer que vos propres contrats."}, status=status.HTTP_403_FORBIDDEN)
         contrat.pris_en_charge_par = None
         contrat.save(update_fields=["pris_en_charge_par"])
         return Response(ContratEpargneSerializer(contrat).data)
@@ -161,6 +192,8 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
                 except ValidationError as e:
                     return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         contrat = self.get_object()
+        if contrat.statut == "cloture":
+            return Response({"detail": "Impossible de modifier les documents d'un contrat clôturé."}, status=status.HTTP_400_BAD_REQUEST)
         if "piece_identite" in request.FILES:
             contrat.piece_identite = request.FILES["piece_identite"]
         if "piece_identite_verso" in request.FILES:
@@ -180,12 +213,18 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         if not num_police:
             return Response({"detail": "Le numéro de police est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
         contrat = self.get_object()
-        assigner_police_epargne(
-            contrat,
-            num_police,
-            (request.data.get("code_inspection") or "").strip(),
-            request.user,
-        )
+        try:
+            assigner_police_epargne(
+                contrat,
+                num_police,
+                (request.data.get("code_inspection") or "").strip(),
+                request.user,
+            )
+        except IntegrityError:
+            return Response(
+                {"detail": f"Le numéro de police '{num_police}' est déjà attribué à un autre contrat."},
+                status=status.HTTP_409_CONFLICT,
+            )
         _notify_client_epargne(
             contrat,
             "Contrat Magist-Assur activé",
@@ -245,10 +284,10 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
 
 class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAgentOrAdmin]
-    pagination_class = None
+    pagination_class = MagistassurPagination
 
     def get_permissions(self):
-        if self.action == "create":
+        if self.action in ("create", "questionnaire_medical"):
             return [IsAuthenticated()]
         return [IsAuthenticated(), IsAgentOrAdmin()]
 
@@ -260,7 +299,7 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         qs = ContratPrevoyance.objects.select_related("client", "agent").prefetch_related(
-            "assures_associes", "beneficiaires"
+            "assures_associes", "beneficiaires", "questionnaire_medical"
         )
         if user.role in ("agent", "admin"):
             client_id = self.request.query_params.get("client_id")
@@ -285,7 +324,20 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
             serializer.save(agent=user)
         else:
             # Forcer client=user, ignorer toute valeur client envoyée dans le body
-            serializer.save(client=user)
+            contrat = serializer.save(client=user)
+            _notify_client_epargne(
+                contrat,
+                "Dossier Magist-Assur Prévoyance reçu",
+                "Votre dossier de prévoyance a bien été enregistré. Un agent va l'étudier prochainement.",
+                "info",
+                contrat_type="prevoyance",
+            )
+            _notify_agents_epargne(
+                contrat,
+                "Nouvelle souscription Prévoyance",
+                f"{contrat.client.full_name} a soumis un dossier prévoyance Magist-Assur.",
+                contrat_type="prevoyance",
+            )
 
     @action(detail=True, methods=["post"], url_path="prise-en-charge",
             permission_classes=[IsAuthenticated])
@@ -293,9 +345,22 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         """Marque le contrat comme étant traité par cet agent."""
         if request.user.role not in ("agent", "admin"):
             return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
-        contrat = self.get_object()
-        contrat.pris_en_charge_par = request.user
-        contrat.save(update_fields=["pris_en_charge_par"])
+        with transaction.atomic():
+            try:
+                contrat = self.get_queryset().select_for_update().get(pk=pk)
+            except ContratPrevoyance.DoesNotExist:
+                return Response({"detail": "Contrat introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            if (
+                contrat.pris_en_charge_par
+                and contrat.pris_en_charge_par != request.user
+                and request.user.role != "admin"
+            ):
+                return Response(
+                    {"detail": f"Ce contrat est déjà pris en charge par {contrat.pris_en_charge_par.full_name}."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            contrat.pris_en_charge_par = request.user
+            contrat.save(update_fields=["pris_en_charge_par"])
         return Response(ContratPrevoyanceSerializer(contrat).data)
 
     @action(detail=True, methods=["post"], url_path="liberer",
@@ -307,6 +372,8 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         contrat = self.get_object()
         if contrat.statut == "cloture":
             return Response({"detail": "Un contrat clôturé ne peut pas être libéré."}, status=status.HTTP_400_BAD_REQUEST)
+        if request.user.role == "agent" and contrat.pris_en_charge_par and contrat.pris_en_charge_par != request.user:
+            return Response({"detail": "Vous ne pouvez libérer que vos propres contrats."}, status=status.HTTP_403_FORBIDDEN)
         contrat.pris_en_charge_par = None
         contrat.save(update_fields=["pris_en_charge_par"])
         return Response(ContratPrevoyanceSerializer(contrat).data)
@@ -321,12 +388,25 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         if not num_police:
             return Response({"detail": "Le numéro de police est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
         contrat = self.get_object()
-        assigner_police_prevoyance(
+        try:
+            assigner_police_prevoyance(
+                contrat,
+                num_police,
+                (request.data.get("code_inspection") or "").strip(),
+                request.user,
+                (request.data.get("date_effet") or "").strip(),
+            )
+        except IntegrityError:
+            return Response(
+                {"detail": f"Le numéro de police '{num_police}' est déjà attribué à un autre contrat."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        _notify_client_epargne(
             contrat,
-            num_police,
-            (request.data.get("code_inspection") or "").strip(),
-            request.user,
-            (request.data.get("date_effet") or "").strip(),
+            "Contrat Prévoyance activé",
+            f"Votre contrat prévoyance est actif. Police n° {num_police}.",
+            "success",
+            contrat_type="prevoyance",
         )
         return Response(ContratPrevoyanceSerializer(contrat).data)
 
@@ -342,6 +422,13 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
             changer_statut_prevoyance(contrat, nouveau_statut)
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        _notify_client_epargne(
+            contrat,
+            "Statut de votre contrat mis à jour",
+            f"Votre contrat prévoyance Magist-Assur est désormais : {nouveau_statut.replace('_', ' ')}.",
+            "info",
+            contrat_type="prevoyance",
+        )
         return Response(ContratPrevoyanceSerializer(contrat).data)
 
     @action(detail=True, methods=["get"], url_path="export-excel",

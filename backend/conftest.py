@@ -5,8 +5,17 @@ Importé automatiquement par pytest dans tous les modules de test.
 import pytest
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 
 User = get_user_model()
+
+
+@pytest.fixture(autouse=True)
+def clear_cache():
+    """Vide le cache avant chaque test pour éviter les fuites LocMemCache."""
+    cache.clear()
+    yield
+    cache.clear()
 
 
 # ── Clients HTTP ──────────────────────────────────────────────────────────────

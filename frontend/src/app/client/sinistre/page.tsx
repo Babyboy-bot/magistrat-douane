@@ -73,9 +73,7 @@ export default function SinistrePage() {
         pv_police: values.pvPolice,
         observations: values.observations,
       });
-      for (const file of selectedFiles) {
-        await documentsApi.upload(file, created.id, false);
-      }
+      await Promise.all(selectedFiles.map((file) => documentsApi.upload(file, created.id, false)));
       toast.success("Votre déclaration de sinistre a été soumise.");
       router.push("/client/history");
     } catch (err: unknown) {
@@ -88,7 +86,7 @@ export default function SinistrePage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.back()} disabled={loading}>
+        <Button variant="ghost" size="icon" onClick={() => router.push("/client/sinistres")} disabled={loading}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>

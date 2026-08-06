@@ -15,11 +15,13 @@ from rest_framework_simplejwt.exceptions import TokenError
 import json
 import re
 
+from core.permissions import IsAgentOrAdmin
 from notifications.emails import send_welcome_email
 from .serializers import (
     UserSerializer,
     UserCreateSerializer,
     UserUpdateSerializer,
+    UserProfileSerializer,
     VerifyUserSerializer,
     ChangePasswordSerializer,
     AgentCreateClientSerializer,
@@ -75,11 +77,6 @@ def _clear_auth_cookies(response):
     return response
 
 
-class IsAgentOrAdmin(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in ("agent", "admin")
-
-
 class IsAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.role == "admin"
@@ -131,9 +128,6 @@ class CookieLoginView(APIView):
         log_login_success(user, ip)
 
         user_data = UserSerializer(user).data
-        # Inclure les tokens dans la réponse pour le frontend
-        user_data['access'] = str(refresh.access_token)
-        user_data['refresh'] = str(refresh)
         
         response = Response(user_data)
         return _set_auth_cookies(response, str(refresh.access_token), str(refresh))
@@ -145,19 +139,8 @@ class CookieRefreshView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        # Essayer d'abord le body JSON (pour le frontend)
-        raw_refresh = None
-        
-        if request.content_type == 'application/json':
-            try:
-                data = json.loads(request.body)
-                raw_refresh = data.get('refresh')
-            except (json.JSONDecodeError, KeyError):
-                pass
-        
-        # Fallback sur les cookies
-        if not raw_refresh:
-            raw_refresh = request.COOKIES.get(conf.REFRESH_TOKEN_COOKIE)
+        # Le refresh token doit venir uniquement du cookie httpOnly
+        raw_refresh = request.COOKIES.get(conf.REFRESH_TOKEN_COOKIE)
         
         if not raw_refresh:
             return Response(
@@ -171,8 +154,6 @@ class CookieRefreshView(APIView):
             new_refresh = RefreshToken.for_user(user)
             response = Response({
                 "detail": "Token rafraîchi",
-                "access": str(new_refresh.access_token),
-                "refresh": str(new_refresh)
             })
             return _set_auth_cookies(response, str(new_refresh.access_token), str(new_refresh))
         except (TokenError, User.DoesNotExist):
@@ -195,7 +176,7 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         log_register(user, get_client_ip(request))
-        log_user_action(request.user, user, "creation", {"role": user.role}, ip=get_client_ip(request))
+        log_user_action(user, user, "creation", {"role": user.role}, ip=get_client_ip(request))
         send_welcome_email(user)
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
@@ -217,7 +198,7 @@ class LogoutView(APIView):
                     user_obj = User.objects.filter(pk=user_id).first()
                     if user_obj:
                         log_logout(user_obj, get_client_ip(request))
-            except (TokenError, Exception):
+            except TokenError:
                 pass
         response = Response({"detail": "Déconnecté"}, status=status.HTTP_200_OK)
         return _clear_auth_cookies(response)
@@ -233,30 +214,20 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_serializer_class(self):
         if self.request.method in ("PUT", "PATCH"):
-            return UserUpdateSerializer
+            return UserProfileSerializer
         return UserSerializer
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", request.method == "PATCH")
         instance = self.get_object()
-        serializer = UserUpdateSerializer(instance, data=request.data, partial=partial)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
-        # Renvoyer le sérialiseur COMPLET pour que le frontend reçoive
-        # verified, role, account_status, photo, etc.
         return Response(UserSerializer(instance, context={"request": request}).data)
 
     def perform_update(self, serializer):
-        old_is_active = serializer.instance.is_active
         instance = serializer.save()
         _ip = get_client_ip(self.request)
-
-        if "is_active" in serializer.validated_data and instance.is_active != old_is_active:
-            action = "activation" if instance.is_active else "deactivation"
-            log_user_action(self.request.user, instance, action, {
-                "from": old_is_active,
-                "to": instance.is_active,
-            }, ip=_ip)
 
         if serializer.validated_data.get("password"):
             log_user_action(self.request.user, instance, "password_reset", {}, ip=_ip)
@@ -408,21 +379,24 @@ class ResetPasswordView(APIView):
     def post(self, request):
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        identifier = serializer.validated_data["identifier"]
-        user = User.objects.filter(email=identifier).first()
+        identifier = serializer.validated_data["identifier"].strip()
+        user = User.objects.filter(email__iexact=identifier).first()
         if not user:
-            user = User.objects.filter(telephone=identifier).first()
-        if not user:
-            return Response(
-                {"detail": "Aucun compte trouvé avec cet identifiant"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        import secrets, string
-        temp_pw = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10)) + "A1!"
-        user.set_password(temp_pw)
-        user.save(update_fields=["password"])
-        # In production: send temp_pw via email/SMS
-        return Response({"detail": "Un nouveau mot de passe a été généré. Contactez votre agent ACS pour le récupérer."})
+            normalized = re.sub(r'[\s\-\.\(\)\+]', '', identifier)
+            user = User.objects.filter(telephone=normalized).first()
+        if user:
+            from .services import reset_user_password
+            temp_pw = reset_user_password(user)
+            try:
+                from notifications.emails import send_password_reset_email
+                send_password_reset_email(user, temp_pw)
+            except Exception:
+                import logging
+                logging.getLogger("accounts").exception("Failed to send password reset email to user %s", user.pk)
+        return Response(
+            {"detail": "Si un compte correspond à cet identifiant, un mot de passe temporaire a été envoyé."},
+            status=status.HTTP_200_OK,
+        )
 
 
 class AgentCreateClientView(generics.CreateAPIView):

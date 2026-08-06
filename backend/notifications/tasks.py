@@ -97,12 +97,14 @@ def send_echeance_reminders():
 
 
 @app.task(bind=True, max_retries=3, default_retry_delay=30, name="notifications.send_livrable_notification")
-def send_livrable_notification_async(self, request_id: int):
+def send_livrable_notification_async(self, request_id: int, document_id: int = None):
     """Notifie le client qu'un livrable est disponible (async)."""
     try:
-        from core.models import ClientRequest
+        from core.models import ClientRequest, Document
         from notifications.emails import send_livrable_notification
         req = ClientRequest.objects.select_related("client").get(pk=request_id)
-        send_livrable_notification(req)
+        doc = Document.objects.get(pk=document_id) if document_id else None
+        if doc:
+            send_livrable_notification(req, doc)
     except Exception as exc:
         raise self.retry(exc=exc)

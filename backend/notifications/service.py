@@ -74,7 +74,7 @@ class NotificationService:
             User = get_user_model()
             
             # Trouver tous les utilisateurs avec ce rôle
-            users_with_role = User.objects.filter(role=role)
+            users_with_role = User.objects.filter(role=role, is_active=True)
             
             # Validation : vérifier si le rôle existe
             if not users_with_role.exists():
@@ -115,11 +115,11 @@ class NotificationService:
             # Filtrer selon les permissions requises
             if require_verified:
                 # Envoyer seulement aux utilisateurs vérifiés (clients et agents)
-                users = User.objects.filter(role__in=['client', 'agent'], verified=True)
+                users = User.objects.filter(role__in=['client', 'agent'], verified=True, is_active=True)
             else:
                 # Envoyer à tout le monde (admins, agents, clients vérifiés)
-                users = User.objects.filter(role__in=['admin', 'agent'], verified=True) | \
-                         User.objects.filter(role='client', verified=True)
+                users = User.objects.filter(role__in=['admin', 'agent'], is_active=True) | \
+                         User.objects.filter(role='client', verified=True, is_active=True)
             
             if not users.exists():
                 logger.warning(f"No users found for notification: {title}")

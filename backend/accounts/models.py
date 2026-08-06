@@ -244,6 +244,13 @@ class User(AbstractUser):
 
     def save(self, *args, **kwargs):
 
+        # Normaliser les numéros de téléphone (cohérence avec le login)
+        import re
+        if self.telephone:
+            self.telephone = re.sub(r'[\s\-\.\(\)\+]', '', self.telephone)
+        if self.telephone2:
+            self.telephone2 = re.sub(r'[\s\-\.\(\)\+]', '', self.telephone2)
+
         # Logique métier stratégique
 
         is_new = self.pk is None
@@ -262,9 +269,9 @@ class User(AbstractUser):
 
             self.risk_level = self.RiskLevel.PREMIUM
 
-            # Ne pas forcer role/account_status si l'admin modifie explicitement is_active
+            # Ne forcer role/account_status qu'à la création
 
-            if not updating_active:
+            if is_new:
 
                 self.role = self.Role.CLIENT
 

@@ -351,6 +351,7 @@ export interface ContratPrevoyance {
   clientNom: string;
   agentId?: string;
   prisEnChargeNom?: string;
+  prisEnChargeId?: string;
   garantiePrevoyanceDeces: boolean;
   garantiefraisFuneraires: boolean;
   dateEffet?: string;

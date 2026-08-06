@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Eye, EyeOff, UserPlus, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,15 @@ import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuthStore();
+  const { login, isAuthenticated, user } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === "agent") router.replace("/agent/dashboard");
+      else if (user.role === "admin") router.replace("/admin/dashboard");
+      else router.replace("/client/dashboard");
+    }
+  }, [isAuthenticated, user, router]);
   const [showPassword, setShowPassword] = useState(false);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -25,9 +33,9 @@ export default function LoginPage() {
     if (success) {
       toast.success("Connexion réussie");
       const user = useAuthStore.getState().user;
-      if (user?.role === "agent") router.push("/agent/dashboard");
-      else if (user?.role === "admin") router.push("/admin/dashboard");
-      else router.push("/client/dashboard");
+      if (user?.role === "agent") router.replace("/agent/dashboard");
+      else if (user?.role === "admin") router.replace("/admin/dashboard");
+      else router.replace("/client/dashboard");
     } else {
       toast.error("Identifiants incorrects");
     }

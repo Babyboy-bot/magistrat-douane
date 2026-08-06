@@ -253,6 +253,7 @@ export default function SouscrirePage() {
         toast.info("Brouillon restauré — vous pouvez reprendre votre saisie.");
         // Restaurer les fichiers depuis IndexedDB
         getFileFromIndexedDB("pieceIdentite").then(setPieceIdentiteFile);
+        getFileFromIndexedDB("pieceIdentiteVerso").then(setPieceIdentiteVersoFile);
         getFileFromIndexedDB("rib").then(setRibFile);
         return;
       } catch { /* brouillon corrompu */ }
@@ -409,7 +410,7 @@ export default function SouscrirePage() {
   };
   const goBack = () => {
     if (step > 0) { setStep(s => s - 1); window.scrollTo({ top: 0, behavior: "smooth" }); }
-    else router.back();
+    else router.push("/client/dashboard");
   };
   const isLast = step === steps.length - 1;
 
@@ -532,7 +533,7 @@ export default function SouscrirePage() {
       <div className="max-w-2xl mx-auto space-y-5 pb-10">
         {/* En-tête */}
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <Button variant="ghost" size="icon" onClick={() => router.push("/client/dashboard")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -664,7 +665,7 @@ export default function SouscrirePage() {
     <div className="max-w-2xl mx-auto space-y-4 pb-8">
       {/* En-tête */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => step > 0 ? setStep(step - 1) : router.back()}>
+        <Button variant="ghost" size="icon" onClick={() => step > 0 ? setStep(step - 1) : router.push("/client/dashboard")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>

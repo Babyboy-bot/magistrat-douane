@@ -83,7 +83,34 @@ class ContratEpargneCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ContratEpargne
-        exclude = ["capital_constitue"]
+        exclude = [
+            "capital_constitue",
+            "num_police",
+            "statut",
+            "agent",
+            "pris_en_charge_par",
+            "code_inspection",
+        ]
+
+    def to_internal_value(self, data):
+        # client est assigné par perform_create, pas requis dans le payload
+        if 'client' not in data and self.context.get('request'):
+            user = self.context['request'].user
+            if user.role == 'client':
+                data = dict(data)
+                data['client'] = user.id
+        return super().to_internal_value(data)
+
+    def validate_beneficiaires(self, value):
+        if value:
+            named = [b for b in value if not (b.get("conjoint_corps") or b.get("enfants_nes"))]
+            if named:
+                total = sum(b.get("taux_repartition", 0) for b in named)
+                if total != 100:
+                    raise serializers.ValidationError(
+                        f"La somme des taux de répartition des bénéficiaires nommés doit être égale à 100% (actuellement {total}%)."
+                    )
+        return value
 
     def create(self, validated_data):
         correspondants_data = validated_data.pop("correspondants", [])
@@ -145,7 +172,36 @@ class ContratPrevoyanceCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ContratPrevoyance
-        fields = "__all__"
+        exclude = [
+            "num_police",
+            "num_client",
+            "statut",
+            "agent",
+            "pris_en_charge_par",
+            "code_inspection",
+            "date_effet",
+            "date_echeance",
+        ]
+
+    def to_internal_value(self, data):
+        # client est assigné par perform_create, pas requis dans le payload
+        if 'client' not in data and self.context.get('request'):
+            user = self.context['request'].user
+            if user.role == 'client':
+                data = dict(data)
+                data['client'] = user.id
+        return super().to_internal_value(data)
+
+    def validate_beneficiaires(self, value):
+        if value:
+            named = [b for b in value if not (b.get("conjoint_corps") or b.get("enfants_nes"))]
+            if named:
+                total = sum(b.get("taux_repartition", 0) for b in named)
+                if total != 100:
+                    raise serializers.ValidationError(
+                        f"La somme des taux de répartition des bénéficiaires nommés doit être égale à 100% (actuellement {total}%)."
+                    )
+        return value
 
     def validate(self, attrs):
         deces = attrs.get("garantie_prevoyance_deces", False)

@@ -18,8 +18,21 @@ class AuditContextMiddleware:
 
     def __call__(self, request):
         _thread_locals.request = request
+        from core.signals import set_audit_user
+        ip = None
+        xff = request.META.get("HTTP_X_FORWARDED_FOR")
+        if xff:
+            ip = xff.split(",")[0].strip()
+        else:
+            ip = request.META.get("REMOTE_ADDR")
+        user = getattr(request, "user", None)
+        if user and getattr(user, "is_authenticated", False):
+            set_audit_user(user, ip)
+        else:
+            set_audit_user(None, ip)
         try:
             response = self.get_response(request)
         finally:
             _thread_locals.request = None
+            set_audit_user(None, None)
         return response

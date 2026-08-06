@@ -22,6 +22,8 @@ from .requests import (
     revision_cotation_view,
     refuser_cotation_view,
     envoyer_attestations_view,
+    cloturer_souscription_view,
+    cloturer_changement_view,
 )
 from .documents import (
     RequestLivrablesView,
@@ -39,7 +41,7 @@ __all__ = [
     "EmissionListCreateView", "EmissionDetailView", "PaiementCreateView",
     "emission_totals_view", "emission_balance_view", "export_emissions", "EmissionImportView",
     "ClientRequestListCreateView", "ClientRequestDetailView",
-    "treat_request_view", "claim_request_view", "release_request_view",
+    "treat_request_view", "claim_request_view", "release_request_view", "cloturer_souscription_view", "cloturer_changement_view",
     "RequestLivrablesView", "DocumentUploadView", "CarteGriseUploadView", "ConfirmLivrableView",
     "CompagnieListView", "dashboard_stats_view",
     "AuditEntryListView",

@@ -121,7 +121,11 @@ class ClientRequestSerializer(serializers.ModelSerializer):
             "type", "type_label", "status", "status_label",
             "details", "sinistre_note", "documents", "livrables", "treated_at", "created_at",
         ]
-        read_only_fields = ["id", "numero", "created_at"]
+        read_only_fields = [
+            "id", "numero", "client", "client_nom", "agent", "agent_nom", "agent_telephone",
+            "type", "type_label", "status", "status_label",
+            "sinistre_note", "treated_at", "created_at",
+        ]
 
     def get_agent_nom(self, obj):
         return obj.agent.full_name if obj.agent else None
@@ -142,6 +146,18 @@ class ClientRequestSerializer(serializers.ModelSerializer):
             many=True,
             context=self.context,
         ).data
+
+
+class ClientRequestUpdateSerializer(serializers.ModelSerializer):
+    """Serializer pour les mises à jour par agents/admins uniquement.
+    Permet de modifier status, agent, details et sinistre_note."""
+    class Meta:
+        model = ClientRequest
+        fields = [
+            "id", "numero", "client", "agent",
+            "type", "status", "details", "sinistre_note", "treated_at", "created_at",
+        ]
+        read_only_fields = ["id", "numero", "client", "type", "treated_at", "created_at"]
 
 
 class ClientRequestCreateSerializer(serializers.ModelSerializer):

@@ -68,6 +68,8 @@ const EMISSION_RISQUE: Partial<Record<string, string>> = {
 };
 
 const EMISSION_TYPES = ["souscription_auto", "souscription_mrh", "incorporation", "cotation_auto"];
+const SOUSCRIPTION_TYPES = ["souscription_auto", "souscription_mrh", "incorporation"];
+const CHANGEMENT_TYPES = ["changement_nom", "changement_immatriculation"];
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -116,6 +118,25 @@ export default function AgentRequestsPage() {
   const [attestationsFiles, setAttestationsFiles] = useState<File[]>([]);
   const [attestationsLoading, setAttestationsLoading] = useState(false);
   const attestationsInputRef = useRef<HTMLInputElement>(null);
+
+  // Souscription clôture
+  const [showSouscriptionDialog, setShowSouscriptionDialog] = useState(false);
+  const [souscriptionFiles, setSouscriptionFiles] = useState<File[]>([]);
+  const [souscriptionLoading, setSouscriptionLoading] = useState(false);
+  const souscriptionInputRef = useRef<HTMLInputElement>(null);
+  const [souscriptionForm, setSouscriptionForm] = useState({
+    numPolice: "", numFacture: "", compagnie: "",
+    marque: "", immatriculation: "",
+    date: today, effet: today, echeance: "",
+    primeNette: "", primeTtc: "", situation: "Affaire nouvelle",
+  });
+
+  // Changement clôture
+  const [showChangementDialog, setShowChangementDialog] = useState(false);
+  const [changementFiles, setChangementFiles] = useState<File[]>([]);
+  const [changementLoading, setChangementLoading] = useState(false);
+  const changementInputRef = useRef<HTMLInputElement>(null);
+  const [newImmatriculation, setNewImmatriculation] = useState("");
 
   const filtered = allRequests.filter(
     (r) =>
@@ -180,6 +201,59 @@ export default function AgentRequestsPage() {
       refetchRequests();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : "Erreur"); }
     finally { setDevisLoading(false); }
+  };
+
+  const handleCloturerChangement = async () => {
+    if (!selectedRequest || changementFiles.length === 0) { toast.error("Veuillez ajouter au moins un fichier"); return; }
+    setChangementLoading(true);
+    try {
+      await requestsApi.cloturerChangement(
+        selectedRequest.id,
+        changementFiles,
+        selectedRequest.type === "changement_immatriculation" && newImmatriculation.trim()
+          ? newImmatriculation.trim() : undefined
+      );
+      const isImmat = selectedRequest.type === "changement_immatriculation";
+      toast.success(isImmat && newImmatriculation.trim()
+        ? "Changement traité — immatriculation mise à jour"
+        : "Changement traité — document envoyé au client"
+      );
+      setShowChangementDialog(false);
+      setChangementFiles([]); setNewImmatriculation("");
+      setShowDetail(false);
+      refetchRequests();
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : "Erreur"); }
+    finally { setChangementLoading(false); }
+  };
+
+  const handleCloturerSouscription = async () => {
+    if (!selectedRequest || souscriptionFiles.length === 0) { toast.error("Veuillez ajouter au moins un fichier attestation"); return; }
+    if (!souscriptionForm.numPolice || !souscriptionForm.compagnie || !souscriptionForm.echeance || !souscriptionForm.primeTtc) {
+      toast.error("Veuillez remplir tous les champs obligatoires"); return;
+    }
+    setSouscriptionLoading(true);
+    try {
+      await requestsApi.cloturerSouscription(selectedRequest.id, souscriptionFiles, {
+        numPolice: souscriptionForm.numPolice,
+        numFacture: souscriptionForm.numFacture || undefined,
+        compagnie: souscriptionForm.compagnie,
+        risque: EMISSION_RISQUE[selectedRequest.type] || undefined,
+        marque: souscriptionForm.marque || undefined,
+        immatriculation: souscriptionForm.immatriculation || undefined,
+        date: souscriptionForm.date,
+        effet: souscriptionForm.effet,
+        echeance: souscriptionForm.echeance,
+        primeNette: souscriptionForm.primeNette ? Number(souscriptionForm.primeNette) : undefined,
+        primeTtc: Number(souscriptionForm.primeTtc),
+        situation: souscriptionForm.situation,
+      });
+      toast.success("Souscription clôturée — émission créée et attestations envoyées au client");
+      setShowSouscriptionDialog(false);
+      setSouscriptionFiles([]);
+      setShowDetail(false);
+      refetchRequests();
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : "Erreur"); }
+    finally { setSouscriptionLoading(false); }
   };
 
   const handleEnvoyerAttestations = async () => {
@@ -723,8 +797,61 @@ export default function AgentRequestsPage() {
                     </>
                   )}
 
-                  {/* EN COURS — non-cotation : libérer, traiter, créer émission */}
-                  {selectedRequest.status === "en_cours" && !COTATION_TYPES.includes(selectedRequest.type) && selectedRequest.agentId === String(user?.id) && (
+                  {/* EN COURS — souscription / incorporation : clôture combinée attestations + émission */}
+                  {selectedRequest.status === "en_cours" && SOUSCRIPTION_TYPES.includes(selectedRequest.type) && selectedRequest.agentId === String(user?.id) && (
+                    <>
+                      <Button
+                        onClick={() => {
+                          const details = (selectedRequest.details || {}) as Record<string, unknown>;
+                          const findField = (obj: Record<string, unknown>, key: string): string => {
+                            if (typeof obj[key] === "string" && obj[key]) return obj[key] as string;
+                            for (const v of Object.values(obj)) {
+                              if (v && typeof v === "object" && !Array.isArray(v)) { const found = findField(v as Record<string, unknown>, key); if (found) return found; }
+                            } return "";
+                          };
+                          const defaultSituation = selectedRequest.type === "incorporation" ? "Incorporation" : "Affaire nouvelle";
+                          setSouscriptionForm(f => ({ ...f,
+                            marque: findField(details, "marque"),
+                            immatriculation: findField(details, "immatriculation"),
+                            situation: defaultSituation,
+                          }));
+                          setShowSouscriptionDialog(true);
+                        }}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        <CheckCheck className="h-4 w-4 mr-2" /> Émettre les attestations
+                      </Button>
+                      <Button variant="outline" className="flex-1 text-orange-600 border-orange-300 hover:bg-orange-50" disabled={claimLoading === selectedRequest.id}
+                        onClick={async (e) => { await handleRelease(e as React.MouseEvent, selectedRequest.id); setShowDetail(false); }}
+                      >
+                        <Unlock className="h-4 w-4 mr-2" /> Libérer
+                      </Button>
+                    </>
+                  )}
+
+                  {/* EN COURS — changement nom/immat : clôture avec upload document + update émission */}
+                  {selectedRequest.status === "en_cours" && CHANGEMENT_TYPES.includes(selectedRequest.type) && selectedRequest.agentId === String(user?.id) && (
+                    <>
+                      <Button
+                        onClick={() => {
+                          const details = (selectedRequest.details || {}) as Record<string, unknown>;
+                          setNewImmatriculation((details.immatriculation as string) || "");
+                          setShowChangementDialog(true);
+                        }}
+                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" /> Traiter le changement
+                      </Button>
+                      <Button variant="outline" className="flex-1 text-orange-600 border-orange-300 hover:bg-orange-50" disabled={claimLoading === selectedRequest.id}
+                        onClick={async (e) => { await handleRelease(e as React.MouseEvent, selectedRequest.id); setShowDetail(false); }}
+                      >
+                        <Unlock className="h-4 w-4 mr-2" /> Libérer
+                      </Button>
+                    </>
+                  )}
+
+                  {/* EN COURS — non-cotation non-souscription non-changement : libérer, traiter, créer émission */}
+                  {selectedRequest.status === "en_cours" && !COTATION_TYPES.includes(selectedRequest.type) && !SOUSCRIPTION_TYPES.includes(selectedRequest.type) && !CHANGEMENT_TYPES.includes(selectedRequest.type) && selectedRequest.agentId === String(user?.id) && (
                     <>
                       {selectedRequest.type === "declaration_sinistre" && (
                         <div className="w-full space-y-1">
@@ -919,6 +1046,155 @@ export default function AgentRequestsPage() {
               <Button variant="outline" className="flex-1" onClick={() => { setShowDevisDialog(false); setDevisFile(null); setDevisNom(""); }}>Annuler</Button>
               <Button className="flex-1 bg-purple-600 hover:bg-purple-700" disabled={devisLoading || !devisFile} onClick={handleEnvoyerDevis}>
                 <Send className="h-4 w-4 mr-2" /> {devisLoading ? "Envoi..." : "Envoyer"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog clôture changement */}
+      <Dialog open={showChangementDialog} onOpenChange={setShowChangementDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Traiter le {selectedRequest ? REQUEST_TYPE_LABELS[selectedRequest.type] : ""}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            {selectedRequest?.type === "changement_immatriculation" && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs space-y-1">
+                <p className="font-semibold text-amber-800">Immatriculation actuelle du client</p>
+                <p className="font-mono text-amber-700">{((selectedRequest.details as Record<string,unknown>)?.immatriculation as string) || "—"}</p>
+              </div>
+            )}
+            {selectedRequest?.type === "changement_immatriculation" && (
+              <div className="space-y-1.5">
+                <Label>Nouvelle immatriculation</Label>
+                <Input
+                  placeholder="Ex : AB-1234-CI"
+                  className="font-mono uppercase"
+                  value={newImmatriculation}
+                  onChange={e => setNewImmatriculation(e.target.value.toUpperCase())}
+                />
+                <p className="text-xs text-gray-400">Si renseignée, le portefeuille du client sera mis à jour automatiquement.</p>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label>Document(s) à remettre au client <span className="text-red-500">*</span></Label>
+              <input ref={changementInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple className="hidden"
+                onChange={e => setChangementFiles(Array.from(e.target.files ?? []))} />
+              <div
+                className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition ${
+                  changementFiles.length > 0 ? "border-green-300 bg-green-50" : "border-gray-300 hover:border-orange-400 hover:bg-orange-50/50"
+                }`}
+                onClick={() => changementInputRef.current?.click()}
+              >
+                <Upload className={`h-6 w-6 mx-auto mb-1 ${changementFiles.length > 0 ? "text-green-500" : "text-gray-400"}`} />
+                {changementFiles.length > 0
+                  ? <p className="text-xs text-green-700 font-medium">✓ {changementFiles.length} fichier{changementFiles.length > 1 ? "s" : ""} sélectionné{changementFiles.length > 1 ? "s" : ""}</p>
+                  : <p className="text-xs text-gray-500">Attestation corrigée, avenant... (plusieurs fichiers possibles)</p>
+                }
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setShowChangementDialog(false); setChangementFiles([]); setNewImmatriculation(""); }}>Annuler</Button>
+              <Button className="flex-1 bg-orange-600 hover:bg-orange-700" disabled={changementLoading || changementFiles.length === 0} onClick={handleCloturerChangement}>
+                <CheckCircle className="h-4 w-4 mr-2" /> {changementLoading ? "Traitement..." : "Valider et clôturer"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog clôture souscription auto/mrh */}
+      <Dialog open={showSouscriptionDialog} onOpenChange={setShowSouscriptionDialog}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Émettre les attestations — {selectedRequest ? REQUEST_TYPE_LABELS[selectedRequest.type] : ""}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-xs text-gray-500 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+              Cette action upload les attestations, crée l&apos;émission dans le portefeuille client et clôture le dossier en une seule étape.
+            </p>
+            <div className="space-y-1.5">
+              <Label>Attestations <span className="text-red-500">*</span></Label>
+              <input ref={souscriptionInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple className="hidden"
+                onChange={e => setSouscriptionFiles(Array.from(e.target.files ?? []))} />
+              <div
+                className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition ${
+                  souscriptionFiles.length > 0 ? "border-green-300 bg-green-50" : "border-gray-300 hover:border-emerald-400 hover:bg-emerald-50/50"
+                }`}
+                onClick={() => souscriptionInputRef.current?.click()}
+              >
+                <Upload className={`h-6 w-6 mx-auto mb-1 ${souscriptionFiles.length > 0 ? "text-green-500" : "text-gray-400"}`} />
+                {souscriptionFiles.length > 0
+                  ? <p className="text-xs text-green-700 font-medium">✓ {souscriptionFiles.length} fichier{souscriptionFiles.length > 1 ? "s" : ""} sélectionné{souscriptionFiles.length > 1 ? "s" : ""}</p>
+                  : <p className="text-xs text-gray-500">Attestation(s), vignette, carte rose... (plusieurs fichiers possibles)</p>
+                }
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>N° Police <span className="text-red-500">*</span></Label>
+                <Input placeholder="POL-XXXX" value={souscriptionForm.numPolice} onChange={e => setSouscriptionForm(f => ({...f, numPolice: e.target.value}))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>N° Facture</Label>
+                <Input placeholder="FA-2026-XXXX" value={souscriptionForm.numFacture} onChange={e => setSouscriptionForm(f => ({...f, numFacture: e.target.value}))} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Compagnie <span className="text-red-500">*</span></Label>
+              <Select value={souscriptionForm.compagnie} onValueChange={v => setSouscriptionForm(f => ({...f, compagnie: v}))}>
+                <SelectTrigger><SelectValue placeholder="Sélectionnez..." /></SelectTrigger>
+                <SelectContent>
+                  {COMPAGNIES.map(c => (<SelectItem key={c} value={c}>{c}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Situation</Label>
+              <Select value={souscriptionForm.situation} onValueChange={v => setSouscriptionForm(f => ({...f, situation: v}))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["Affaire nouvelle","Incorporation","Retrait","Renouvellement","Modification"].map(s => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Date d&apos;effet <span className="text-red-500">*</span></Label>
+                <Input type="date" value={souscriptionForm.effet} onChange={e => setSouscriptionForm(f => ({...f, effet: e.target.value}))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Date d&apos;échéance <span className="text-red-500">*</span></Label>
+                <Input type="date" value={souscriptionForm.echeance} onChange={e => setSouscriptionForm(f => ({...f, echeance: e.target.value}))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Prime nette (FCFA)</Label>
+                <Input type="number" min={0} placeholder="0" value={souscriptionForm.primeNette} onChange={e => setSouscriptionForm(f => ({...f, primeNette: e.target.value}))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Prime TTC (FCFA) <span className="text-red-500">*</span></Label>
+                <Input type="number" min={0} placeholder="0" value={souscriptionForm.primeTtc} onChange={e => setSouscriptionForm(f => ({...f, primeTtc: e.target.value}))} />
+              </div>
+            </div>
+            {selectedRequest?.type === "souscription_auto" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Marque</Label>
+                  <Input placeholder="Ex : Toyota" value={souscriptionForm.marque} onChange={e => setSouscriptionForm(f => ({...f, marque: e.target.value}))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Immatriculation</Label>
+                  <Input placeholder="XXXX XX XX" value={souscriptionForm.immatriculation} onChange={e => setSouscriptionForm(f => ({...f, immatriculation: e.target.value}))} />
+                </div>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setShowSouscriptionDialog(false); setSouscriptionFiles([]); }}>Annuler</Button>
+              <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700" disabled={souscriptionLoading || souscriptionFiles.length === 0} onClick={handleCloturerSouscription}>
+                <CheckCheck className="h-4 w-4 mr-2" /> {souscriptionLoading ? "Traitement..." : "Émettre et clôturer"}
               </Button>
             </div>
           </div>

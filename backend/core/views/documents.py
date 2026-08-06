@@ -44,15 +44,30 @@ class RequestLivrablesView(APIView):
                 return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         serializer = DocumentSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        serializer.save(request=req, uploaded_by=request.user, is_livrable=True)
-        notify_livrable_added(req)
+        doc = serializer.save(request=req, uploaded_by=request.user, is_livrable=True)
+        notify_livrable_added(req, doc)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class DocumentUploadView(generics.CreateAPIView):
     serializer_class = DocumentSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
+        # Vérifier que l'utilisateur a accès à la requête liée
+        request_obj = serializer.validated_data.get("request")
+        if request_obj:
+            user = self.request.user
+            if user.role not in ("agent", "admin") and request_obj.client_id != user.id:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("Vous ne pouvez ajouter des documents qu'à vos propres requêtes.")
+        fichier = serializer.validated_data.get("fichier")
+        if fichier:
+            try:
+                validate_upload(fichier)
+            except ValidationError as e:
+                from rest_framework.exceptions import ValidationError as DRFValidationError
+                raise DRFValidationError({"fichier": e.messages})
         serializer.save(uploaded_by=self.request.user)
 
 
@@ -104,12 +119,23 @@ class CarteGriseUploadView(generics.CreateAPIView):
                 validate_upload(file)
             except ValidationError as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            request_id = request.data.get("request_id")
+            linked_request = None
+            if request_id:
+                from core.models import ClientRequest
+                try:
+                    linked_request = ClientRequest.objects.get(pk=request_id)
+                    if request.user.role not in ("agent", "admin") and linked_request.client_id != request.user.id:
+                        return Response({"error": "Vous n'êtes pas autorisé à lier un document à cette requête."}, status=status.HTTP_403_FORBIDDEN)
+                except ClientRequest.DoesNotExist:
+                    return Response({"error": "Requête introuvable."}, status=status.HTTP_404_NOT_FOUND)
             doc = Document.objects.create(
                 nom=f"carte_grise_{file.name}",
                 fichier=file,
                 type_fichier="carte_grise",
                 uploaded_by=request.user,
                 is_livrable=False,
+                request=linked_request,
             )
             return Response({
                 "document_id": doc.id,
@@ -118,5 +144,7 @@ class CarteGriseUploadView(generics.CreateAPIView):
                 "file_type": file.content_type,
                 "message": "Carte grise uploadée avec succès",
             })
-        except Exception as e:
-            return Response({"error": f"Erreur : {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            import logging
+            logging.getLogger("core.documents").exception("CarteGriseUploadView error")
+            return Response({"error": "Une erreur est survenue lors de l'upload."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
