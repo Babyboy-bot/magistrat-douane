@@ -27,35 +27,35 @@ import { NotificationsDropdown } from "@/components/notifications-dropdown";
 import { cn } from "@/lib/utils";
 
 const navigation = [
-  { name: "Tableau de bord", href: "/client/dashboard", icon: LayoutDashboard },
-  { name: "Mon portefeuille", href: "/client/portfolio", icon: Briefcase },
-  { name: "Historique", href: "/client/history", icon: History },
+  { name: "Tableau de bord", href: "/client/dashboard", icon: LayoutDashboard, wip: false },
+  { name: "Mon portefeuille", href: "/client/portfolio", icon: Briefcase, wip: true },
+  { name: "Historique", href: "/client/history", icon: History, wip: false },
 ];
 
 const prospectActions = [
-  { name: "Cotation Auto", href: "/client/cotation/automobile", icon: Car },
-  { name: "Cotation MRH", href: "/client/cotation/habitation", icon: Home },
+  { name: "Cotation Auto", href: "/client/cotation/automobile", icon: Car, wip: true },
+  { name: "Cotation MRH", href: "/client/cotation/habitation", icon: Home, wip: true },
 ];
 
 const verifiedActions = [
-  { name: "Cotation Auto", href: "/client/cotation/automobile", icon: Car },
-  { name: "Cotation MRH", href: "/client/cotation/habitation", icon: Home },
-  { name: "Souscription Auto", href: "/client/subscribe/automobile", icon: Car },
-  { name: "Souscription MRH", href: "/client/subscribe/habitation", icon: Home },
-  { name: "Incorporation", href: "/client/incorporation", icon: FileText },
-  { name: "Changement", href: "/client/change", icon: RefreshCw },
-  { name: "Mes sinistres", href: "/client/sinistres", icon: AlertTriangle },
+  { name: "Cotation Auto", href: "/client/cotation/automobile", icon: Car, wip: true },
+  { name: "Cotation MRH", href: "/client/cotation/habitation", icon: Home, wip: true },
+  { name: "Souscription Auto", href: "/client/subscribe/automobile", icon: Car, wip: true },
+  { name: "Souscription MRH", href: "/client/subscribe/habitation", icon: Home, wip: true },
+  { name: "Incorporation", href: "/client/incorporation", icon: FileText, wip: true },
+  { name: "Changement", href: "/client/change", icon: RefreshCw, wip: true },
+  { name: "Mes sinistres", href: "/client/sinistres", icon: AlertTriangle, wip: true },
 ];
 
 const magistratActions = [
-  { name: "Cotation Auto", href: "/client/cotation/automobile", icon: Car },
-  { name: "Cotation MRH", href: "/client/cotation/habitation", icon: Home },
-  { name: "Souscription Auto", href: "/client/subscribe/automobile", icon: Car },
-  { name: "Souscription MRH", href: "/client/subscribe/habitation", icon: Home },
-  { name: "Magist-Assur", href: "/client/subscribe/magist-assur", icon: Shield },
-  { name: "Incorporation", href: "/client/incorporation", icon: FileText },
-  { name: "Changement", href: "/client/change", icon: RefreshCw },
-  { name: "Mes sinistres", href: "/client/sinistres", icon: AlertTriangle },
+  { name: "Cotation Auto", href: "/client/cotation/automobile", icon: Car, wip: true },
+  { name: "Cotation MRH", href: "/client/cotation/habitation", icon: Home, wip: true },
+  { name: "Souscription Auto", href: "/client/subscribe/automobile", icon: Car, wip: true },
+  { name: "Souscription MRH", href: "/client/subscribe/habitation", icon: Home, wip: true },
+  { name: "Magist-Assur", href: "/client/subscribe/magist-assur", icon: Shield, wip: false },
+  { name: "Incorporation", href: "/client/incorporation", icon: FileText, wip: true },
+  { name: "Changement", href: "/client/change", icon: RefreshCw, wip: true },
+  { name: "Mes sinistres", href: "/client/sinistres", icon: AlertTriangle, wip: true },
 ];
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -161,6 +161,11 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             >
               <item.icon className="h-4 w-4 flex-shrink-0" />
               {item.name}
+              {item.wip && (
+                <span className="ml-auto text-[9px] uppercase tracking-wide bg-amber-400/20 text-amber-400 px-1.5 py-0.5 rounded font-semibold">
+                  Bientôt
+                </span>
+              )}
             </Link>
           );
         })}
@@ -202,6 +207,11 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                   >
                     <item.icon className="h-4 w-4 flex-shrink-0" />
                     {item.name}
+                    {item.wip && (
+                      <span className="ml-auto text-[9px] uppercase tracking-wide bg-amber-400/20 text-amber-400 px-1.5 py-0.5 rounded font-semibold">
+                        Bientôt
+                      </span>
+                    )}
                   </Link>
                 );
               });

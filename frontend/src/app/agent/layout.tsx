@@ -22,11 +22,11 @@ import { NotificationsDropdown } from "@/components/notifications-dropdown";
 import { cn } from "@/lib/utils";
 
 const navigation = [
-  { name: "Tableau de bord", href: "/agent/dashboard", icon: LayoutDashboard },
-  { name: "Assurés / Prospects", href: "/agent/clients", icon: Users },
-  { name: "Émissions", href: "/agent/emissions", icon: FileSpreadsheet },
-  { name: "Requêtes clients", href: "/agent/requests", icon: ClipboardList },
-  { name: "MAGIST'ASSUR", href: "/agent/magistassur", icon: Heart },
+  { name: "Tableau de bord", href: "/agent/dashboard", icon: LayoutDashboard, wip: false },
+  { name: "Assurés / Prospects", href: "/agent/clients", icon: Users, wip: true },
+  { name: "Émissions", href: "/agent/emissions", icon: FileSpreadsheet, wip: true },
+  { name: "Requêtes clients", href: "/agent/requests", icon: ClipboardList, wip: true },
+  { name: "MAGIST'ASSUR", href: "/agent/magistassur", icon: Heart, wip: false },
 ];
 
 export default function AgentLayout({ children }: { children: React.ReactNode }) {
@@ -109,6 +109,11 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
             >
               <item.icon className="h-4 w-4 flex-shrink-0" />
               {item.name}
+              {item.wip && (
+                <span className="ml-auto text-[9px] uppercase tracking-wide bg-amber-400/20 text-amber-400 px-1.5 py-0.5 rounded font-semibold">
+                  Bientôt
+                </span>
+              )}
             </Link>
           );
         })}

@@ -1,15 +1,15 @@
 "use client";
 
-import { Wallet, AlertCircle, FileText, Car, Home, Shield, RefreshCw, AlertTriangle, Download, Eye, Clock, CheckCircle } from "lucide-react";
+import { Wallet, AlertCircle, FileText, Shield, Download, Eye, Clock, CheckCircle, PiggyBank, Heart } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "@/stores/auth-store";
-import { useClientStats, useClientRequests } from "@/hooks/use-api-data";
-import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS, Emission, ClientRequest } from "@/lib/types";
-import { downloadFile } from "@/lib/api";
+import { useClientRequests } from "@/hooks/use-api-data";
+import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS, ClientRequest } from "@/lib/types";
+import { downloadFile, magistassurApi } from "@/lib/api";
 import Link from "next/link";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
@@ -43,14 +43,23 @@ function urgencyBadge(days: number) {
 export default function ClientDashboard() {
   const { user } = useAuthStore();
   const clientId = user?.id || "";
-  const { stats, emissions, loading: statsLoading, refetch } = useClientStats(clientId);
   const { data: requests } = useClientRequests(clientId);
 
+  const [epargne, setEpargne] = useState<Record<string, unknown>[]>([]);
+  const [prevoyance, setPrevoyance] = useState<Record<string, unknown>[]>([]);
+  const [loadingMagist, setLoadingMagist] = useState(true);
+
   useEffect(() => {
-    const handler = () => refetch();
-    window.addEventListener("emission_paiement_updated", handler);
-    return () => window.removeEventListener("emission_paiement_updated", handler);
-  }, [refetch]);
+    if (!user?.verified) return;
+    Promise.all([
+      magistassurApi.listEpargne({ clientId }).catch(() => []),
+      magistassurApi.listPrevoyance({ clientId }).catch(() => []),
+    ]).then(([e, p]) => {
+      setEpargne(e as Record<string, unknown>[]);
+      setPrevoyance(p as Record<string, unknown>[]);
+      setLoadingMagist(false);
+    });
+  }, [user?.verified, clientId]);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("fr-FR").format(amount) + " FCFA";
@@ -64,23 +73,14 @@ export default function ClientDashboard() {
     }
   };
 
-  // Contrats triés par échéance croissante, actifs en tête
-  const contratsActifs = [...emissions]
-    .filter((e: Emission) => e.echeance)
-    .sort((a: Emission, b: Emission) => new Date(a.echeance).getTime() - new Date(b.echeance).getTime());
-
   // Livrables récents (toutes requêtes confondues)
   const livrablesRecents = requests
     .flatMap((r: ClientRequest) => r.livrables.map((d) => ({ ...d, requestNumero: r.numero, requestType: r.type })))
     .slice(0, 5);
 
-  // Sinistres en cours
-  const sinistresEnCours = requests.filter(
-    (r: ClientRequest) => r.type === "declaration_sinistre" && r.status !== "traite"
-  );
-
-  // Urgences : contrats expirant dans 30j
-  const urgences = contratsActifs.filter((e: Emission) => daysUntil(e.echeance) <= 30 && daysUntil(e.echeance) > 0);
+  const totalContrats = epargne.length + prevoyance.length;
+  const contratsEnAttente = [...epargne, ...prevoyance].filter((c) => c.statut === "en_attente").length;
+  const contratsActifs = [...epargne, ...prevoyance].filter((c) => c.statut === "actif" || c.statut === "en_cours").length;
 
   return (
     <div className="space-y-6">
@@ -124,38 +124,9 @@ export default function ClientDashboard() {
                   <li>✅ Vos données sont sécurisées</li>
                 </ul>
               </div>
-              <Button 
-                onClick={() => window.location.href = "/client/cotation/automobile"}
-                className="bg-amber-600 hover:bg-amber-700"
-              >
-                Demander une cotation
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Bannière urgences échéance */}
-      {user?.verified && urgences.length > 0 && (
-        <Card className="border-orange-300 bg-orange-50 border-0 shadow-sm">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-semibold text-orange-900 text-sm">
-                  {urgences.length} contrat{urgences.length > 1 ? "s" : ""} à renouveler prochainement
-                </p>
-                <div className="mt-1 space-y-0.5">
-                  {urgences.map((e: Emission) => (
-                    <p key={e.id} className="text-xs text-orange-700">
-                      • {e.numPolice || `#${e.id}`} ({e.risque}) — échéance le {e.echeance}
-                    </p>
-                  ))}
-                </div>
-              </div>
-              <Link href="/client/portfolio">
-                <Button size="sm" variant="outline" className="text-xs border-orange-400 text-orange-700 hover:bg-orange-100">
-                  Voir mes contrats
+              <Link href="/client/subscribe/magist-assur">
+                <Button className="bg-amber-600 hover:bg-amber-700">
+                  Souscrire à Magist'Assur
                 </Button>
               </Link>
             </div>
@@ -163,27 +134,31 @@ export default function ClientDashboard() {
         </Card>
       )}
 
-      {/* Sinistres en cours */}
-      {user?.verified && sinistresEnCours.length > 0 && (
-        <Card className="border-0 shadow-sm border-l-4 border-blue-500">
+      {/* Bannière contrats en attente */}
+      {user?.verified && contratsEnAttente > 0 && (
+        <Card className="border-orange-300 bg-orange-50 border-0 shadow-sm">
           <CardContent className="pt-4 pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-semibold text-blue-800">
-                  {sinistresEnCours.length} dossier{sinistresEnCours.length > 1 ? "s" : ""} sinistre en cours
-                </span>
+            <div className="flex items-start gap-3">
+              <Clock className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-orange-900 text-sm">
+                  {contratsEnAttente} dossier{contratsEnAttente > 1 ? "s" : ""} Magist'Assur en attente de traitement
+                </p>
               </div>
-              <Link href="/client/sinistres">
-                <Button size="sm" variant="outline" className="text-xs">Suivre mes sinistres</Button>
+              <Link href="/client/subscribe/magist-assur">
+                <Button size="sm" variant="outline" className="text-xs border-orange-400 text-orange-700 hover:bg-orange-100">
+                  Suivre mes dossiers
+                </Button>
               </Link>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Stats cards - seulement pour les vérifiés */}
-      {user?.verified && statsLoading && (
+      {/* Sinistres en cours — masqué, fonctionnalité en développement */}
+
+      {/* Stats cards Magist'Assur */}
+      {user?.verified && loadingMagist && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-white rounded-xl shadow-sm p-6">
@@ -198,19 +173,31 @@ export default function ClientDashboard() {
           ))}
         </div>
       )}
-      {user?.verified && !statsLoading && (
+      {user?.verified && !loadingMagist && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="border-0 shadow-sm">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">Prime Totale</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
-                    {formatCurrency(stats.primeTotale)}
-                  </p>
+                  <p className="text-sm text-gray-500 font-medium">Contrats Magist'Assur</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{totalContrats}</p>
+                </div>
+                <div className="h-12 w-12 rounded-xl bg-purple-50 flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Contrats Épargne</p>
+                  <p className="text-2xl font-bold text-blue-600 mt-1">{epargne.length}</p>
                 </div>
                 <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <Wallet className="h-6 w-6 text-blue-600" />
+                  <PiggyBank className="h-6 w-6 text-blue-600" />
                 </div>
               </div>
             </CardContent>
@@ -220,29 +207,11 @@ export default function ClientDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">Prime Payée</p>
-                  <p className="text-2xl font-bold text-green-600 mt-1">
-                    {formatCurrency(stats.primePayee)}
-                  </p>
+                  <p className="text-sm text-gray-500 font-medium">Contrats Prévoyance</p>
+                  <p className="text-2xl font-bold text-rose-600 mt-1">{prevoyance.length}</p>
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-green-50 flex items-center justify-center">
-                  <Wallet className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 font-medium">Prime à Payer</p>
-                  <p className="text-2xl font-bold text-red-600 mt-1">
-                    {formatCurrency(stats.primeAPayer)}
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-red-50 flex items-center justify-center">
-                  <AlertCircle className="h-6 w-6 text-red-600" />
+                <div className="h-12 w-12 rounded-xl bg-rose-50 flex items-center justify-center">
+                  <Heart className="h-6 w-6 text-rose-600" />
                 </div>
               </div>
             </CardContent>
@@ -250,7 +219,7 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {/* Quick actions - seulement pour les utilisateurs vérifiés */}
+      {/* Quick actions - Magist'Assur uniquement */}
       {user?.verified && (
         <Card className="border-0 shadow-sm">
           <CardHeader>
@@ -258,99 +227,72 @@ export default function ClientDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <Link href="/client/sinistre">
+              <Link href="/client/subscribe/magist-assur">
                 <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
-                  <AlertCircle className="h-5 w-5 text-red-600" />
-                  <span className="text-xs font-medium">Déclarer sinistre</span>
+                  <Shield className="h-5 w-5 text-purple-600" />
+                  <span className="text-xs font-medium">Magist'Assur</span>
                 </Button>
               </Link>
-              <Link href="/client/incorporation">
-                <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
-                  <FileText className="h-5 w-5 text-green-600" />
-                  <span className="text-xs font-medium">Incorporation</span>
-                </Button>
-              </Link>
-              {user.profession?.toLowerCase().includes("magistrat") ? (
-                <Link href="/client/subscribe/magist-assur">
-                  <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
-                    <Shield className="h-5 w-5 text-purple-600" />
-                    <span className="text-xs font-medium">Magist-Assur</span>
-                  </Button>
-                </Link>
-              ) : (
-                <Link href="/client/change">
-                  <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
-                    <RefreshCw className="h-5 w-5 text-orange-600" />
-                    <span className="text-xs font-medium">Changement</span>
-                  </Button>
-                </Link>
-              )}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Contrats — échéances & soldes */}
-      {user?.verified && (
+      {/* Contrats Magist'Assur */}
+      {user?.verified && !loadingMagist && (
         <Card className="border-0 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg">Mes contrats</CardTitle>
-            <Link href="/client/portfolio">
-              <Button variant="ghost" size="sm" className="text-xs">Voir tout</Button>
+            <CardTitle className="text-lg">Mes contrats Magist'Assur</CardTitle>
+            <Link href="/client/subscribe/magist-assur">
+              <Button variant="ghost" size="sm" className="text-xs">Souscrire</Button>
             </Link>
           </CardHeader>
           <CardContent className="space-y-2">
-            {contratsActifs.slice(0, 5).map((e: Emission) => {
-              const days = daysUntil(e.echeance);
-              const payPct = e.primeTTC > 0 ? Math.round((e.totalPaye / e.primeTTC) * 100) : 100;
-              return (
-                <div key={e.id} className={`p-3 rounded-lg transition ${urgencyClass(days)}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="h-9 w-9 rounded-lg bg-[hsl(222,47%,20%)] flex items-center justify-center shrink-0">
-                        {e.risque.toLowerCase().includes("auto") ? (
-                          <Car className="h-4 w-4 text-white" />
-                        ) : (
-                          <Home className="h-4 w-4 text-white" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-medium truncate">{e.risque}</p>
-                          {urgencyBadge(days)}
-                        </div>
-                        <p className="text-xs text-gray-500 truncate">{e.compagnie} • {e.numPolice || `#${e.id}`}</p>
-                        <p className="text-xs text-gray-400">Éch. {e.echeance}</p>
-                      </div>
+            {epargne.slice(0, 3).map((c) => (
+              <div key={c.id as string} className="p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="h-9 w-9 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
+                      <PiggyBank className="h-4 w-4 text-white" />
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold">{formatCurrency(e.primeTTC)}</p>
-                      {e.solde > 0 ? (
-                        <p className="text-xs text-red-600 font-medium">Reste : {formatCurrency(e.solde)}</p>
-                      ) : (
-                        <p className="text-xs text-green-600 font-medium flex items-center justify-end gap-1">
-                          <CheckCircle className="h-3 w-3" /> Soldé
-                        </p>
-                      )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">Épargne — {c.numPolice as string || `#${c.id}`}</p>
+                      <p className="text-xs text-gray-500">Statut: {c.statut as string}</p>
                     </div>
                   </div>
-                  {/* Barre de progression paiement */}
-                  {e.primeTTC > 0 && (
-                    <div className="mt-2">
-                      <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${payPct >= 100 ? "bg-green-500" : "bg-blue-500"}`}
-                          style={{ width: `${Math.min(payPct, 100)}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-gray-400 mt-0.5 text-right">{payPct}% réglé</p>
-                    </div>
-                  )}
+                  <Badge className="bg-blue-100 text-blue-800 shrink-0" variant="secondary">
+                    {c.statut as string}
+                  </Badge>
                 </div>
-              );
-            })}
-            {contratsActifs.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-4">Aucun contrat pour le moment</p>
+              </div>
+            ))}
+            {prevoyance.slice(0, 3).map((c) => (
+              <div key={c.id as string} className="p-3 rounded-lg bg-rose-50 hover:bg-rose-100 transition">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="h-9 w-9 rounded-lg bg-rose-600 flex items-center justify-center shrink-0">
+                      <Heart className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">Prévoyance — {c.numPolice as string || `#${c.id}`}</p>
+                      <p className="text-xs text-gray-500">Statut: {c.statut as string}</p>
+                    </div>
+                  </div>
+                  <Badge className="bg-rose-100 text-rose-800 shrink-0" variant="secondary">
+                    {c.statut as string}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+            {totalContrats === 0 && (
+              <div className="text-center py-6">
+                <p className="text-sm text-gray-400 mb-3">Aucun contrat Magist'Assur pour le moment</p>
+                <Link href="/client/subscribe/magist-assur">
+                  <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
+                    <Shield className="h-4 w-4 mr-1" /> Souscrire maintenant
+                  </Button>
+                </Link>
+              </div>
             )}
           </CardContent>
         </Card>

@@ -81,3 +81,4 @@ logs/
 frontend/test-results/
 frontend/playwright-report/
 frontend/tests/.auth/
+*.backup.tsx
