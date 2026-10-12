@@ -1,21 +1,27 @@
 from django.conf import settings as conf
 from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 from rest_framework import generics, permissions, status, serializers as drf_serializers
-from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
-import json
 import re
 
-from notifications.emails import send_welcome_email
+from notifications.emails import send_password_reset_email, send_welcome_email
 from .serializers import (
+    normalize_phone,
+    PasswordResetConfirmSerializer,
+    ProfileUpdateSerializer,
     UserSerializer,
     UserCreateSerializer,
     UserUpdateSerializer,
@@ -88,6 +94,8 @@ class IsAdmin(permissions.BasePermission):
 @method_decorator(csrf_exempt, name='dispatch')
 class CookieLoginView(APIView):
     """Authenticate and set JWT tokens as httpOnly cookies."""
+    # Vue publique : un cookie access_token expiré ne doit pas bloquer la connexion
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
     throttle_classes = [LoginRateThrottle]
 
@@ -114,7 +122,7 @@ class CookieLoginView(APIView):
         
         if not user or not user.check_password(serializer.validated_data["password"]):
             log_login_failed(identifier, ip)
-            raise AuthenticationFailed("Identifiants incorrects")
+            return Response({"detail": "Identifiants incorrects"}, status=status.HTTP_401_UNAUTHORIZED)
         
         if not user.is_active:
             log_login_failed(identifier, ip)
@@ -128,35 +136,19 @@ class CookieLoginView(APIView):
         user.save(update_fields=["last_login"])
         log_login_success(user, ip)
 
-        user_data = UserSerializer(user).data
-        # Inclure les tokens dans la réponse pour le frontend
-        user_data['access'] = str(refresh.access_token)
-        user_data['refresh'] = str(refresh)
-        
-        response = Response(user_data)
+        # Les tokens ne transitent que par les cookies httpOnly (jamais dans le corps)
+        response = Response(UserSerializer(user).data)
         return _set_auth_cookies(response, str(refresh.access_token), str(refresh))
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CookieRefreshView(APIView):
     """Read refresh token from cookie, rotate it, set new cookies."""
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        # Essayer d'abord le body JSON (pour le frontend)
-        raw_refresh = None
-        
-        if request.content_type == 'application/json':
-            try:
-                data = json.loads(request.body)
-                raw_refresh = data.get('refresh')
-            except (json.JSONDecodeError, KeyError):
-                pass
-        
-        # Fallback sur les cookies
-        if not raw_refresh:
-            raw_refresh = request.COOKIES.get(conf.REFRESH_TOKEN_COOKIE)
-        
+        raw_refresh = request.COOKIES.get(conf.REFRESH_TOKEN_COOKIE)
         if not raw_refresh:
             return Response(
                 {"detail": "Refresh token manquant"},
@@ -165,13 +157,9 @@ class CookieRefreshView(APIView):
         try:
             old_token = RefreshToken(raw_refresh)
             old_token.blacklist()
-            user = User.objects.get(id=old_token["user_id"])
+            user = User.objects.get(id=old_token["user_id"], is_active=True)
             new_refresh = RefreshToken.for_user(user)
-            response = Response({
-                "detail": "Token rafraîchi",
-                "access": str(new_refresh.access_token),
-                "refresh": str(new_refresh)
-            })
+            response = Response({"detail": "Token rafraîchi"})
             return _set_auth_cookies(response, str(new_refresh.access_token), str(new_refresh))
         except (TokenError, User.DoesNotExist):
             response = Response(
@@ -185,6 +173,7 @@ class CookieRefreshView(APIView):
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserCreateSerializer
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
     throttle_classes = [LoginRateThrottle]
 
@@ -226,22 +215,12 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_serializer_class(self):
         if self.request.method in ("PUT", "PATCH"):
-            return UserUpdateSerializer
+            return ProfileUpdateSerializer
         return UserSerializer
 
-    def perform_update(self, serializer):
-        old_is_active = serializer.instance.is_active
-        instance = serializer.save()
-
-        if "is_active" in serializer.validated_data and instance.is_active != old_is_active:
-            action = "activation" if instance.is_active else "deactivation"
-            log_user_action(self.request.user, instance, action, {
-                "from": old_is_active,
-                "to": instance.is_active,
-            })
-
-        if serializer.validated_data.get("password"):
-            log_user_action(self.request.user, instance, "password_reset", {})
+    def update(self, request, *args, **kwargs):
+        super().update(request, *args, **kwargs)
+        return Response(UserSerializer(self.get_object()).data)
 
 
 class ChangePasswordView(generics.GenericAPIView):
@@ -338,9 +317,20 @@ class AuditLogListView(generics.ListAPIView):
         return qs
 
 
+RESET_GENERIC_MESSAGE = (
+    "Si un compte correspond à cet identifiant, un lien de réinitialisation a été envoyé "
+    "à l'adresse email associée. Sans email enregistré, contactez votre agent ACS."
+)
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class ResetPasswordView(APIView):
-    """Reset password for a user by email. Generates a temp password."""
+    """
+    Étape 1 : demande de réinitialisation.
+    Le mot de passe n'est PAS modifié ici : un lien signé à usage unique est envoyé par email.
+    La réponse est identique que le compte existe ou non (pas d'énumération).
+    """
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
     throttle_classes = [LoginRateThrottle]
 
@@ -350,21 +340,47 @@ class ResetPasswordView(APIView):
     def post(self, request):
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        identifier = serializer.validated_data["identifier"]
-        user = User.objects.filter(email=identifier).first()
-        if not user:
-            user = User.objects.filter(telephone=identifier).first()
-        if not user:
+        identifier = serializer.validated_data["identifier"].strip()
+        if "@" in identifier:
+            user = User.objects.filter(email__iexact=identifier, is_active=True).first()
+        else:
+            user = User.objects.filter(telephone=normalize_phone(identifier), is_active=True).first()
+        if user and user.email:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            send_password_reset_email(user, f"{conf.FRONTEND_URL}/reset-password?uid={uid}&token={token}")
+        return Response({"detail": RESET_GENERIC_MESSAGE})
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ResetPasswordConfirmView(APIView):
+    """Étape 2 : validation du lien (uid + token) et choix du nouveau mot de passe."""
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [LoginRateThrottle]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        try:
+            user = User.objects.get(pk=force_str(urlsafe_base64_decode(data["uid"])), is_active=True)
+        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+            user = None
+        if user is None or not default_token_generator.check_token(user, data["token"]):
             return Response(
-                {"detail": "Aucun compte trouvé avec cet identifiant"},
-                status=status.HTTP_404_NOT_FOUND,
+                {"detail": "Lien de réinitialisation invalide ou expiré."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        import secrets, string
-        temp_pw = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10)) + "A1!"
-        user.set_password(temp_pw)
+        try:
+            validate_password(data["new_password"], user)
+        except DjangoValidationError as exc:
+            return Response({"new_password": list(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        user.set_password(data["new_password"])
         user.save(update_fields=["password"])
-        # In production: send temp_pw via email/SMS
-        return Response({"detail": "Un nouveau mot de passe a été généré. Contactez votre agent ACS pour le récupérer."})
+        log_password_change(user, get_client_ip(request))
+        log_user_action(None, user, "password_reset", {"via": "email_link"})
+        return Response({"detail": "Mot de passe réinitialisé. Vous pouvez vous connecter."})
 
 
 class AgentCreateClientView(generics.CreateAPIView):
@@ -381,7 +397,10 @@ class AgentCreateClientView(generics.CreateAPIView):
         user.save(update_fields=["verified_by", "verified_at"])
         log_register(user, get_client_ip(request))
         log_user_action(request.user, user, "creation", {"role": user.role})
-        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        data = UserSerializer(user).data
+        # Mot de passe temporaire communiqué une seule fois à l'agent
+        data["temporary_password"] = user.temporary_password
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 class AdminCreateAgentView(generics.CreateAPIView):

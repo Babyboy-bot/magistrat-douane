@@ -23,6 +23,9 @@ class PaiementSerializer(serializers.ModelSerializer):
         if emission is None or montant is None:
             return attrs
 
+        # Verrou pour éviter que deux paiements simultanés dépassent le solde
+        # (effectif lorsque la vue s'exécute dans une transaction)
+        emission = Emission.objects.select_for_update().get(pk=emission.pk)
         paiements_qs = emission.paiements.all()
         if self.instance:
             paiements_qs = paiements_qs.exclude(pk=self.instance.pk)
@@ -99,7 +102,10 @@ class ClientRequestSerializer(serializers.ModelSerializer):
             "type", "type_label", "status", "status_label",
             "details", "documents", "livrables", "treated_at", "created_at",
         ]
-        read_only_fields = ["id", "numero", "created_at"]
+        # Statut / agent / traitement ne changent que via les endpoints claim/release/treat
+        read_only_fields = [
+            "id", "numero", "client", "agent", "type", "status", "treated_at", "created_at",
+        ]
 
     def get_agent_nom(self, obj):
         return obj.agent.full_name if obj.agent else None

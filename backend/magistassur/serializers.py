@@ -23,6 +23,11 @@ class CotisationEpargneSerializer(serializers.ModelSerializer):
         model = CotisationEpargne
         exclude = ["contrat"]
 
+    def validate_montant(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Le montant doit être strictement positif.")
+        return value
+
 
 class ContratEpargneSerializer(serializers.ModelSerializer):
     correspondants = CorrespondantSerializer(many=True, read_only=True)
@@ -70,6 +75,16 @@ class ContratEpargneCreateSerializer(serializers.ModelSerializer):
         for b in beneficiaires_data:
             BeneficiaireEpargne.objects.create(contrat=contrat, **b)
         return contrat
+
+
+# Champs de gestion qu'un client ne doit jamais pouvoir fixer lui-même
+CLIENT_READ_ONLY_EPARGNE = ["client", "agent", "num_police", "code_inspection", "statut"]
+CLIENT_READ_ONLY_PREVOYANCE = ["client", "agent", "num_police", "num_client", "code_inspection", "statut"]
+
+
+class ClientContratEpargneCreateSerializer(ContratEpargneCreateSerializer):
+    class Meta(ContratEpargneCreateSerializer.Meta):
+        read_only_fields = CLIENT_READ_ONLY_EPARGNE
 
 
 # ── Prévoyance ──────────────────────────────────────
@@ -129,3 +144,16 @@ class ContratPrevoyanceCreateSerializer(serializers.ModelSerializer):
         if questionnaire_data:
             QuestionnaireMedical.objects.create(contrat=contrat, **questionnaire_data)
         return contrat
+
+
+class ClientAssureAssocieSerializer(AssureAssocieSerializer):
+    """Indemnité et prime sont fixées par le barème / l'agent, pas par le client."""
+    class Meta(AssureAssocieSerializer.Meta):
+        read_only_fields = ["montant_indemnite", "prime"]
+
+
+class ClientContratPrevoyanceCreateSerializer(ContratPrevoyanceCreateSerializer):
+    assures_associes = ClientAssureAssocieSerializer(many=True, required=False)
+
+    class Meta(ContratPrevoyanceCreateSerializer.Meta):
+        read_only_fields = CLIENT_READ_ONLY_PREVOYANCE

@@ -295,3 +295,113 @@ class TestSecurityConstraints:
         )
         with pytest.raises(ProtectedError):
             client_user.delete()
+
+
+# ── Tests contrôle d'accès en écriture (audit sécurité) ───────────────────────
+
+@pytest.fixture
+def other_client(db):
+    return User.objects.create_user(
+        email="other@test.ci", password="TestPass123!",
+        nom="Autre", prenoms="Client", telephone="0799999999",
+    )
+
+
+EMISSION_PAYLOAD = {
+    "date": "2025-03-01", "risque": "Automobile", "compagnie": "SUNU",
+    "num_facture": "FAC-X-001", "num_police": "POL-X-001",
+    "effet": "2025-03-01", "echeance": "2026-02-28",
+    "prime_nette": 100_000, "prime_ttc": 120_000,
+}
+
+
+def _pdf(name="doc.pdf"):
+    f = BytesIO(b"%PDF-1.4 test")
+    f.name = name
+    return f
+
+
+@pytest.mark.django_db
+class TestEmissionWriteAccess:
+    def test_client_cannot_create_emission(self, api_client, client_user, other_client):
+        force_login(api_client, client_user)
+        resp = api_client.post("/api/emissions/", {**EMISSION_PAYLOAD, "client": other_client.id}, format="json")
+        assert resp.status_code == 403
+        assert not Emission.objects.filter(num_police="POL-X-001").exists()
+
+    def test_client_cannot_modify_own_emission(self, api_client, client_user, emission):
+        force_login(api_client, client_user)
+        resp = api_client.patch(f"/api/emissions/{emission.id}/", {"prime_ttc": 0}, format="json")
+        assert resp.status_code == 403
+        emission.refresh_from_db()
+        assert emission.prime_ttc == 180_000
+
+    def test_client_cannot_delete_own_emission(self, api_client, client_user, emission):
+        force_login(api_client, client_user)
+        assert api_client.delete(f"/api/emissions/{emission.id}/").status_code == 403
+
+    def test_client_can_still_read_own_emission(self, api_client, client_user, emission):
+        force_login(api_client, client_user)
+        assert api_client.get(f"/api/emissions/{emission.id}/").status_code == 200
+
+
+@pytest.mark.django_db
+class TestRequestWriteAccess:
+    def test_client_cannot_change_status_agent_or_owner(self, api_client, client_user, other_client, agent, client_request):
+        force_login(api_client, client_user)
+        api_client.patch(
+            f"/api/requests/{client_request.id}/",
+            {"status": "traite", "agent": agent.id, "client": other_client.id},
+            format="json",
+        )
+        client_request.refresh_from_db()
+        assert client_request.status == "en_attente"
+        assert client_request.agent_id is None
+        assert client_request.client_id == client_user.id
+
+    def test_agent_can_claim_request(self, api_client, agent, client_request):
+        force_login(api_client, agent)
+        resp = api_client.post(f"/api/requests/{client_request.id}/claim/")
+        assert resp.status_code == 200
+        assert resp.data["status"] == "en_cours"
+        assert api_client.post(f"/api/requests/{client_request.id}/claim/").status_code == 409
+
+    def test_agent_can_filter_requests_by_client(self, api_client, agent, client_request, other_client):
+        ClientRequest.objects.create(client=other_client, type="cotation_mrh", details={})
+        force_login(api_client, agent)
+        resp = api_client.get(f"/api/requests/?client_id={client_request.client_id}")
+        assert [r["id"] for r in resp.data["results"]] == [client_request.id]
+
+
+@pytest.mark.django_db
+class TestDocumentUploadAccess:
+    def test_client_cannot_attach_document_to_other_request(self, api_client, other_client, client_request):
+        force_login(api_client, other_client)
+        resp = api_client.post("/api/documents/", {
+            "request": client_request.id, "nom": "faux", "fichier": _pdf(),
+        }, format="multipart")
+        assert resp.status_code == 403
+        assert not client_request.documents.exists()
+
+    def test_client_cannot_upload_livrable(self, api_client, client_user, client_request):
+        force_login(api_client, client_user)
+        resp = api_client.post("/api/documents/", {
+            "request": client_request.id, "nom": "piece", "fichier": _pdf(), "is_livrable": "true",
+        }, format="multipart")
+        assert resp.status_code == 201
+        assert resp.data["is_livrable"] is False
+
+    def test_agent_can_upload_livrable(self, api_client, agent, client_request):
+        force_login(api_client, agent)
+        resp = api_client.post("/api/documents/", {
+            "request": client_request.id, "nom": "attestation", "fichier": _pdf(), "is_livrable": "true",
+        }, format="multipart")
+        assert resp.status_code == 201
+        assert resp.data["is_livrable"] is True
+
+    def test_carte_grise_rejects_wrong_extension(self, api_client, client_user):
+        force_login(api_client, client_user)
+        f = BytesIO(b"<html>")
+        f.name = "page.html"
+        resp = api_client.post("/api/carte-grise/", {"file": f}, format="multipart")
+        assert resp.status_code == 400

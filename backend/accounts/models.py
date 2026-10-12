@@ -4,9 +4,9 @@ from django.db import models
 
 class UserManager(BaseUserManager):
     def create_user(self, email=None, password=None, **extra_fields):
-        # Email is now optional, but if provided, normalize it
-        if email:
-            email = self.normalize_email(email)
+        # Email is now optional, but if provided, normalize it.
+        # Un email vide est stocké NULL pour ne pas violer la contrainte d'unicité.
+        email = self.normalize_email(email) if email else None
         
         # S'assurer que les champs optionnels sont présents
         if 'telephone' not in extra_fields:
@@ -123,16 +123,26 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         # Logique métier stratégique
         is_new = self.pk is None
-        
-        if self.profession_type in (self.ProfessionType.MAGISTRAT, self.ProfessionType.DOUANIER):
-            # Magistrats & Douaniers = clients premium immédiatement
-            self.risk_level = self.RiskLevel.PREMIUM
-            self.role = self.Role.CLIENT
-            self.account_status = self.AccountStatus.VERIFIED
-            self.verified = True
-            if not self.verified_at:
-                from django.utils import timezone
-                self.verified_at = timezone.now()
+        if not self.email:
+            self.email = None
+
+        if self.role in (self.Role.AGENT, self.Role.ADMIN):
+            # Les comptes internes ne sont jamais reclassés automatiquement
+            pass
+        elif self.profession_type in (self.ProfessionType.MAGISTRAT, self.ProfessionType.DOUANIER):
+            # La catégorie est auto-déclarée : le statut premium n'est accordé
+            # qu'après vérification par un agent (verify_user_view ou création par un agent).
+            if self.verified:
+                self.risk_level = self.RiskLevel.PREMIUM
+                self.role = self.Role.CLIENT
+                self.account_status = self.AccountStatus.VERIFIED
+                if not self.verified_at:
+                    from django.utils import timezone
+                    self.verified_at = timezone.now()
+            else:
+                self.risk_level = self.RiskLevel.STANDARD
+                self.role = self.Role.PROSPECT
+                self.account_status = self.AccountStatus.PENDING_VERIFICATION
         else:
             # Grand public = workflow standard
             self.risk_level = self.RiskLevel.STANDARD

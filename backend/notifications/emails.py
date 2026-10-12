@@ -6,6 +6,7 @@ import logging
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.utils.html import escape
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -40,6 +41,7 @@ def send_welcome_email(user):
         return
     subject = "Bienvenue sur la plateforme ACS"
     nom_complet = f"{user.nom} {user.prenoms}"
+    nom_html = escape(nom_complet)
     body_txt = (
         f"Bonjour M./Mme {nom_complet},\n\n"
         "Bienvenue sur la plateforme ACS — Assurances Conseils & Services.\n\n"
@@ -54,7 +56,7 @@ def send_welcome_email(user):
     <h2 style="color:#f59e0b;margin:0">ACS — Assurances Conseils &amp; Services</h2>
   </div>
   <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
-    <p>Bonjour M./Mme <strong>{nom_complet}</strong>,</p>
+    <p>Bonjour M./Mme <strong>{nom_html}</strong>,</p>
     <p>Bienvenue sur la plateforme <strong>ACS — Assurances Conseils &amp; Services</strong>.</p>
     <p>Votre compte a bien été créé. Vous pouvez dès à présent vous connecter à votre espace
        personnel pour gérer vos contrats et effectuer vos demandes en ligne.</p>
@@ -76,6 +78,7 @@ def send_request_acknowledgment(client_request):
     type_display = client_request.get_type_display()
     numero = client_request.numero
     nom_complet = f"{client.nom} {client.prenoms}"
+    nom_html = escape(nom_complet)
 
     subject = f"Accusé de réception — {numero}"
     body_txt = (
@@ -92,7 +95,7 @@ def send_request_acknowledgment(client_request):
     <h2 style="color:#f59e0b;margin:0">ACS — Assurances Conseils &amp; Services</h2>
   </div>
   <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
-    <p>Bonjour M./Mme <strong>{nom_complet}</strong>,</p>
+    <p>Bonjour M./Mme <strong>{nom_html}</strong>,</p>
     <p>Nous vous remercions d'avoir contacté ACS et d'avoir soumis une demande de
        <strong>{type_display}</strong>.</p>
     <p>Nous confirmons que votre demande a bien été reçue sous le numéro
@@ -115,6 +118,7 @@ def send_request_treated(client_request):
         return
     numero = client_request.numero
     nom_complet = f"{client.nom} {client.prenoms}"
+    nom_html = escape(nom_complet)
 
     subject = f"Votre requête {numero} a été traitée"
     body_txt = (
@@ -131,7 +135,7 @@ def send_request_treated(client_request):
     <h2 style="color:#f59e0b;margin:0">ACS — Assurances Conseils &amp; Services</h2>
   </div>
   <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
-    <p>Bonjour M./Mme <strong>{nom_complet}</strong>,</p>
+    <p>Bonjour M./Mme <strong>{nom_html}</strong>,</p>
     <p>Nous avons le plaisir de vous informer que votre requête
        <strong style="color:#1e3a5f">{numero}</strong> a été traitée.</p>
     <p>Veuillez vous connecter à votre <strong>espace personnel</strong> pour
@@ -163,6 +167,9 @@ def send_new_request_alert_to_agents(client_request):
         "Veuillez traiter cette demande depuis votre espace agent.\n\n"
         "Cordialement,\nSystème ACS"
     )
+    nom_client = escape(nom_client)
+    tel_html = escape(client.telephone or 'N/A')
+    email_html = escape(client.email or 'N/A')
     body_html = f"""
 <html><body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:auto">
   <div style="background:#1e3a5f;padding:20px;border-radius:8px 8px 0 0">
@@ -185,11 +192,11 @@ def send_new_request_alert_to_agents(client_request):
       </tr>
       <tr>
         <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Téléphone</td>
-        <td style="padding:10px;border:1px solid #e5e7eb">{client.telephone or 'N/A'}</td>
+        <td style="padding:10px;border:1px solid #e5e7eb">{tel_html}</td>
       </tr>
       <tr style="background:#f9fafb">
         <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Email</td>
-        <td style="padding:10px;border:1px solid #e5e7eb">{client.email or 'N/A'}</td>
+        <td style="padding:10px;border:1px solid #e5e7eb">{email_html}</td>
       </tr>
     </table>
     <p>Veuillez traiter cette demande depuis votre <strong>espace agent</strong>.</p>
@@ -227,6 +234,8 @@ def send_livrable_notification(request_obj, document_obj):
         f"Pour toute question : {_acs_contact()}\n\n"
         "Cordialement,\nL'équipe ACS"
     )
+    nom_client = escape(nom_client)
+    doc_nom = escape(doc_nom)
     body_html = f"""
 <html><body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:auto">
   <div style="background:#1e3a5f;padding:20px;border-radius:8px 8px 0 0">
@@ -249,3 +258,42 @@ def send_livrable_notification(request_obj, document_obj):
 </body></html>"""
 
     _send(subject, body_txt, body_html, client.email)
+
+
+# ── 6. Réinitialisation du mot de passe ───────────────────────────────────────
+
+def send_password_reset_email(user, reset_url):
+    """Envoie le lien signé (usage unique, durée limitée) de réinitialisation du mot de passe."""
+    if not user.email:
+        return
+    nom_complet = f"{user.nom} {user.prenoms}"
+    subject = "[ACS] Réinitialisation de votre mot de passe"
+    body_txt = (
+        f"Bonjour M./Mme {nom_complet},\n\n"
+        "Une demande de réinitialisation de mot de passe a été effectuée pour votre compte.\n\n"
+        f"Pour choisir un nouveau mot de passe, ouvrez ce lien :\n{reset_url}\n\n"
+        "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email : "
+        "votre mot de passe actuel reste valable.\n\n"
+        f"Pour toute question : {_acs_contact()}\n\n"
+        "Cordialement,\nL'équipe ACS"
+    )
+    body_html = f"""
+<html><body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:auto">
+  <div style="background:#1e3a5f;padding:20px;border-radius:8px 8px 0 0">
+    <h2 style="color:#f59e0b;margin:0">ACS — Réinitialisation du mot de passe</h2>
+  </div>
+  <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
+    <p>Bonjour M./Mme <strong>{escape(nom_complet)}</strong>,</p>
+    <p>Une demande de réinitialisation de mot de passe a été effectuée pour votre compte.</p>
+    <p style="text-align:center;margin:24px 0">
+      <a href="{escape(reset_url)}" style="background:#1e3a5f;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none">
+        Choisir un nouveau mot de passe
+      </a>
+    </p>
+    <p style="color:#6b7280;font-size:13px">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email :
+       votre mot de passe actuel reste valable.</p>
+    <br>
+    <p>Cordialement,<br><strong>L'équipe ACS</strong></p>
+  </div>
+</body></html>"""
+    _send(subject, body_txt, body_html, user.email)

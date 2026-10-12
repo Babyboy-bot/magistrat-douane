@@ -85,6 +85,25 @@ const extractErrorMessage = (data: unknown): string | undefined => {
   return undefined;
 };
 
+// ── CSRF ──
+// Le backend exige l'en-tête X-CSRFToken sur les requêtes non sûres authentifiées par cookie.
+// Le jeton est lu dans la réponse de /api/csrf/ (le cookie peut appartenir au domaine de l'API).
+
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+let csrfToken: string | null = null;
+
+async function getCsrfToken(forceRefresh = false): Promise<string | null> {
+  if (csrfToken && !forceRefresh) return csrfToken;
+  try {
+    const res = await fetch(`${API_BASE}/api/csrf/`, { credentials: "include" });
+    const data = (await res.json()) as { csrftoken?: string };
+    csrfToken = data.csrftoken ?? null;
+  } catch {
+    csrfToken = null;
+  }
+  return csrfToken;
+}
+
 // ── Core API fetch function with automatic token refresh ──
 
 export const apiFetch = async <T = unknown>(
@@ -92,6 +111,7 @@ export const apiFetch = async <T = unknown>(
   options: ApiFetchOptions = {}
 ): Promise<T> => {
   const { skipAuthHandling = false, ...requestOptions } = options;
+  const isUnsafe = UNSAFE_METHODS.has((requestOptions.method || "GET").toUpperCase());
 
   const baseHeaders: Record<string, string> =
     requestOptions.body instanceof FormData ? {} : { "Content-Type": "application/json" };
@@ -101,16 +121,27 @@ export const apiFetch = async <T = unknown>(
     ...(requestOptions.headers as Record<string, string> | undefined),
   };
 
-  const buildRequestInit = (): RequestInit => ({
-    ...requestOptions,
-    headers: mergedHeaders,
-    credentials: "include",
-  });
+  const buildRequestInit = async (refreshCsrf = false): Promise<RequestInit> => {
+    const headers = { ...mergedHeaders };
+    if (isUnsafe) {
+      const token = await getCsrfToken(refreshCsrf);
+      if (token) headers["X-CSRFToken"] = token;
+    }
+    return { ...requestOptions, headers, credentials: "include" };
+  };
 
   const buildApiUrl = (path: string) => `${API_BASE}${path}`;
 
   // First attempt
-  let response = await fetch(buildApiUrl(path), buildRequestInit());
+  let response = await fetch(buildApiUrl(path), await buildRequestInit());
+
+  // Jeton CSRF expiré ou absent : on en redemande un et on rejoue une fois
+  if (isUnsafe && response.status === 403) {
+    const body = await response.clone().json().catch(() => null);
+    if (typeof body?.detail === "string" && body.detail.startsWith("CSRF Failed")) {
+      response = await fetch(buildApiUrl(path), await buildRequestInit(true));
+    }
+  }
 
   // If 401, try to refresh token once (unless skipped)
   if (!skipAuthHandling && response.status === 401 && !path.includes('/token/refresh/')) {
@@ -126,7 +157,7 @@ export const apiFetch = async <T = unknown>(
       });
 
       if (refreshResponse.ok) {
-        response = await fetch(`${API_BASE}${path}`, buildRequestInit());
+        response = await fetch(`${API_BASE}${path}`, await buildRequestInit());
       } else {
         localStorage.removeItem('auth-storage');
         window.location.href = '/login';
@@ -297,11 +328,21 @@ export const authApi = {
   },
 
   async resetPassword(identifier: string): Promise<{ message: string }> {
-    const raw = await apiFetch<Record<string, unknown>>("/api/auth/reset-password/", {
+    const raw = await apiFetch<{ detail?: string }>("/api/auth/reset-password/", {
       method: "POST",
       body: JSON.stringify({ identifier }),
+      skipAuthHandling: true,
     });
-    return raw as { message: string };
+    return { message: raw.detail || "" };
+  },
+
+  async confirmResetPassword(uid: string, token: string, newPassword: string): Promise<{ message: string }> {
+    const raw = await apiFetch<{ detail?: string }>("/api/auth/reset-password/confirm/", {
+      method: "POST",
+      body: JSON.stringify({ uid, token, new_password: newPassword }),
+      skipAuthHandling: true,
+    });
+    return { message: raw.detail || "" };
   },
 };
 
@@ -419,13 +460,13 @@ export const usersApi = {
     email: string;
     telephone: string;
     telephone2?: string;
-    password: string;
-  }): Promise<User> {
+    password?: string;
+  }): Promise<{ user: User; temporaryPassword: string }> {
     const raw = await apiFetch<Record<string, unknown>>("/api/auth/users/create/", {
       method: "POST",
       body: JSON.stringify(data),
     });
-    return mapUser(raw);
+    return { user: mapUser(raw), temporaryPassword: (raw.temporary_password as string) || "" };
   },
 };
 

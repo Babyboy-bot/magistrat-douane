@@ -1,6 +1,8 @@
 """Simple audit logger for security events."""
 import logging
 
+from django.conf import settings
+
 from .models import UserAuditLog
 
 logger = logging.getLogger("audit")
@@ -27,9 +29,17 @@ def log_password_change(user, ip):
 
 
 def get_client_ip(request):
+    """
+    IP du client. X-Forwarded-For n'est pris en compte que derrière des proxies
+    de confiance (NUM_PROXIES), en lisant l'entrée ajoutée par le dernier proxy :
+    les entrées de gauche sont contrôlées par le client et falsifiables.
+    """
+    num_proxies = settings.REST_FRAMEWORK.get("NUM_PROXIES") or 0
     xff = request.META.get("HTTP_X_FORWARDED_FOR")
-    if xff:
-        return xff.split(",")[0].strip()
+    if xff and num_proxies > 0:
+        addrs = [a.strip() for a in xff.split(",") if a.strip()]
+        if addrs:
+            return addrs[-min(num_proxies, len(addrs))]
     return request.META.get("REMOTE_ADDR", "unknown")
 
 

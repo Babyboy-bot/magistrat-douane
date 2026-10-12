@@ -95,8 +95,12 @@ export default function AgentClientsPage() {
       return;
     }
     try {
-      await usersApi.createClient({ nom: form.nom, prenoms: form.prenoms, email: form.email, telephone: form.telephone, telephone2: form.telephone2, password: "Temp@1234" });
-      toast.success("Client créé avec succès");
+      const { temporaryPassword } = await usersApi.createClient({ nom: form.nom, prenoms: form.prenoms, email: form.email, telephone: form.telephone, telephone2: form.telephone2 });
+      toast.success("Client créé avec succès", {
+        description: `Mot de passe temporaire (à transmettre au client, affiché une seule fois) : ${temporaryPassword}`,
+        duration: Infinity,
+        closeButton: true,
+      });
       setForm(initialFormState);
       setShowAddDialog(false);
       refetch();

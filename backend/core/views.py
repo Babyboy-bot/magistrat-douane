@@ -1,9 +1,11 @@
 import csv
 import io
+import logging
 from io import BytesIO
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from datetime import datetime, timedelta
 
 from django.db.models import DecimalField, F, Sum, Value
@@ -17,6 +19,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -41,9 +44,19 @@ from .serializers import (
     DocumentSerializer,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class IsAgentOrAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
+        return request.user.role in ("agent", "admin")
+
+
+class IsAgentOrAdminOrReadOnly(permissions.BasePermission):
+    """Lecture pour tout utilisateur authentifié, écriture réservée aux agents/admins."""
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
         return request.user.role in ("agent", "admin")
 
 
@@ -57,7 +70,7 @@ class EmissionPagination(PageNumberPagination):
 
 class EmissionListCreateView(generics.ListCreateAPIView):
     serializer_class = EmissionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsAgentOrAdminOrReadOnly]
     pagination_class = EmissionPagination
     filterset_fields = {
         "client": ["exact"],
@@ -93,7 +106,7 @@ class EmissionListCreateView(generics.ListCreateAPIView):
 
 class EmissionDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = EmissionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsAgentOrAdminOrReadOnly]
 
     def get_queryset(self):
         user = self.request.user
@@ -107,6 +120,11 @@ class EmissionDetailView(generics.RetrieveUpdateDestroyAPIView):
 class PaiementCreateView(generics.CreateAPIView):
     serializer_class = PaiementSerializer
     permission_classes = [permissions.IsAuthenticated, IsAgentOrAdmin]
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        # Le serializer verrouille l'émission (select_for_update) pendant le contrôle du solde
+        return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
@@ -148,7 +166,11 @@ class ClientRequestListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         if user.role in ("agent", "admin"):
-            return ClientRequest.objects.all()
+            qs = ClientRequest.objects.all()
+            client_id = self.request.query_params.get("client_id")
+            if client_id and client_id.isdigit():
+                qs = qs.filter(client_id=client_id)
+            return qs
         if user.account_status in ("active", "verified"):
             return ClientRequest.objects.filter(client=user)
         return ClientRequest.objects.none()
@@ -206,25 +228,24 @@ def claim_request_view(request, pk):
     """Un agent prend en charge une requête disponible."""
     if request.user.role not in ("agent", "admin"):
         return Response({"detail": "Permission refusée"}, status=status.HTTP_403_FORBIDDEN)
-    try:
-        req = ClientRequest.objects.select_for_update().get(pk=pk)
-    except ClientRequest.DoesNotExist:
-        return Response({"detail": "Requête introuvable"}, status=status.HTTP_404_NOT_FOUND)
-
-    if req.status != ClientRequest.Status.EN_ATTENTE:
-        return Response(
-            {"detail": "Cette requête est déjà prise en charge ou traitée."},
-            status=status.HTTP_409_CONFLICT,
-        )
-
-    from django.db import transaction
     with transaction.atomic():
+        try:
+            req = ClientRequest.objects.select_for_update().get(pk=pk)
+        except ClientRequest.DoesNotExist:
+            return Response({"detail": "Requête introuvable"}, status=status.HTTP_404_NOT_FOUND)
+
+        if req.status != ClientRequest.Status.EN_ATTENTE:
+            return Response(
+                {"detail": "Cette requête est déjà prise en charge ou traitée."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
         req.agent = request.user
         req.status = ClientRequest.Status.EN_COURS
         req.save()
 
     # Notifier le client
-    from notifications.services import notification_service
+    from notifications.service import notification_service
     notification_service.send_notification_to_user(
         user_id=req.client_id,
         title="Votre requête est en cours de traitement",
@@ -311,13 +332,22 @@ class DocumentUploadView(generics.CreateAPIView):
     serializer_class = DocumentSerializer
 
     def perform_create(self, serializer):
-        serializer.save(uploaded_by=self.request.user)
+        user = self.request.user
+        is_staff_role = user.role in ("agent", "admin")
+        req = serializer.validated_data.get("request")
+        if req is not None and not is_staff_role and req.client_id != user.id:
+            raise PermissionDenied("Vous ne pouvez joindre un document qu'à vos propres requêtes.")
+        # Seuls les agents/admins peuvent déposer des livrables
+        is_livrable = serializer.validated_data.get("is_livrable", False) and is_staff_role
+        serializer.save(uploaded_by=user, is_livrable=is_livrable)
 
 
 class CarteGriseUploadView(generics.CreateAPIView):
     """Upload simple des cartes grises sans OCR"""
     serializer_class = DocumentSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    ALLOWED_EXTENSIONS = {"pdf", "jpg", "jpeg", "png"}
 
     def create(self, request, *args, **kwargs):
         try:
@@ -329,9 +359,15 @@ class CarteGriseUploadView(generics.CreateAPIView):
                 )
 
             allowed_types = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
-            if file.content_type not in allowed_types:
+            ext = file.name.rsplit(".", 1)[-1].lower() if "." in file.name else ""
+            if file.content_type not in allowed_types or ext not in self.ALLOWED_EXTENSIONS:
                 return Response(
                     {"error": "Format de fichier non supporté (PDF, JPG, PNG uniquement)"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if file.size > DocumentSerializer.MAX_FILE_SIZE:
+                return Response(
+                    {"error": "Le fichier ne doit pas dépasser 5 Mo."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -352,9 +388,10 @@ class CarteGriseUploadView(generics.CreateAPIView):
                 "message": "Carte grise uploadée avec succès"
             })
 
-        except Exception as e:
+        except Exception:
+            logger.exception("Erreur upload carte grise")
             return Response(
-                {"error": f"Erreur lors du traitement: {str(e)}"}, 
+                {"error": "Erreur lors du traitement du fichier"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

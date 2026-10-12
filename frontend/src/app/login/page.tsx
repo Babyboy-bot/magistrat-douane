@@ -44,16 +44,6 @@ export default function LoginPage() {
     await doLogin(identifier, password);
   };
 
-  const handleDemoLogin = (role: "client" | "agent" | "admin") => {
-    const creds: Record<string, { identifier: string; pwd: string }> = {
-      client: { identifier: "client@acs.ci", pwd: "client123" },
-      agent: { identifier: "agent@acs.ci", pwd: "agent123" },
-      admin: { identifier: "admin@acs.ci", pwd: "admin123" },
-    };
-    const c = creds[role];
-    doLogin(c.identifier, c.pwd);
-  };
-
   return (
     <div className="min-h-screen flex">
       {/* Left panel - Branding */}
@@ -188,41 +178,6 @@ export default function LoginPage() {
                     S&apos;inscrire
                   </Link>
                 </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Demo access buttons */}
-          <Card className="border-dashed border-2 bg-white/50">
-            <CardContent className="pt-4 pb-4">
-              <p className="text-xs text-gray-400 text-center mb-3 uppercase tracking-wider font-medium">
-                Accès démo — Choisir un profil
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 text-xs"
-                  onClick={() => handleDemoLogin("client")}
-                >
-                  Client
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 text-xs"
-                  onClick={() => handleDemoLogin("agent")}
-                >
-                  Agent ACS
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 text-xs"
-                  onClick={() => handleDemoLogin("admin")}
-                >
-                  Admin
-                </Button>
               </div>
             </CardContent>
           </Card>

@@ -164,45 +164,41 @@ REST_FRAMEWORK = {
         'user': '60/minute' if not DEBUG else '500/minute',
         'login': '5/minute' if not DEBUG else '20/minute',
     },
+    # Nombre de reverse proxies de confiance devant l'application.
+    # 0 = l'en-tête X-Forwarded-For est ignoré (sinon il est falsifiable et
+    # permet de contourner le throttling du login). Mettre 1 derrière Nginx/Traefik.
+    'NUM_PROXIES': config('NUM_PROXIES', default=0, cast=int),
 }
 
 # JWT
+ACCESS_TOKEN_LIFETIME = timedelta(minutes=15)
+REFRESH_TOKEN_LIFETIME = timedelta(days=7)
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': ACCESS_TOKEN_LIFETIME,
+    'REFRESH_TOKEN_LIFETIME': REFRESH_TOKEN_LIFETIME,
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
-    'AUTH_HEADER_TYPES': ('Bearer',),
     'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'VERIFYING_KEY': None,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
     'JTI_CLAIM': 'jti',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
-    # Sécurité additionnelle
+    # Invalide les tokens existants quand le mot de passe change
     'CHECK_REVOKE_TOKEN': True,
-    'REVOKE_TOKEN_ON_REFRESH': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': True,
-    # Configuration pour production
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # Plus court pour production
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # Plus long mais limité
 }
 
 # CORS
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
-]
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS',
+    default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001',
+    cast=Csv(),
+)
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -213,30 +209,35 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# CSRF cookie config (readable by JS for double-submit pattern)
-CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_NAME = 'csrftoken'
-CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
-
 # Cookie settings for JWT httpOnly cookies
 ACCESS_TOKEN_COOKIE = 'access_token'
 REFRESH_TOKEN_COOKIE = 'refresh_token'
 COOKIE_HTTPONLY = True
-COOKIE_SECURE = not DEBUG
-COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
+COOKIE_SECURE = config('COOKIE_SECURE', default=not DEBUG, cast=bool)
+# 'Lax' suffit si frontend et API partagent le même site (ex. app.acs.ci / api.acs.ci).
+# 'None' uniquement si domaines totalement différents (nécessite HTTPS ; le CSRF reste vérifié).
+COOKIE_SAMESITE = config('COOKIE_SAMESITE', default='Lax')
 COOKIE_PATH = '/'
-ACCESS_COOKIE_MAX_AGE = 30 * 60          # 30 min
-REFRESH_COOKIE_MAX_AGE = 24 * 60 * 60    # 1 day
+ACCESS_COOKIE_MAX_AGE = int(ACCESS_TOKEN_LIFETIME.total_seconds())
+REFRESH_COOKIE_MAX_AGE = int(REFRESH_TOKEN_LIFETIME.total_seconds())
+
+# CSRF : le jeton est récupéré via /api/csrf/ et renvoyé dans l'en-tête X-CSRFToken
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = COOKIE_SAMESITE
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+
+# URL publique du frontend (liens envoyés par email)
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000').rstrip('/')
+PASSWORD_RESET_TIMEOUT = 60 * 60  # 1 heure
 
 # Security headers
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'DENY'
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-]
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS', default='http://localhost:3000,http://127.0.0.1:3000', cast=Csv()
+)
 
 # Audit logging
 LOGGING = {

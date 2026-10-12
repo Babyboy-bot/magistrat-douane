@@ -1,13 +1,15 @@
 import { useCallback, useRef } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+
 interface UseAuthRefreshReturn {
   handleTokenRefresh: () => Promise<boolean>;
   isRefreshing: boolean;
 }
 
 export function useAuthRefresh(): UseAuthRefreshReturn {
-  const { login, logout, user } = useAuthStore();
+  const { logout } = useAuthStore();
   const isRefreshingRef = useRef(false);
 
   const handleTokenRefresh = useCallback(async (): Promise<boolean> => {
@@ -19,23 +21,13 @@ export function useAuthRefresh(): UseAuthRefreshReturn {
     isRefreshingRef.current = true;
 
     try {
-      // Tenter de rafraîchir le token
-      const response = await fetch('/api/auth/token/refresh/', {
+      // Les tokens sont renouvelés dans les cookies httpOnly par le backend
+      const response = await fetch(`${API_BASE}/api/auth/token/refresh/`, {
         method: 'POST',
-        credentials: 'include', // Important pour les cookies
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
       });
-
       if (response.ok) {
-        const data = await response.json();
-        
-        // Mettre à jour le user store avec les nouvelles données
-        if (data.access) {
-          // Le token est rafraîchi, l'utilisateur est toujours authentifié
-          return true;
-        }
+        return true;
       }
 
       // Si le rafraîchissement échoue, déconnecter l'utilisateur
@@ -45,26 +37,13 @@ export function useAuthRefresh(): UseAuthRefreshReturn {
 
     } catch (error) {
       console.error('Token refresh error:', error);
-      
-      // En cas d'erreur réseau, essayer de se reconnecter avec les credentials existants
-      if (user?.email && user?.nom && user?.prenoms) {
-        try {
-          const loginSuccess = await login(user.email, '');
-          return loginSuccess;
-        } catch (loginError) {
-          console.error('Auto-login failed:', loginError);
-          logout();
-          return false;
-        }
-      }
-
       logout();
       return false;
 
     } finally {
       isRefreshingRef.current = false;
     }
-  }, [login, logout, user]);
+  }, [logout]);
 
   return {
     handleTokenRefresh,

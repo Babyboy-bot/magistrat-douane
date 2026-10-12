@@ -1,10 +1,42 @@
+import re
+import secrets
+import string
+
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.db.models import Q
 
 from .models import UserAuditLog
 
 User = get_user_model()
+
+
+def normalize_phone(value):
+    return re.sub(r'[\s\-\.\(\)\+]', '', value or '')
+
+
+def validate_unique_phone(value, instance=None):
+    """Normalise le téléphone et vérifie qu'il n'est pas déjà utilisé (le login se fait par téléphone)."""
+    phone = normalize_phone(value)
+    if phone:
+        qs = User.objects.filter(Q(telephone=phone) | Q(telephone2=phone))
+        if instance is not None:
+            qs = qs.exclude(pk=instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("Ce numéro de téléphone est déjà utilisé.")
+    return phone
+
+
+def validate_unique_email(value, instance=None):
+    if not value:
+        return None
+    qs = User.objects.filter(email__iexact=value)
+    if instance is not None:
+        qs = qs.exclude(pk=instance.pk)
+    if qs.exists():
+        raise serializers.ValidationError("Cet email est déjà utilisé.")
+    return value
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -36,13 +68,16 @@ class UserCreateSerializer(serializers.ModelSerializer):
         }
 
     def validate_telephone(self, value):
-        import re
-        phone = re.sub(r'[\s\-\.\(\)\+]', '', value)
+        phone = validate_unique_phone(value)
         if not phone:
             raise serializers.ValidationError("Le numéro de téléphone est obligatoire.")
-        if User.objects.filter(telephone=phone).exists():
-            raise serializers.ValidationError("Ce numéro de téléphone est déjà utilisé.")
         return phone
+
+    def validate_telephone2(self, value):
+        return validate_unique_phone(value)
+
+    def validate_email(self, value):
+        return validate_unique_email(value)
 
     def validate_password(self, value):
         validate_password(value)
@@ -64,15 +99,35 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return user
 
 
-class UserUpdateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=False, min_length=8)
-
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    """
+    Mise à jour de son propre profil (/me).
+    Pas de mot de passe (→ /me/password/ qui exige l'ancien) ni de statut d'activation.
+    """
     class Meta:
         model = User
-        fields = ["nom", "prenoms", "profession", "telephone", "telephone2", "photo", "is_active", "password"]
+        fields = ["nom", "prenoms", "profession", "telephone", "telephone2", "photo"]
         extra_kwargs = {
             'telephone': {'required': False, 'allow_blank': True},
         }
+
+    def validate_telephone(self, value):
+        return validate_unique_phone(value, self.instance)
+
+    def validate_telephone2(self, value):
+        return validate_unique_phone(value, self.instance)
+
+
+class UserUpdateSerializer(ProfileUpdateSerializer):
+    """Mise à jour d'un utilisateur par un administrateur."""
+    password = serializers.CharField(write_only=True, required=False, min_length=8)
+
+    class Meta(ProfileUpdateSerializer.Meta):
+        fields = ProfileUpdateSerializer.Meta.fields + ["is_active", "password"]
+
+    def validate_password(self, value):
+        validate_password(value, self.instance)
+        return value
 
     def validate(self, attrs):
         # Prevent password changes for inactive users
@@ -97,9 +152,19 @@ class VerifyUserSerializer(serializers.Serializer):
     action = serializers.ChoiceField(choices=["verify", "reject"])
 
 
+def generate_temporary_password(length=12):
+    """Mot de passe temporaire aléatoire respectant les validateurs Django."""
+    alphabet = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length)) + "a1!"
+
+
 class AgentCreateClientSerializer(serializers.ModelSerializer):
-    """Agent creates a client (pre-verified, no password — client sets it later)."""
-    password = serializers.CharField(write_only=True, required=False, default="Temp@1234")
+    """
+    Agent creates a pre-verified client.
+    Sans mot de passe fourni, un mot de passe temporaire aléatoire est généré
+    et renvoyé une seule fois à l'agent (champ temporary_password).
+    """
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = User
@@ -108,14 +173,29 @@ class AgentCreateClientSerializer(serializers.ModelSerializer):
             "profession_type", "telephone", "telephone2",
         ]
 
+    def validate_email(self, value):
+        return validate_unique_email(value)
+
+    def validate_telephone(self, value):
+        return validate_unique_phone(value)
+
+    def validate_telephone2(self, value):
+        return validate_unique_phone(value)
+
+    def validate_password(self, value):
+        if value:
+            validate_password(value)
+        return value
+
     def create(self, validated_data):
-        password = validated_data.pop("password", "Temp@1234")
+        password = validated_data.pop("password", "") or generate_temporary_password()
         user = User.objects.create_user(
             password=password,
             role="client",
             verified=True,
             **validated_data,
         )
+        user.temporary_password = password
         return user
 
 
@@ -132,6 +212,16 @@ class AdminCreateAgentSerializer(serializers.ModelSerializer):
             "telephone": {"required": False, "allow_blank": True, "default": ""},
             "telephone2": {"required": False, "allow_blank": True, "default": ""},
         }
+
+    def validate_email(self, value):
+        return validate_unique_email(value)
+
+    def validate_telephone(self, value):
+        return validate_unique_phone(value)
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
 
     def create(self, validated_data):
         user = User.objects.create_user(
@@ -157,6 +247,12 @@ class ChangePasswordSerializer(serializers.Serializer):
     def validate_new_password(self, value):
         validate_password(value, self.context["request"].user)
         return value
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8)
 
 
 class UserAuditLogSerializer(serializers.ModelSerializer):

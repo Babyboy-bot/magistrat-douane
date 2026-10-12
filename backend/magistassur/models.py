@@ -40,7 +40,8 @@ class ContratEpargne(models.Model):
         ACTIVITE_COMMERCIALE = "activite_commerciale", "Activité commerciale"
 
     # Identifiants
-    num_police = models.CharField("N° Police", max_length=50, unique=True, blank=True, default="")
+    # NULL tant que la police n'est pas émise (plusieurs NULL autorisés par la contrainte unique)
+    num_police = models.CharField("N° Police", max_length=50, unique=True, blank=True, null=True, default=None)
     code_inspection = models.CharField("Code inspection", max_length=50, blank=True, default="")
 
     # Liens
@@ -149,6 +150,11 @@ class ContratEpargne(models.Model):
         verbose_name_plural = "Contrats MAGIST'ASSUR Épargne"
         ordering = ["-created_at"]
 
+    def save(self, *args, **kwargs):
+        if not self.num_police:
+            self.num_police = None
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Épargne — {self.client} — {self.num_police or 'En attente'}"
 
@@ -241,7 +247,7 @@ class ContratPrevoyance(models.Model):
         AUTRE = "autre", "Autre"
 
     # Identifiants
-    num_police = models.CharField("N° Police", max_length=50, unique=True, blank=True, default="")
+    num_police = models.CharField("N° Police", max_length=50, unique=True, blank=True, null=True, default=None)
     num_client = models.CharField("N° Client", max_length=50, blank=True, default="")
     code_inspection = models.CharField("Code inspection", max_length=50, blank=True, default="")
 
@@ -315,6 +321,11 @@ class ContratPrevoyance(models.Model):
         verbose_name = "Contrat MAGIST'ASSUR Prévoyance"
         verbose_name_plural = "Contrats MAGIST'ASSUR Prévoyance"
         ordering = ["-created_at"]
+
+    def save(self, *args, **kwargs):
+        if not self.num_police:
+            self.num_police = None
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Prévoyance — {self.client} — {self.num_police or 'En attente'}"
