@@ -183,7 +183,13 @@ export default function AgentClientsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {segment === "autres" ? (
+              <div className="flex flex-col items-center py-12 gap-2 text-gray-400">
+                <AlertTriangle className="h-10 w-10 text-amber-300" />
+                <p className="font-medium text-gray-500">Bientôt disponible</p>
+                <p className="text-sm text-center max-w-xs">La gestion des clients grand public arrive prochainement. Seuls les magistrats et douaniers sont actifs pour l&apos;instant.</p>
+              </div>
+            ) : loading ? (
               <p className="text-center text-gray-400 py-12">Chargement...</p>
             ) : error ? (
               <p className="text-center text-red-500 py-12">{error}</p>
@@ -212,6 +218,7 @@ export default function AgentClientsPage() {
                 ))}
               </div>
             )}
+            {segment !== "autres" && (
             <div className="flex items-center justify-between mt-4 text-sm text-gray-600">
               <span>Page {page} / {totalPages}</span>
               <div className="flex gap-2">
@@ -219,6 +226,7 @@ export default function AgentClientsPage() {
                 <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Suivant</Button>
               </div>
             </div>
+            )}
           </CardContent>
         </Card>
 
