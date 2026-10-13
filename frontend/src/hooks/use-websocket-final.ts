@@ -298,10 +298,15 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
             if (userId) _notifCache.set(userId, next);
             return next;
           });
-          playNotificationSound(notif.type);
-          if (notif.type === "success") toast.success(notif.title, { description: notif.message });
-          else if (notif.type === "error") toast.error(notif.title, { description: notif.message });
-          else toast.info(notif.title, { description: notif.message });
+          // Rejeu au login (initial) ou notification déjà affichée : pas de toast ni de son
+          const isInitial = Boolean((data.data as Record<string, unknown>).initial);
+          if (!isInitial && !_shownToastIds.has(notif.id)) {
+            _shownToastIds.add(notif.id);
+            playNotificationSound(notif.type);
+            if (notif.type === "success") toast.success(notif.title, { description: notif.message });
+            else if (notif.type === "error") toast.error(notif.title, { description: notif.message });
+            else toast.info(notif.title, { description: notif.message });
+          }
           // Rafraîchir le profil si le compte vient d'être vérifié
           if ((data.data as Record<string, unknown>).event === "account_verified") {
             import("@/stores/auth-store").then(({ useAuthStore }) => {

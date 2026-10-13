@@ -38,7 +38,7 @@ export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFil
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Date de Naissance <span className="text-red-500">*</span></Label><Input type="date" value={id.date_naissance} onChange={e => s("date_naissance", e.target.value)} /></div>
+          <div><Label>Date de Naissance <span className="text-red-500">*</span></Label><Input type="date" max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().slice(0, 10); })()} value={id.date_naissance} onChange={e => s("date_naissance", e.target.value)} /></div>
           <div><Label>Pays / Ville de Naissance <span className="text-red-500">*</span></Label><Input value={id.pays_naissance} onChange={e => s("pays_naissance", e.target.value)} /></div>
         </div>
 
@@ -52,7 +52,7 @@ export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFil
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Validité de la pièce</Label><Input type="date" value={id.validite_piece} onChange={e => s("validite_piece", e.target.value)} /></div>
+          <div><Label>Validité de la pièce</Label><Input type="date" min={new Date().toISOString().slice(0, 10)} value={id.validite_piece} onChange={e => s("validite_piece", e.target.value)} /></div>
           <div><Label>Numéro de la pièce</Label><Input value={id.numero_piece} onChange={e => s("numero_piece", e.target.value)} /></div>
         </div>
 

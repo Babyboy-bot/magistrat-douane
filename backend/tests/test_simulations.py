@@ -95,7 +95,7 @@ class TestSimulationSouscriptionEpargne:
         resp = api_client.post("/api/magistassur/epargne/", {
             "duree_annees": 10,
             "periodicite": "mensuelle",
-            "date_premiere_cotisation": "2025-01-01",
+            "date_premiere_cotisation": "2030-01-01",
             "montant_cotisation": 25000,
             "beneficiaires": [
                 {"nom": "Épouse", "taux_repartition": 60},

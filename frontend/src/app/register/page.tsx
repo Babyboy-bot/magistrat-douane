@@ -205,7 +205,7 @@ export default function RegisterPage() {
                 {(form.professionType === "magistrat" || form.professionType === "douanier") && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                     <p className="text-xs text-amber-800">
-                      <strong>Note :</strong> En tant que {form.professionType === "magistrat" ? "magistrat" : "douanier"}, votre compte est activé immédiatement après inscription.
+                      <strong>Note :</strong> En tant que {form.professionType === "magistrat" ? "magistrat" : "douanier"}, votre compte sera vérifié par un agent ACS avant l'activation complète de vos accès.
                     </p>
                   </div>
                 )}

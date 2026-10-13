@@ -49,6 +49,7 @@ const MODE_LABELS: Record<string, string> = {
 };
 
 type PoliceForm = { numPolice: string; codeInspection: string; dateEffet: string; loading: boolean };
+type CotisForm = { montant: string; dateEcheance: string; datePaiement: string; statut: string; open: boolean; loading: boolean };
 
 export default function AgentMagistAssurPage() {
   const { isAuthenticated, user } = useAuthStore();
@@ -65,6 +66,7 @@ export default function AgentMagistAssurPage() {
   const [expandedDossierId, setExpandedDossierId] = useState<string | null>(null);
   const [expandedAttenteId, setExpandedAttenteId] = useState<string | null>(null);
   const [policeForms, setPoliceForms] = useState<Record<string, PoliceForm>>({});
+  const [cotisForms, setCotisForms] = useState<Record<string, CotisForm>>({});
   const [pendingStatuts, setPendingStatuts] = useState<Record<string, string>>({});
   const [statutLoading, setStatutLoading] = useState<string | null>(null);
   const [exportLoading, setExportLoading] = useState<string | null>(null);
@@ -135,6 +137,34 @@ export default function AgentMagistAssurPage() {
 
   const setForm = (id: string, patch: Partial<PoliceForm>) =>
     setPoliceForms(f => ({ ...f, [id]: { ...getForm(id), ...patch } }));
+
+  const getCotisForm = (id: string): CotisForm =>
+    cotisForms[id] ?? { montant: "", dateEcheance: "", datePaiement: "", statut: "payee", open: false, loading: false };
+
+  const setCotisForm = (id: string, patch: Partial<CotisForm>) =>
+    setCotisForms(f => ({ ...f, [id]: { ...getCotisForm(id), ...patch } }));
+
+  const handleAddCotisation = async (e: ContratEpargne) => {
+    const f = getCotisForm(e.id);
+    const montant = Number(f.montant || e.montantCotisation);
+    if (!montant || montant <= 0) { toast.error("Le montant est obligatoire"); return; }
+    if (!f.dateEcheance) { toast.error("La date d'échéance est obligatoire"); return; }
+    setCotisForm(e.id, { loading: true });
+    try {
+      await magistassurApi.ajouterCotisationEpargne(e.id, {
+        montant,
+        date_echeance: f.dateEcheance,
+        date_paiement: f.datePaiement || undefined,
+        statut: f.statut,
+      });
+      toast.success("Cotisation enregistrée");
+      setCotisForm(e.id, { open: false, montant: "", dateEcheance: "", datePaiement: "", loading: false });
+      await loadEpargne();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur enregistrement cotisation");
+      setCotisForm(e.id, { loading: false });
+    }
+  };
 
   const STATUTS_DESTRUCTIFS = ["resilie", "rachete", "cloture"];
 
@@ -718,6 +748,35 @@ export default function AgentMagistAssurPage() {
                                               </div>
                                             ))}
                                           </div>
+                                        </div>
+                                      )}
+                                      {e.numPolice && e.statut !== "cloture" && (
+                                        <div className="bg-white rounded-lg p-3 border space-y-2">
+                                          <button type="button" className="text-xs font-semibold text-gray-700 flex items-center gap-1 w-full text-left"
+                                            onClick={() => setCotisForm(e.id, { open: !getCotisForm(e.id).open })}>
+                                            <CreditCard className="h-3 w-3" /> Enregistrer une cotisation
+                                            {getCotisForm(e.id).open ? <ChevronDown className="h-3 w-3 ml-auto" /> : <ChevronRight className="h-3 w-3 ml-auto" />}
+                                          </button>
+                                          {getCotisForm(e.id).open && (
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
+                                              <div><Label className="text-xs">Montant (FCFA)</Label><Input type="number" className="h-8 text-sm mt-1" placeholder={String(e.montantCotisation)} value={getCotisForm(e.id).montant} onChange={ev => setCotisForm(e.id, { montant: ev.target.value })} /></div>
+                                              <div><Label className="text-xs">Échéance *</Label><Input type="date" className="h-8 text-sm mt-1" value={getCotisForm(e.id).dateEcheance} onChange={ev => setCotisForm(e.id, { dateEcheance: ev.target.value })} /></div>
+                                              <div><Label className="text-xs">Payée le</Label><Input type="date" className="h-8 text-sm mt-1" value={getCotisForm(e.id).datePaiement} onChange={ev => setCotisForm(e.id, { datePaiement: ev.target.value })} /></div>
+                                              <div className="flex gap-2">
+                                                <Select value={getCotisForm(e.id).statut} onValueChange={v => setCotisForm(e.id, { statut: v })}>
+                                                  <SelectTrigger className="h-8 text-sm flex-1"><SelectValue /></SelectTrigger>
+                                                  <SelectContent>
+                                                    <SelectItem value="payee">Payée</SelectItem>
+                                                    <SelectItem value="en_attente">En attente</SelectItem>
+                                                    <SelectItem value="en_retard">En retard</SelectItem>
+                                                  </SelectContent>
+                                                </Select>
+                                                <Button size="sm" className="h-8 bg-green-600 hover:bg-green-700" disabled={getCotisForm(e.id).loading} onClick={() => handleAddCotisation(e)}>
+                                                  {getCotisForm(e.id).loading ? "..." : "OK"}
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
                                       <div className="flex flex-wrap gap-2">

@@ -19,13 +19,13 @@ class Migration(migrations.Migration):
             name='num_police',
             field=models.CharField(blank=True, default=None, max_length=50, null=True, unique=True, verbose_name='N° Police'),
         ),
-        # 2. Ensuite convertir les chaînes vides en NULL
+        # 2. Ensuite convertir les chaînes vides et les placeholders de la 0006 en NULL
         migrations.RunSQL(
-            "UPDATE magistassur_contratepargne SET num_police = NULL WHERE num_police = '';",
+            "UPDATE magistassur_contratepargne SET num_police = NULL WHERE num_police = '' OR num_police LIKE '__TMP__%';",
             reverse_sql="UPDATE magistassur_contratepargne SET num_police = '' WHERE num_police IS NULL;",
         ),
         migrations.RunSQL(
-            "UPDATE magistassur_contratprevoyance SET num_police = NULL WHERE num_police = '';",
+            "UPDATE magistassur_contratprevoyance SET num_police = NULL WHERE num_police = '' OR num_police LIKE '__TMP__%';",
             reverse_sql="UPDATE magistassur_contratprevoyance SET num_police = '' WHERE num_police IS NULL;",
         ),
     ]

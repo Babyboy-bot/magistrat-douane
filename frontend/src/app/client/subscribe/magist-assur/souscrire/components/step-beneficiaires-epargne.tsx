@@ -62,8 +62,20 @@ export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, bene
           <Label htmlFor="ba" className="cursor-pointer">Autre(s) bénéficiaire(s)</Label>
         </div>
 
-        {hasAutres && autresBenef.some(b => b.nom) && !taux100 && (
-          <p className="text-xs text-orange-600 bg-orange-50 rounded px-3 py-1.5">⚠ La somme des taux de répartition des autres bénéficiaires est de <strong>{totalTaux}%</strong> — elle devrait être de 100%.</p>
+        {hasAutres && autresBenef.some(b => b.nom) && (
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs">
+              <span className="font-medium text-gray-600">Total répartition</span>
+              <span className={`font-bold ${taux100 ? "text-emerald-600" : "text-orange-600"}`}>{totalTaux} % / 100 %</span>
+            </div>
+            <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all ${taux100 ? "bg-emerald-500" : "bg-orange-500"}`}
+                style={{ width: `${Math.min(100, totalTaux)}%` }} />
+            </div>
+            {!taux100 && (
+              <p className="text-xs text-orange-600 bg-orange-50 rounded px-3 py-1.5">⚠ La somme des taux de répartition doit être de 100% pour continuer.</p>
+            )}
+          </div>
         )}
         {hasAutres && (
           <div className="space-y-3">
@@ -80,7 +92,7 @@ export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, bene
                 <div className="grid grid-cols-2 gap-2">
                   <div><Label className="text-xs">Nom &amp; Prénom(s)</Label><Input className="h-8 text-sm" value={b.nom} onChange={e => update(i, "nom", e.target.value)} /></div>
                   <div><Label className="text-xs">En qualité de <span className="text-red-500">*</span></Label><Input className="h-8 text-sm" value={b.en_qualite_de} onChange={e => update(i, "en_qualite_de", e.target.value)} /></div>
-                  <div><Label className="text-xs">Date de naissance</Label><Input className="h-8 text-sm" type="date" value={b.date_naissance} onChange={e => update(i, "date_naissance", e.target.value)} /></div>
+                  <div><Label className="text-xs">Date de naissance</Label><Input className="h-8 text-sm" type="date" max={new Date().toISOString().slice(0, 10)} value={b.date_naissance} onChange={e => update(i, "date_naissance", e.target.value)} /></div>
                   <div><Label className="text-xs">Domicile <span className="text-red-500">*</span></Label><Input className="h-8 text-sm" value={b.domicile} onChange={e => update(i, "domicile", e.target.value)} /></div>
                   <div><Label className="text-xs">Adresse Postale <span className="text-red-500">*</span></Label><Input className="h-8 text-sm" value={b.adresse_postale} onChange={e => update(i, "adresse_postale", e.target.value)} /></div>
                   <div><Label className="text-xs">N° de téléphone <span className="text-red-500">*</span></Label><Input className="h-8 text-sm" value={b.telephone} onChange={e => update(i, "telephone", e.target.value)} /></div>

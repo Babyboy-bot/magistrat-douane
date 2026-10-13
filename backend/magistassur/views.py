@@ -4,6 +4,7 @@ from rest_framework import viewsets, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from django.db.models import Q
 from core.file_validators import validate_upload
@@ -88,6 +89,14 @@ class MagistassurPagination(PageNumberPagination):
     max_page_size = 200
 
 
+def _check_magistassur_eligibility(user):
+    """Magist-Assur est réservé aux magistrats dont le compte est vérifié par un agent."""
+    if user.profession_type != "magistrat":
+        raise PermissionDenied("Magist-Assur est réservé aux magistrats.")
+    if not user.verified:
+        raise PermissionDenied("Votre compte doit être vérifié par un agent ACS pour souscrire à Magist-Assur.")
+
+
 class ContratEpargneViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAgentOrAdmin]
     pagination_class = MagistassurPagination
@@ -129,6 +138,7 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         if user.role in ("agent", "admin"):
             serializer.save(agent=user)
         else:
+            _check_magistassur_eligibility(user)
             contrat = serializer.save(client=user)
             _notify_client_epargne(
                 contrat,
@@ -323,6 +333,7 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         if user.role in ("agent", "admin"):
             serializer.save(agent=user)
         else:
+            _check_magistassur_eligibility(user)
             # Forcer client=user, ignorer toute valeur client envoyée dans le body
             contrat = serializer.save(client=user)
             _notify_client_epargne(

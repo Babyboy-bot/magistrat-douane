@@ -275,6 +275,9 @@ CSRF_TRUSTED_ORIGINS = config(
     cast=Csv()
 )
 
+# URL publique du frontend, utilisée dans les liens envoyés par email
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:8090').rstrip('/')
+
 # ── Logging JSON structuré (ELK / Datadog ready) ──
 class _JsonFormatter:
     """Formateur JSON simple sans dépendance externe."""

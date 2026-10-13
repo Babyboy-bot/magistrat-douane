@@ -93,7 +93,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
               {q.invalidite && (
                 <div className="mt-2 space-y-2">
                   <div><Label className="text-xs">Nature</Label><Input className="mt-1" value={q.invalidite_nature} onChange={e => s("invalidite_nature", e.target.value)} /></div>
-                  <div><Label className="text-xs">Date de survenance</Label><Input type="date" className="mt-1" value={q.invalidite_date} onChange={e => s("invalidite_date", e.target.value)} /></div>
+                  <div><Label className="text-xs">Date de survenance</Label><Input type="date" className="mt-1" max={new Date().toISOString().slice(0, 10)} value={q.invalidite_date} onChange={e => s("invalidite_date", e.target.value)} /></div>
                 </div>
               )}
             </div>

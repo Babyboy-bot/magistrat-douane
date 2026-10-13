@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 from .models import (
     ContratEpargne, Correspondant, BeneficiaireEpargne,
@@ -110,6 +111,16 @@ class ContratEpargneCreateSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         f"La somme des taux de répartition des bénéficiaires nommés doit être égale à 100% (actuellement {total}%)."
                     )
+        return value
+
+    def validate_date_premiere_cotisation(self, value):
+        if value and value < timezone.localdate():
+            raise serializers.ValidationError("La date de 1ère cotisation ne peut pas être dans le passé.")
+        return value
+
+    def validate_date_effet(self, value):
+        if value and value < timezone.localdate():
+            raise serializers.ValidationError("La date d'effet ne peut pas être dans le passé.")
         return value
 
     def create(self, validated_data):

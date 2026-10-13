@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { ArrowLeft, ArrowRight, Loader2, CheckCircle, ChevronDown, ChevronUp, TrendingUp, Shield, Heart, Clock, FileText, CreditCard, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, CheckCircle, ChevronDown, ChevronUp, TrendingUp, Shield, Heart, Clock, FileText, CreditCard, Users, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
@@ -107,7 +107,7 @@ const emptyQ = (): QuestionnaireState => ({
 const STEP_LABELS_FIXED = ["Identité", "Correspondants", "Assuré", "Cotisation", "Bénéf. Épargne", "Options"];
 const STEP_LABELS_PREV  = ["Garanties", "Bénéf. Prévoyance", "Questionnaire médical"];
 
-function StepIndicator({ current, steps }: { current: number; steps: string[] }) {
+function StepIndicator({ current, steps, onJump }: { current: number; steps: string[]; onJump?: (i: number) => void }) {
   const pct = Math.round(((current) / (steps.length - 1)) * 100);
   return (
     <div className="mb-6 space-y-2">
@@ -121,12 +121,17 @@ function StepIndicator({ current, steps }: { current: number; steps: string[] })
       <div className="flex items-center gap-1 overflow-x-auto pb-1">
         {steps.map((s, i) => (
           <div key={`${s}-${i}`} className="flex items-center gap-1 shrink-0">
-            <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-              i < current ? "bg-amber-600 text-white" :
-              i === current ? "bg-amber-600 text-white ring-2 ring-amber-300" :
-              "bg-gray-200 text-gray-500"}`}>
+            <button
+              type="button"
+              disabled={i >= current}
+              onClick={() => i < current && onJump?.(i)}
+              title={i < current ? `Revenir à l'étape « ${s} »` : undefined}
+              className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition ${
+                i < current ? "bg-amber-600 text-white cursor-pointer hover:ring-2 hover:ring-amber-300" :
+                i === current ? "bg-amber-600 text-white ring-2 ring-amber-300" :
+                "bg-gray-200 text-gray-500 cursor-default"}`}>
               {i < current ? <CheckCircle className="h-3.5 w-3.5" /> : i + 1}
-            </div>
+            </button>
             <span className={`text-[10px] hidden sm:block mr-1 ${i === current ? "text-amber-700 font-semibold" : "text-gray-400"}`}>{s}</span>
             {i < steps.length - 1 && <div className={`w-4 h-0.5 mx-0.5 ${i < current ? "bg-amber-600" : "bg-gray-200"}`} />}
           </div>
@@ -142,6 +147,7 @@ export default function SouscrirePage() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showEncadre, setShowEncadre] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
 
@@ -266,13 +272,8 @@ export default function SouscrirePage() {
       email_personnel: user.email || "",
       profession_detail: user.profession || "",
     }));
-    setCorresp1(p => ({
-      ...p,
-      nom: user.nom || "",
-      prenom: user.prenoms || "",
-      telephone: user.telephone || "",
-      email: user.email || "",
-    }));
+    // corresp1 n'est PAS pré-rempli : un correspondant doit être une personne
+    // différente du souscripteur (le bouton « Identique à moi » reste dispo).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -285,6 +286,7 @@ export default function SouscrirePage() {
       assuresAssocies, benefConjoint_p, benefEnfants_p, autresBenef_p, q, antecedents,
     };
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    setLastSaved(new Date());
   }, [step, id, corresp1, corresp2, prevCorrespIdem, prevCorresp, assureIdem, assure, cot, benefConjoint_e, benefEnfants_e, autresBenef_e, consentementDonnees, garantieDeces, garantieFuneraires, assuresAssocies, benefConjoint_p, benefEnfants_p, autresBenef_p, q, antecedents, user]);
 
   useEffect(() => {
@@ -352,13 +354,22 @@ export default function SouscrirePage() {
           if (!assure.assure_date_naissance) { toast.error("La date de naissance de l'assuré est obligatoire."); return false; }
         }
         return true;
-      case "cotisation":
+      case "cotisation": {
         if (!cot.duree_annees || Number(cot.duree_annees) < 1) { toast.error("La durée doit être d'au moins 1 an."); return false; }
         if (!cot.periodicite) { toast.error("La périodicité est obligatoire."); return false; }
         if (!cot.date_premiere_cotisation) { toast.error("La date de 1ère cotisation est obligatoire."); return false; }
+        const todayStr = new Date().toISOString().slice(0, 10);
+        if (cot.date_premiere_cotisation < todayStr) { toast.error("La date de 1ère cotisation ne peut pas être dans le passé."); return false; }
+        if (cot.date_effet && cot.date_effet < todayStr) { toast.error("La date d'effet ne peut pas être dans le passé."); return false; }
         if (!cot.montant_cotisation || Number(cot.montant_cotisation) < 25000) { toast.error("Le montant doit être au minimum de 25 000 FCFA."); return false; }
-        if (!cot.numero_compte.trim()) { toast.error("Le numéro de compte (RIB) est obligatoire."); return false; }
+        const rib = cot.numero_compte.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+        if (!rib) { toast.error("Le numéro de compte (RIB) est obligatoire."); return false; }
+        if (rib.startsWith("CI") ? rib.length !== 28 : rib.length < 8) {
+          toast.error("Le numéro de compte (RIB) semble invalide — attendu : CI93 + 24 caractères, ou un n° de compte local.");
+          return false;
+        }
         return true;
+      }
       case "benef-epargne": {
         const hasAny = benefConjoint_e || benefEnfants_e || autresBenef_e.some(b => b.nom.trim());
         if (!hasAny) { toast.error("Désignez au moins un bénéficiaire."); return false; }
@@ -370,6 +381,11 @@ export default function SouscrirePage() {
           if (!b.domicile.trim()) { toast.error(`Bénéficiaire ${i + 1} — Le domicile est obligatoire.`); return false; }
           if (!b.adresse_postale.trim()) { toast.error(`Bénéficiaire ${i + 1} — L'adresse postale est obligatoire.`); return false; }
           if (!b.telephone.trim()) { toast.error(`Bénéficiaire ${i + 1} — Le numéro de téléphone est obligatoire.`); return false; }
+        }
+        const named_e = autresBenef_e.filter(b => b.nom.trim());
+        if (named_e.length > 0) {
+          const total_e = named_e.reduce((s, b) => s + (Number(b.taux_repartition) || 0), 0);
+          if (total_e !== 100) { toast.error(`Répartition des bénéficiaires : ${total_e}% — le total doit être de 100%.`); return false; }
         }
         return true;
       }
@@ -387,6 +403,11 @@ export default function SouscrirePage() {
           const b = autresBenef_p[i];
           if (!b.nom.trim()) continue;
           if (!b.en_qualite_de.trim()) { toast.error(`Bénéficiaire prévoyance ${i + 1} — « En qualité de » est obligatoire.`); return false; }
+        }
+        const named_p = autresBenef_p.filter(b => b.nom.trim());
+        if (named_p.length > 0) {
+          const total_p = named_p.reduce((s, b) => s + (Number(b.taux_repartition) || 0), 0);
+          if (total_p !== 100) { toast.error(`Répartition des bénéficiaires prévoyance : ${total_p}% — le total doit être de 100%.`); return false; }
         }
         return true;
       }
@@ -552,12 +573,40 @@ export default function SouscrirePage() {
       case "benef-epargne":   return <StepBeneficiairesEpargne benefConjoint={benefConjoint_e} setBenefConjoint={setBenefConjoint_e} benefEnfants={benefEnfants_e} setBenefEnfants={setBenefEnfants_e} autresBenef={autresBenef_e} setAutresBenef={setAutresBenef_e} consentementDonnees={consentementDonnees} setConsentementDonnees={setConsentementDonnees} situationMatrimoniale={id.situation_matrimoniale} />;
       case "options":         return <StepOptionsPrevoyance garantieDeces={garantieDeces} setGarantieDeces={setGarantieDeces} garantieFuneraires={garantieFuneraires} setGarantieFuneraires={setGarantieFuneraires} cot={cot} />;
       case "garanties":       return <StepGaranties garantieDeces={garantieDeces} garantieFuneraires={garantieFuneraires} assuresAssocies={assuresAssocies} setAssuresAssocies={setAssuresAssocies} situationMatrimoniale={id.situation_matrimoniale} />;
-      case "benef-prev":      return <StepBeneficiairesPrev benefConjoint={benefConjoint_p} setBenefConjoint={setBenefConjoint_p} benefEnfants={benefEnfants_p} setBenefEnfants={setBenefEnfants_p} autresBenef={autresBenef_p} setAutresBenef={setAutresBenef_p} />;
+      case "benef-prev":      return <StepBeneficiairesPrev benefConjoint={benefConjoint_p} setBenefConjoint={setBenefConjoint_p} benefEnfants={benefEnfants_p} setBenefEnfants={setBenefEnfants_p} autresBenef={autresBenef_p} setAutresBenef={setAutresBenef_p} epargneData={{ conjoint: benefConjoint_e, enfants: benefEnfants_e, autres: autresBenef_e }} />;
       case "questionnaire":   return <StepQuestionnaire q={q} setQ={setQ} antecedents={antecedents} setAntecedents={setAntecedents} />;
       case "recap":           return <StepRecap id={id} corresp1={corresp1} corresp2={corresp2} assureIdem={assureIdem} assure={assure} cot={cot} benefConjoint_e={benefConjoint_e} benefEnfants_e={benefEnfants_e} autresBenef_e={autresBenef_e} garantieDeces={garantieDeces} garantieFuneraires={garantieFuneraires} assuresAssocies={assuresAssocies} benefConjoint_p={benefConjoint_p} benefEnfants_p={benefEnfants_p} autresBenef_p={autresBenef_p} userName={`${user?.nom || ""} ${user?.prenoms || ""}`} />;
       default: return null;
     }
   };
+
+  /* ── Compte non vérifié : blocage avant toute saisie ── */
+  if (user && !user.verified) {
+    return (
+      <div className="max-w-lg mx-auto space-y-5">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.push("/client/dashboard")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Shield className="h-5 w-5 text-amber-600" />
+            MAGIST&apos;ASSUR
+          </h1>
+        </div>
+        <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-8 text-center">
+          <Lock className="h-14 w-14 text-amber-300 mx-auto mb-4" />
+          <h2 className="text-lg font-semibold text-gray-700 mb-2">Compte en attente de vérification</h2>
+          <p className="text-sm text-gray-500 max-w-sm mx-auto">
+            Votre compte magistrat doit d&apos;abord être vérifié par un agent ACS avant de souscrire à MAGIST&apos;ASSUR.
+            Vous serez notifié dès l&apos;activation de vos accès.
+          </p>
+          <Button variant="outline" className="mt-6" onClick={() => router.push("/client/dashboard")}>
+            Retour au tableau de bord
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   /* ── Écran d'introduction ── */
   if (showIntro) {
@@ -734,7 +783,17 @@ export default function SouscrirePage() {
         </div>
       )}
 
-      <StepIndicator current={step} steps={steps} />
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <StepIndicator current={step} steps={steps} onJump={setStep} />
+        </div>
+        {lastSaved && (
+          <p className="shrink-0 text-[10px] text-emerald-600 flex items-center gap-1 pb-1">
+            <CheckCircle className="h-3 w-3" />
+            Sauvegardé à {lastSaved.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+          </p>
+        )}
+      </div>
 
       {renderStep()}
 

@@ -1,7 +1,9 @@
 "use client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuthStore } from "@/stores/auth-store";
 import type { CorrespondantState } from "./types";
 
 interface Props {
@@ -47,10 +49,26 @@ const btn = (active: boolean, color: "amber" | "gray" = "amber") =>
   }`;
 
 export function StepCorrespondants({ corresp1, setCorresp1, corresp2, setCorresp2, prevCorrespIdem, setPrevCorrespIdem, prevCorresp, setPrevCorresp }: Props) {
+  const { user } = useAuthStore();
   const sp = (field: keyof CorrespondantState, val: string) => setPrevCorresp({ ...prevCorresp, [field]: val });
+
+  const fillWithMe = () => {
+    setCorresp1({
+      ...corresp1,
+      nom: user?.nom || "",
+      prenom: user?.prenoms || "",
+      telephone: user?.telephone || "",
+      email: user?.email || "",
+    });
+  };
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button type="button" variant="outline" size="sm" onClick={fillWithMe} className="text-xs">
+          Identique à moi (m&apos;utiliser comme correspondant)
+        </Button>
+      </div>
       <CorrespondantCard label="2. Correspondant 1 *" data={corresp1} set={setCorresp1} />
       <CorrespondantCard label="Correspondant 2 (optionnel)" data={corresp2} set={setCorresp2} />
 

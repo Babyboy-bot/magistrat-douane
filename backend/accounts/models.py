@@ -265,9 +265,13 @@ class User(AbstractUser):
 
         if self.profession_type in (self.ProfessionType.MAGISTRAT, self.ProfessionType.DOUANIER):
 
-            # Magistrats & Douaniers = clients premium
+            # Magistrats & Douaniers = clients premium, mais uniquement une fois
+            # le compte vérifié par un agent. Auto-déclarer sa profession ne doit
+            # jamais suffire à obtenir le statut vérifié/premium.
 
-            self.risk_level = self.RiskLevel.PREMIUM
+            if self.verified:
+
+                self.risk_level = self.RiskLevel.PREMIUM
 
             # Ne forcer role/account_status qu'à la création
 
@@ -275,15 +279,23 @@ class User(AbstractUser):
 
                 self.role = self.Role.CLIENT
 
+                if self.verified:
+
+                    self.account_status = self.AccountStatus.VERIFIED
+
+                    if not self.verified_at:
+
+                        from django.utils import timezone
+
+                        self.verified_at = timezone.now()
+
+                else:
+
+                    self.account_status = self.AccountStatus.PENDING_VERIFICATION
+
+            elif self.verified and self.account_status == self.AccountStatus.PENDING_VERIFICATION:
+
                 self.account_status = self.AccountStatus.VERIFIED
-
-                self.verified = True
-
-                if not self.verified_at:
-
-                    from django.utils import timezone
-
-                    self.verified_at = timezone.now()
 
         else:
 

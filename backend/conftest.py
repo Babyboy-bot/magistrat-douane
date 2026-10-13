@@ -67,6 +67,7 @@ def client_user(db):
         nom="Client", prenoms="Test", role="client",
         is_active=True, account_status="active",
         profession_type="magistrat",
+        verified=True,
     )
 
 
@@ -77,6 +78,7 @@ def client_user_douanier(db):
         nom="Douanier", prenoms="Test", role="client",
         is_active=True, account_status="active",
         profession_type="douanier",
+        verified=True,
     )
 
 

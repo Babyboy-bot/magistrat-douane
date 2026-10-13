@@ -69,8 +69,8 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>3. Date 1ère cotisation <span className="text-red-500">*</span></Label><Input type="date" value={cot.date_premiere_cotisation} onChange={e => s("date_premiere_cotisation", e.target.value)} /></div>
-          <div><Label>Date d&apos;effet du contrat</Label><Input type="date" value={cot.date_effet} onChange={e => s("date_effet", e.target.value)} /></div>
+          <div><Label>3. Date 1ère cotisation <span className="text-red-500">*</span></Label><Input type="date" min={new Date().toISOString().slice(0, 10)} value={cot.date_premiere_cotisation} onChange={e => s("date_premiere_cotisation", e.target.value)} /></div>
+          <div><Label>Date d&apos;effet du contrat</Label><Input type="date" min={new Date().toISOString().slice(0, 10)} value={cot.date_effet} onChange={e => s("date_effet", e.target.value)} /></div>
         </div>
 
         <div>
@@ -103,7 +103,16 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
           </div>
           <div>
             <Label>N° de compte (joindre RIB) <span className="text-red-500">*</span></Label>
-            <Input className="mt-1" placeholder="ex: CI093 00001 000000000001 12" value={cot.numero_compte} onChange={e => s("numero_compte", e.target.value)} />
+            <Input
+              className="mt-1 font-mono"
+              placeholder="CI93 XXXX XXXX XXXX XXXX XXXX XX"
+              value={cot.numero_compte}
+              onChange={e => {
+                const raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 34);
+                s("numero_compte", raw.replace(/(.{4})(?=.)/g, "$1 "));
+              }}
+            />
+            <p className="text-xs text-gray-400 mt-1">IBAN ivoirien : CI93 + 24 caractères (ou n° de compte local).</p>
             <div className="mt-2">
               <p className="text-xs font-medium text-gray-700 mb-1">Importer le RIB *</p>
               <label className="inline-flex items-center gap-2 cursor-pointer bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition">

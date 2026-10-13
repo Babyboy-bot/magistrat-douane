@@ -10,6 +10,17 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Sur une base existante, plusieurs lignes peuvent avoir num_police='',
+        # ce qui fait échouer l'ajout de la contrainte unique ci-dessous.
+        # On les remplace par des placeholders uniques, convertis en NULL en 0007.
+        migrations.RunSQL(
+            "UPDATE magistassur_contratepargne SET num_police = '__TMP__' || CAST(id AS TEXT) WHERE num_police = '';",
+            reverse_sql="UPDATE magistassur_contratepargne SET num_police = '' WHERE num_police LIKE '__TMP__%';",
+        ),
+        migrations.RunSQL(
+            "UPDATE magistassur_contratprevoyance SET num_police = '__TMP__' || CAST(id AS TEXT) WHERE num_police = '';",
+            reverse_sql="UPDATE magistassur_contratprevoyance SET num_police = '' WHERE num_police LIKE '__TMP__%';",
+        ),
         migrations.AlterField(
             model_name='contratepargne',
             name='num_police',

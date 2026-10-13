@@ -38,8 +38,7 @@ def _mark_offline(user_id: int) -> None:
         pass
 
 
-@database_sync_to_async
-def get_pending_requests():
+def _pending_requests_payload():
     """Retourne les requêtes en attente ou en cours pour notifier l'agent à la connexion."""
     from core.models import ClientRequest
     qs = ClientRequest.objects.filter(
@@ -48,6 +47,9 @@ def get_pending_requests():
     return [
         {
             "event": "new_request",
+            # Rejeu au login : le frontend les affiche dans le dropdown
+            # mais ne doit pas déclencher de toast ni de son.
+            "initial": True,
             "request_id": r.id,
             "numero": r.numero,
             "type": r.type,
@@ -56,6 +58,9 @@ def get_pending_requests():
         }
         for r in qs
     ]
+
+
+get_pending_requests = database_sync_to_async(_pending_requests_payload)
 
 
 class NotificationConsumer(AsyncWebsocketConsumer):

@@ -270,4 +270,10 @@ export const magistassurApi = {
   async exportPrevoyancePdf(id: string): Promise<void> {
     await downloadBlob(`/api/magistassur/prevoyance/${id}/export-pdf/`, `prevoyance_${id}.pdf`);
   },
+
+  async ajouterCotisationEpargne(id: string, data: { montant: number; date_echeance: string; date_paiement?: string; statut?: string; reference?: string }): Promise<void> {
+    await apiFetch<Record<string, unknown>>(`/api/magistassur/epargne/${id}/cotisation/`, {
+      method: "POST", body: JSON.stringify(data),
+    });
+  },
 };

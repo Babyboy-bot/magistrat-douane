@@ -1,7 +1,10 @@
 from django.conf import settings as conf
 from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.tokens import default_token_generator
 from django.core.cache import cache
 from django.utils import timezone
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
@@ -24,6 +27,7 @@ from .serializers import (
     UserProfileSerializer,
     VerifyUserSerializer,
     ChangePasswordSerializer,
+    PasswordResetConfirmSerializer,
     AgentCreateClientSerializer,
     AdminCreateAgentSerializer,
     UserAuditLogSerializer,
@@ -380,23 +384,48 @@ class ResetPasswordView(APIView):
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         identifier = serializer.validated_data["identifier"].strip()
-        user = User.objects.filter(email__iexact=identifier).first()
+        user = User.objects.filter(email__iexact=identifier, is_active=True).first()
         if not user:
             normalized = re.sub(r'[\s\-\.\(\)\+]', '', identifier)
-            user = User.objects.filter(telephone=normalized).first()
-        if user:
-            from .services import reset_user_password
-            temp_pw = reset_user_password(user)
+            user = User.objects.filter(telephone=normalized, is_active=True).first()
+        if user and user.email:
+            # Le mot de passe n'est PAS modifié ici : un lien signé à usage unique
+            # est envoyé par email. Sans ça, n'importe qui pouvait forcer la
+            # réinitialisation (et donc verrouiller) n'importe quel compte.
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            reset_url = f"{conf.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
             try:
                 from notifications.emails import send_password_reset_email
-                send_password_reset_email(user, temp_pw)
+                send_password_reset_email(user, reset_url)
             except Exception:
                 import logging
                 logging.getLogger("accounts").exception("Failed to send password reset email to user %s", user.pk)
         return Response(
-            {"detail": "Si un compte correspond à cet identifiant, un mot de passe temporaire a été envoyé."},
+            {"detail": "Si un compte correspond à cet identifiant, un lien de réinitialisation a été envoyé par email."},
             status=status.HTTP_200_OK,
         )
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ResetPasswordConfirmView(APIView):
+    """Confirme la réinitialisation : uid + token signé (usage unique) + nouveau mot de passe."""
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [LoginRateThrottle]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            user = User.objects.get(pk=force_str(urlsafe_base64_decode(serializer.validated_data["uid"])))
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = None
+        if not user or not default_token_generator.check_token(user, serializer.validated_data["token"]):
+            return Response({"detail": "Lien de réinitialisation invalide ou expiré."}, status=status.HTTP_400_BAD_REQUEST)
+        user.set_password(serializer.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        log_password_change(user, get_client_ip(request))
+        return Response({"detail": "Mot de passe réinitialisé avec succès."})
 
 
 class AgentCreateClientView(generics.CreateAPIView):

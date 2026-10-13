@@ -6,6 +6,7 @@ import logging
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.utils.html import escape
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -253,17 +254,21 @@ def send_livrable_notification(request_obj, document_obj):
 
 # ── Reset mot de passe ────────────────────────────────────────────────────────
 
-def send_password_reset_email(user, temp_pw: str):
-    """Envoyé à l'utilisateur avec son mot de passe temporaire."""
+def send_password_reset_email(user, reset_url: str):
+    """Envoyé à l'utilisateur avec le lien signé de réinitialisation (usage unique, durée limitée)."""
     if not user.email:
         return
     subject = "ACS — Réinitialisation de votre mot de passe"
     nom_complet = f"{user.nom} {user.prenoms}"
+    nom_html = escape(nom_complet)
+    url_html = escape(reset_url)
     body_txt = (
         f"Bonjour M./Mme {nom_complet},\n\n"
         "Une réinitialisation de votre mot de passe a été demandée.\n\n"
-        f"Votre mot de passe temporaire : {temp_pw}\n\n"
-        "Veuillez vous connecter et modifier ce mot de passe immédiatement.\n\n"
+        "Pour choisir un nouveau mot de passe, ouvrez ce lien :\n"
+        f"{reset_url}\n\n"
+        "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email : "
+        "votre mot de passe actuel reste valable.\n\n"
         f"Pour toute question, contactez-nous au : {_acs_contact()}\n\n"
         "Cordialement,\nL'équipe ACS"
     )
@@ -273,14 +278,15 @@ def send_password_reset_email(user, temp_pw: str):
     <h2 style="color:#f59e0b;margin:0">ACS — Réinitialisation de mot de passe</h2>
   </div>
   <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
-    <p>Bonjour M./Mme <strong>{nom_complet}</strong>,</p>
+    <p>Bonjour M./Mme <strong>{nom_html}</strong>,</p>
     <p>Une réinitialisation de votre mot de passe a été demandée.</p>
-    <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:16px;margin:16px 0;text-align:center">
-      <p style="margin:0;font-size:13px;color:#92400e">Mot de passe temporaire</p>
-      <p style="font-size:20px;font-weight:bold;color:#1e3a5f;letter-spacing:2px;margin:8px 0 0">{temp_pw}</p>
-    </div>
-    <p>Connectez-vous et <strong>changez ce mot de passe immédiatement</strong>
-       depuis votre espace personnel.</p>
+    <p style="text-align:center;margin:24px 0">
+      <a href="{url_html}" style="background:#1e3a5f;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none">
+        Choisir un nouveau mot de passe
+      </a>
+    </p>
+    <p style="color:#6b7280;font-size:13px">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email :
+       votre mot de passe actuel reste valable.</p>
     <p style="color:#6b7280;font-size:13px">Besoin d'aide ? {_acs_contact()}</p>
     <br>
     <p>Cordialement,<br><strong>L'équipe ACS</strong></p>

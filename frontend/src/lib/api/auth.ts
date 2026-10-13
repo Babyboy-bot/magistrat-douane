@@ -95,4 +95,12 @@ export const authApi = {
     });
     return raw as { message: string };
   },
+
+  async confirmResetPassword(uid: string, token: string, newPassword: string): Promise<{ message: string }> {
+    const raw = await apiFetch<Record<string, unknown>>("/api/auth/reset-password/confirm/", {
+      method: "POST",
+      body: JSON.stringify({ uid, token, new_password: newPassword }),
+    });
+    return raw as { message: string };
+  },
 };

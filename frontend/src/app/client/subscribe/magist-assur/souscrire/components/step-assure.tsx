@@ -34,7 +34,7 @@ export function StepAssure({ assureIdem, setAssureIdem, assure, setAssure }: Pro
               <div><Label>Prénom(s) <span className="text-red-500">*</span></Label><Input value={assure.assure_prenoms} onChange={e => s("assure_prenoms", e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Date de naissance <span className="text-red-500">*</span></Label><Input type="date" value={assure.assure_date_naissance} onChange={e => s("assure_date_naissance", e.target.value)} /></div>
+              <div><Label>Date de naissance <span className="text-red-500">*</span></Label><Input type="date" max={new Date().toISOString().slice(0, 10)} value={assure.assure_date_naissance} onChange={e => s("assure_date_naissance", e.target.value)} /></div>
               <div><Label>Lieu de naissance</Label><Input value={assure.assure_lieu_naissance} onChange={e => s("assure_lieu_naissance", e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
@@ -49,7 +49,7 @@ export function StepAssure({ assureIdem, setAssureIdem, assure, setAssure }: Pro
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Validité pièce</Label><Input type="date" value={assure.assure_validite_piece} onChange={e => s("assure_validite_piece", e.target.value)} /></div>
+              <div><Label>Validité pièce</Label><Input type="date" min={new Date().toISOString().slice(0, 10)} value={assure.assure_validite_piece} onChange={e => s("assure_validite_piece", e.target.value)} /></div>
               <div><Label>N° de la pièce</Label><Input value={assure.assure_numero_piece} onChange={e => s("assure_numero_piece", e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
