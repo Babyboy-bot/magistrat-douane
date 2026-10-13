@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Tableau de bord", href: "/agent/dashboard", icon: LayoutDashboard, wip: false },
-  { name: "Assurés / Prospects", href: "/agent/clients", icon: Users, wip: true },
+  { name: "Assurés / Prospects", href: "/agent/clients", icon: Users, wip: false },
   { name: "Émissions", href: "/agent/emissions", icon: FileSpreadsheet, wip: true },
   { name: "Requêtes clients", href: "/agent/requests", icon: ClipboardList, wip: true },
   { name: "MAGIST'ASSUR", href: "/agent/magistassur", icon: Heart, wip: false },
