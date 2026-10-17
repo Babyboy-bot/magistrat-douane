@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 interface UnderDevelopmentProps {
   featureName?: string;
   backHref?: string;
+  description?: string;
 }
 
 export function UnderDevelopment({
   featureName = "Cette fonctionnalité",
   backHref = "/client/dashboard",
+  description,
 }: UnderDevelopmentProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
@@ -22,10 +24,15 @@ export function UnderDevelopment({
       <h1 className="text-2xl font-bold text-gray-900 mb-2">
         En cours de développement
       </h1>
-      <p className="text-gray-500 max-w-md mb-6">
+      <p className="text-gray-500 max-w-md mb-2">
         {featureName} est actuellement en cours de développement par notre équipe.
         Elle sera disponible prochainement.
       </p>
+      {description && (
+        <p className="text-sm text-gray-400 max-w-md mb-6 italic">
+          À venir : {description}
+        </p>
+      )}
       <Link href={backHref}>
         <Button variant="outline" className="gap-2">
           <ArrowLeft className="h-4 w-4" />

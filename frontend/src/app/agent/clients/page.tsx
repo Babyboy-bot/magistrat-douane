@@ -110,7 +110,7 @@ export default function AgentClientsPage() {
     try {
       await usersApi.verify(Number(clientId));
       toast.success("Compte vérifié avec succès");
-      refetch();
+      await refetch();
       setSelectedClientId(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de la vérification");
@@ -206,8 +206,9 @@ export default function AgentClientsPage() {
                         <p className="font-semibold text-gray-900">{client.nom} {client.prenoms}</p>
                         <p className="text-sm text-gray-500">{client.profession || PROFESSION_LABELS[client.professionType]}</p>
                       </div>
-                      <Badge variant={client.verified ? "default" : "secondary"}>
-                        {client.verified ? "Vérifié" : "Prospect"}
+                      <Badge variant={client.verified ? "default" : "secondary"}
+                        className={client.verified ? "" : "bg-amber-100 text-amber-800 border-amber-300"}>
+                        {client.verified ? "Vérifié" : "En attente"}
                       </Badge>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-500">
@@ -270,12 +271,13 @@ export default function AgentClientsPage() {
                     </Button>
                   )}
                   <Button size="sm" variant="outline" className="flex-1"
-                    onClick={() => setShowEmission(true)}
+                    disabled title="Disponible prochainement"
                   >
-                    <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Émission
+                    <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Émission <span className="text-[10px] opacity-70">(bientôt)</span>
                   </Button>
                 </div>
 
+                {/* Stats primes masquées pour l'instant — réactiver avec le portefeuille émissions
                 {selectedStats && (
                   <div className="space-y-2">
                     <div className="grid grid-cols-2 gap-2">
@@ -293,6 +295,7 @@ export default function AgentClientsPage() {
                     </div>
                   </div>
                 )}
+                */}
 
                 {selectedEmissions.length > 0 && (
                   <div>

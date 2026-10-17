@@ -81,7 +81,7 @@ export function StepGaranties({ garantieDeces, garantieFuneraires, assuresAssoci
             </div>
 
             {assuresAssocies.map((a, i) => (
-              <div key={i} className="border rounded-lg p-3 space-y-2">
+              <div key={i} className="border rounded-lg p-3 space-y-2" data-field={`assure_assoc_${i}`}>
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-semibold text-amber-700 uppercase">
                     {LIEN_LABELS[a.lien_parente]} — {formatCFA(INDEMNITES[a.lien_parente])}

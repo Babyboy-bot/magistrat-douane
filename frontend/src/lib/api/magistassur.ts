@@ -59,6 +59,7 @@ function mapContratEpargne(r: Record<string, unknown>): ContratEpargne {
     })),
     createdAt: (r.created_at as string) || "",
     prisEnChargeNom: (r.pris_en_charge_nom as string) || undefined,
+    prisEnChargeTelephone: (r.pris_en_charge_telephone as string) || undefined,
     civilite: (r.civilite as string) || undefined,
     situationMatrimoniale: (r.situation_matrimoniale as string) || undefined,
     dateNaissance: (r.date_naissance as string) || undefined,
@@ -76,6 +77,7 @@ function mapContratEpargne(r: Record<string, unknown>): ContratEpargne {
     pieceIdentiteVersoUrl: (r.piece_identite_verso_url as string) || undefined,
     ribDocumentUrl: (r.rib_document_url as string) || undefined,
     prisEnChargeId: r.pris_en_charge_par ? String(r.pris_en_charge_par) : undefined,
+    envoyeNsiaAt: (r.envoye_nsia_at as string) || undefined,
   };
 }
 
@@ -130,6 +132,7 @@ function mapContratPrevoyance(r: Record<string, unknown>): ContratPrevoyance {
       : undefined,
     createdAt: (r.created_at as string) || "",
     prisEnChargeNom: (r.pris_en_charge_nom as string) || undefined,
+    prisEnChargeTelephone: (r.pris_en_charge_telephone as string) || undefined,
     civilite: (r.civilite as string) || undefined,
     situationMatrimoniale: (r.situation_matrimoniale as string) || undefined,
     dateNaissance: (r.date_naissance as string) || undefined,
@@ -146,6 +149,7 @@ function mapContratPrevoyance(r: Record<string, unknown>): ContratPrevoyance {
     correspEmail: (r.corresp_email as string) || undefined,
     correspWhatsapp: (r.corresp_whatsapp as string) || undefined,
     prisEnChargeId: r.pris_en_charge_par ? String(r.pris_en_charge_par) : undefined,
+    envoyeNsiaAt: (r.envoye_nsia_at as string) || undefined,
   };
 }
 
@@ -271,7 +275,11 @@ export const magistassurApi = {
     await downloadBlob(`/api/magistassur/prevoyance/${id}/export-pdf/`, `prevoyance_${id}.pdf`);
   },
 
-  async ajouterCotisationEpargne(id: string, data: { montant: number; date_echeance: string; date_paiement?: string; statut?: string; reference?: string }): Promise<void> {
+  async marquerEnvoyeNsia(type: "epargne" | "prevoyance", id: string): Promise<void> {
+    await apiFetch<Record<string, unknown>>(`/api/magistassur/${type}/${id}/envoye-nsia/`, { method: "POST" });
+  },
+
+  async ajouterCotisationEpargne(id: string, data: { montant: number; date_echeance: string; date_paiement?: string; reference?: string }): Promise<void> {
     await apiFetch<Record<string, unknown>>(`/api/magistassur/epargne/${id}/cotisation/`, {
       method: "POST", body: JSON.stringify(data),
     });

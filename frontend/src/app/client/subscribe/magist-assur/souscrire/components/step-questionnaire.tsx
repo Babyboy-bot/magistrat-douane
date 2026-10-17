@@ -34,9 +34,9 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>1. Taille (cm) <span className="text-red-500">*</span></Label><Input type="number" min={0} value={q.taille_cm} onChange={e => s("taille_cm", e.target.value)} placeholder="ex: 175" /></div>
-            <div><Label>2. Poids (kg) <span className="text-red-500">*</span></Label><Input type="number" min={0} value={q.poids_kg} onChange={e => s("poids_kg", e.target.value)} placeholder="ex: 70" /></div>
-            <div><Label>3. Tension artérielle <span className="text-red-500">*</span></Label><Input value={q.tension_arterielle} onChange={e => s("tension_arterielle", e.target.value)} placeholder="ex: 12/8" /></div>
+            <div><Label>1. Taille (cm) <span className="text-red-500">*</span></Label><Input data-field="taille_cm" type="number" min={0} value={q.taille_cm} onChange={e => s("taille_cm", e.target.value)} placeholder="ex: 175" /></div>
+            <div><Label>2. Poids (kg) <span className="text-red-500">*</span></Label><Input data-field="poids_kg" type="number" min={0} value={q.poids_kg} onChange={e => s("poids_kg", e.target.value)} placeholder="ex: 70" /></div>
+            <div><Label>3. Tension artérielle <span className="text-red-500">*</span></Label><Input data-field="tension_arterielle" value={q.tension_arterielle} onChange={e => s("tension_arterielle", e.target.value)} placeholder="ex: 12/8" /></div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -56,7 +56,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
 
             <div>
               <Label className="mb-2 block">5. Alcool ? <span className="text-red-500">*</span></Label>
-              <div className="grid grid-cols-2 gap-1">
+              <div className="grid grid-cols-2 gap-1" data-field="alcool">
                 {[["non","Non"],["pas_du_tout","Pas du tout"],["a_l_occasion","À l'occasion"],["regulierement","Régulièrement"]].map(([v, l]) => (
                   <button key={v} type="button" onClick={() => s("alcool", v)}
                     className={`border rounded-lg py-1.5 text-xs transition ${q.alcool === v ? "bg-amber-600 text-white border-amber-600" : "border-gray-300 hover:border-amber-400"}`}>{l}</button>
@@ -65,7 +65,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
             </div>
           </div>
 
-          <div><Label>6. Vos distractions / loisirs <span className="text-red-500">*</span></Label><Input value={q.distractions} onChange={e => s("distractions", e.target.value)} /></div>
+          <div><Label>6. Vos distractions / loisirs <span className="text-red-500">*</span></Label><Input data-field="distractions" value={q.distractions} onChange={e => s("distractions", e.target.value)} /></div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -122,7 +122,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
           </button>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto -mx-2">
+          <div className="overflow-x-auto -mx-2" data-field="antecedents">
             <table className="w-full text-xs min-w-[600px]">
               <thead>
                 <tr className="bg-gray-100">

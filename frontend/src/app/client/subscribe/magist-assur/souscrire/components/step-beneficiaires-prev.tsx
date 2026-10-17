@@ -75,7 +75,7 @@ export function StepBeneficiairesPrev({ benefConjoint, setBenefConjoint, benefEn
         </div>
 
         {hasAutres && autresBenef.some(b => b.nom) && (
-          <div className="space-y-1.5">
+          <div className="space-y-1.5" data-field="benef_p_total">
             <div className="flex justify-between text-xs">
               <span className="font-medium text-gray-600">Total répartition</span>
               <span className={`font-bold ${taux100 ? "text-emerald-600" : "text-orange-600"}`}>{totalTaux} % / 100 %</span>
@@ -92,7 +92,7 @@ export function StepBeneficiairesPrev({ benefConjoint, setBenefConjoint, benefEn
         {hasAutres && (
           <div className="space-y-3">
             {autresBenef.map((b, i) => (
-              <div key={i} className="border rounded-lg p-3 space-y-2">
+              <div key={i} className="border rounded-lg p-3 space-y-2" data-field={`benef_p_${i}`}>
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-semibold text-gray-500">Bénéficiaire {i + 1}</span>
                   {autresBenef.length > 1 && (

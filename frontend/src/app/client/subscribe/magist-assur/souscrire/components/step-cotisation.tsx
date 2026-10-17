@@ -30,6 +30,17 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
   const periodeLabel = PERIODICITE_LABELS[cot.periodicite] || cot.periodicite;
   const maxAnnees = calcMaxAnnees(dateNaissance);
 
+  // Compteur RIB : « CIxx » (4 car.) + 20 caractères (format imprimé sur les chèques)
+  // ou + 24 caractères (IBAN complet). Sinon n° local 8-24.
+  const ribClean = cot.numero_compte.replace(/[^A-Z0-9]/g, "");
+  const isIban = ribClean.startsWith("CI");
+  const ibanRest = isIban ? Math.max(0, ribClean.length - 4) : 0;
+  const ribStatus: "ok" | "court" | "long" | null = !ribClean || ribClean === "CI"
+    ? null
+    : isIban
+      ? (ibanRest === 20 || ibanRest === 24 ? "ok" : ibanRest < 20 ? "court" : ibanRest > 24 ? "long" : "court")
+      : (ribClean.length >= 8 && ribClean.length <= 24 ? "ok" : ribClean.length < 8 ? "court" : "long");
+
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader><CardTitle className="text-base">3. Cotisation ÉPARGNE</CardTitle></CardHeader>
@@ -44,6 +55,7 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
           )}
           <div className="flex items-center gap-2 mt-1">
             <Input
+              data-field="duree_annees"
               type="number" min={1} max={maxAnnees ?? undefined}
               className="w-24" value={cot.duree_annees}
               onChange={e => {
@@ -58,7 +70,7 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
 
         <div>
           <Label>2. Périodicité <span className="text-red-500">*</span></Label>
-          <div className="grid grid-cols-4 gap-2 mt-2">
+          <div className="grid grid-cols-4 gap-2 mt-2" data-field="periodicite">
             {Object.entries(PERIODICITE_LABELS).map(([k, v]) => (
               <button key={k} type="button" onClick={() => s("periodicite", k)}
                 className={`border rounded-lg py-2 text-sm font-medium transition ${cot.periodicite === k ? "bg-amber-600 text-white border-amber-600" : "border-gray-300 hover:border-amber-400"}`}>
@@ -69,14 +81,14 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>3. Date 1ère cotisation <span className="text-red-500">*</span></Label><Input type="date" min={new Date().toISOString().slice(0, 10)} value={cot.date_premiere_cotisation} onChange={e => s("date_premiere_cotisation", e.target.value)} /></div>
-          <div><Label>Date d&apos;effet du contrat</Label><Input type="date" min={new Date().toISOString().slice(0, 10)} value={cot.date_effet} onChange={e => s("date_effet", e.target.value)} /></div>
+          <div><Label>3. Date 1ère cotisation <span className="text-red-500">*</span></Label><Input data-field="date_premiere_cotisation" type="date" min={new Date().toISOString().slice(0, 10)} value={cot.date_premiere_cotisation} onChange={e => s("date_premiere_cotisation", e.target.value)} /></div>
+          <div><Label>Date d&apos;effet du contrat</Label><Input data-field="date_effet" type="date" min={new Date().toISOString().slice(0, 10)} value={cot.date_effet} onChange={e => s("date_effet", e.target.value)} /></div>
         </div>
 
         <div>
           <Label>4. Montant périodique <span className="text-red-500">*</span></Label>
           <div className="flex items-center gap-2 mt-1">
-            <Input type="number" min={25000} step={5000} className="w-48" value={cot.montant_cotisation} onChange={e => s("montant_cotisation", e.target.value)} />
+            <Input data-field="montant_cotisation" type="number" min={25000} step={5000} className="w-48" value={cot.montant_cotisation} onChange={e => s("montant_cotisation", e.target.value)} />
             <span className="text-sm text-gray-500">FCFA (min. 25 000)</span>
           </div>
         </div>
@@ -104,6 +116,7 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
           <div>
             <Label>N° de compte (joindre RIB) <span className="text-red-500">*</span></Label>
             <Input
+              data-field="numero_compte"
               className="mt-1 font-mono"
               placeholder="CI93 XXXX XXXX XXXX XXXX XXXX XX"
               value={cot.numero_compte}
@@ -112,7 +125,21 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
                 s("numero_compte", raw.replace(/(.{4})(?=.)/g, "$1 "));
               }}
             />
-            <p className="text-xs text-gray-400 mt-1">IBAN ivoirien : CI93 + 24 caractères (ou n° de compte local).</p>
+            {ribStatus === null ? (
+              <p className="text-xs text-gray-400 mt-1">Recopiez le RIB tel qu&apos;imprimé sur votre chèque : CIxx + code guichet + n° compte + clé (ex. CI16 3012 4000 0000 6581 016). Ou n° de compte local — effacez « CI » si besoin.</p>
+            ) : isIban ? (
+              <p className={`text-xs mt-1 font-medium ${ribStatus === "ok" ? "text-emerald-600" : ribStatus === "court" ? "text-amber-600" : "text-red-600"}`}>
+                {ribStatus === "ok"
+                  ? `✓ RIB valide (${ibanRest}/20 caractères après « ${ribClean.slice(0, 4)} »${ibanRest === 24 ? " — IBAN complet" : ""})`
+                  : ribStatus === "court"
+                    ? `RIB incomplet — ${ibanRest}/20 caractères après « ${ribClean.slice(0, 4)} » (recopiez tout ce qui suit CIxx sur le chèque)`
+                    : `RIB trop long — ${ibanRest} caractères après « ${ribClean.slice(0, 4)} » (24 max pour un IBAN)`}
+              </p>
+            ) : (
+              <p className={`text-xs mt-1 font-medium ${ribStatus === "ok" ? "text-emerald-600" : "text-red-600"}`}>
+                {ribStatus === "ok" ? `✓ N° de compte local (${ribClean.length} caractères)` : ribStatus === "court" ? `N° local incomplet — ${ribClean.length} caractère(s), min. 8` : `N° local trop long — ${ribClean.length} caractères, max. 24`}
+              </p>
+            )}
             <div className="mt-2">
               <p className="text-xs font-medium text-gray-700 mb-1">Importer le RIB *</p>
               <label className="inline-flex items-center gap-2 cursor-pointer bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition">

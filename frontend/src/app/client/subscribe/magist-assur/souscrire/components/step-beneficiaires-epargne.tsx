@@ -44,7 +44,7 @@ export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, bene
       <CardContent className="space-y-4">
         <p className="text-sm text-gray-600">Le souscripteur désigne comme bénéficiaire(s) en cas de décès de l&apos;assuré avant le terme du contrat :</p>
 
-        <div className="space-y-2">
+        <div className="space-y-2" data-field="benef_choix">
           {hasConjoint && (
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
             <Checkbox checked={benefConjoint} onCheckedChange={c => setBenefConjoint(!!c)} id="bc" />
@@ -63,7 +63,7 @@ export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, bene
         </div>
 
         {hasAutres && autresBenef.some(b => b.nom) && (
-          <div className="space-y-1.5">
+          <div className="space-y-1.5" data-field="benef_e_total">
             <div className="flex justify-between text-xs">
               <span className="font-medium text-gray-600">Total répartition</span>
               <span className={`font-bold ${taux100 ? "text-emerald-600" : "text-orange-600"}`}>{totalTaux} % / 100 %</span>
@@ -80,7 +80,7 @@ export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, bene
         {hasAutres && (
           <div className="space-y-3">
             {autresBenef.map((b, i) => (
-              <div key={i} className="border rounded-lg p-3 space-y-3">
+              <div key={i} className="border rounded-lg p-3 space-y-3" data-field={`benef_e_${i}`}>
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-semibold text-gray-500">Bénéficiaire {i + 1}</span>
                   {autresBenef.length > 1 && (
@@ -108,7 +108,7 @@ export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, bene
           </div>
         )}
 
-        <div className="border border-gray-200 rounded-lg p-4 space-y-3 mt-2">
+        <div className="border border-gray-200 rounded-lg p-4 space-y-3 mt-2" data-field="consentement">
           <p className="text-xs text-gray-600">
             Permettez-vous une intégration de votre profil dans notre base de données de clients susceptibles de recevoir des communications dans le cadre de nos programmes de fidélisation et de l&apos;actualité de NSIA Vie Assurances ?
           </p>

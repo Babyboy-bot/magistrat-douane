@@ -186,7 +186,6 @@ export default function RegisterPage() {
                     <SelectContent>
                       <SelectItem value="magistrat">Magistrat</SelectItem>
                       <SelectItem value="douanier">Douanier</SelectItem>
-                      <SelectItem value="autre">Autre profession</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -205,7 +204,7 @@ export default function RegisterPage() {
                 {(form.professionType === "magistrat" || form.professionType === "douanier") && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                     <p className="text-xs text-amber-800">
-                      <strong>Note :</strong> En tant que {form.professionType === "magistrat" ? "magistrat" : "douanier"}, votre compte sera vérifié par un agent ACS avant l'activation complète de vos accès.
+                      <strong>Note :</strong> En tant que {form.professionType === "magistrat" ? "magistrat" : "douanier"}, votre compte devra être vérifié par un agent ACS. Aucun accès ne sera actif tant que votre identité professionnelle n&apos;aura pas été validée (sous 24h ouvrées).
                     </p>
                   </div>
                 )}

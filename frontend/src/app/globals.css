@@ -124,3 +124,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Champ en erreur dans le wizard Magist-Assur (défilement + focus sur le champ manquant) */
+.field-invalid {
+  outline: 2px solid rgb(220 38 38) !important;
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+input.field-invalid,
+select.field-invalid,
+textarea.field-invalid {
+  border-color: rgb(220 38 38) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgb(220 38 38 / 0.45);
+}

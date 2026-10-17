@@ -25,7 +25,7 @@ export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFil
 
         <div>
           <Label className="text-xs text-gray-500 uppercase tracking-wide">Civilité <span className="text-red-500">*</span></Label>
-          <div className="grid grid-cols-3 gap-3 mt-1">
+          <div className="grid grid-cols-3 gap-3 mt-1" data-field="civilite">
             {["Madame", "Mademoiselle", "Monsieur"].map(c => (
               <button key={c} type="button" onClick={() => s("civilite", c)} className={btn("civilite", c)}>{c}</button>
             ))}
@@ -33,18 +33,18 @@ export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFil
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Nom <span className="text-red-500">*</span></Label><Input value={id.nom} onChange={e => s("nom", e.target.value)} /></div>
-          <div><Label>Prénoms <span className="text-red-500">*</span></Label><Input value={id.prenoms} onChange={e => s("prenoms", e.target.value)} /></div>
+          <div><Label>Nom <span className="text-red-500">*</span></Label><Input data-field="nom" value={id.nom} onChange={e => s("nom", e.target.value)} /></div>
+          <div><Label>Prénoms <span className="text-red-500">*</span></Label><Input data-field="prenoms" value={id.prenoms} onChange={e => s("prenoms", e.target.value)} /></div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Date de Naissance <span className="text-red-500">*</span></Label><Input type="date" max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().slice(0, 10); })()} value={id.date_naissance} onChange={e => s("date_naissance", e.target.value)} /></div>
-          <div><Label>Pays / Ville de Naissance <span className="text-red-500">*</span></Label><Input value={id.pays_naissance} onChange={e => s("pays_naissance", e.target.value)} /></div>
+          <div><Label>Date de Naissance <span className="text-red-500">*</span></Label><Input data-field="date_naissance" type="date" max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().slice(0, 10); })()} value={id.date_naissance} onChange={e => s("date_naissance", e.target.value)} /></div>
+          <div><Label>Pays / Ville de Naissance <span className="text-red-500">*</span></Label><Input data-field="pays_naissance" value={id.pays_naissance} onChange={e => s("pays_naissance", e.target.value)} /></div>
         </div>
 
         <div>
           <Label>Type de pièce d&apos;identité <span className="text-red-500">*</span></Label>
-          <div className="grid grid-cols-3 gap-2 mt-1">
+          <div className="grid grid-cols-3 gap-2 mt-1" data-field="type_piece">
             {[["cni","CNI"],["passeport","Passeport"],["autre","Autres"]].map(([v, l]) => (
               <button key={v} type="button" onClick={() => s("type_piece", v)} className={btn("type_piece", v)}>{l}</button>
             ))}
@@ -56,11 +56,11 @@ export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFil
           <div><Label>Numéro de la pièce</Label><Input value={id.numero_piece} onChange={e => s("numero_piece", e.target.value)} /></div>
         </div>
 
-        <div><Label>Numéro National d&apos;Identité (NNI) <span className="text-red-500">*</span></Label><Input value={id.nni} onChange={e => s("nni", e.target.value)} /></div>
+        <div><Label>Numéro National d&apos;Identité (NNI) <span className="text-red-500">*</span></Label><Input data-field="nni" value={id.nni} onChange={e => s("nni", e.target.value)} /></div>
 
         <div>
           <Label>Situation matrimoniale <span className="text-red-500">*</span></Label>
-          <div className="grid grid-cols-3 gap-2 mt-1">
+          <div className="grid grid-cols-3 gap-2 mt-1" data-field="situation_matrimoniale">
             {[["celibataire","Célibataire"],["marie","Marié(e)"],["divorce","Divorcé(e)"],["veuf","Veuf(ve)"],["concubin","Concubin"]].map(([v, l]) => (
               <button key={v} type="button" onClick={() => s("situation_matrimoniale", v)} className={btn("situation_matrimoniale", v) + " text-xs"}>{l}</button>
             ))}
@@ -76,10 +76,10 @@ export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFil
 
         <div className="grid grid-cols-2 gap-3">
           <div><Label>Adresse postale personnelle</Label><Input value={id.adresse_postale} onChange={e => s("adresse_postale", e.target.value)} /></div>
-          <div><Label>Email personnel <span className="text-red-500">*</span></Label><Input type="email" value={id.email_personnel} onChange={e => s("email_personnel", e.target.value)} /></div>
+          <div><Label>Email personnel <span className="text-red-500">*</span></Label><Input data-field="email_personnel" type="email" value={id.email_personnel} onChange={e => s("email_personnel", e.target.value)} /></div>
         </div>
 
-        <div><Label>Tél. / Cél. <span className="text-red-500">*</span></Label><Input value={id.telephone} onChange={e => s("telephone", e.target.value)} /></div>
+        <div><Label>Tél. / Cél. <span className="text-red-500">*</span></Label><Input data-field="telephone" value={id.telephone} onChange={e => s("telephone", e.target.value)} /></div>
 
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-1">Réf. Réseaux Sociaux</p>
         <div className="grid grid-cols-2 gap-3">
@@ -92,7 +92,7 @@ export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFil
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-1">Situation professionnelle</p>
         <div>
           <Label>Statut professionnel <span className="text-red-500">*</span></Label>
-          <div className="grid grid-cols-2 gap-2 mt-1">
+          <div className="grid grid-cols-2 gap-2 mt-1" data-field="statut_professionnel">
             {[["salarie","Salarié"],["non_salarie","Non salarié"],["sans_activite","Sans activité"],["retraite","Retraité"]].map(([v, l]) => (
               <button key={v} type="button" onClick={() => s("statut_professionnel", v)} className={btn("statut_professionnel", v) + " text-xs"}>{l}</button>
             ))}
@@ -106,7 +106,7 @@ export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFil
 
         <div>
           <Label>Origine des cotisations <span className="text-red-500">*</span></Label>
-          <div className="space-y-1 mt-1">
+          <div className="space-y-1 mt-1" data-field="origine_revenu">
             {[["salaire","Salaire / Pension / Rente"],["vente_actifs","Vente d'actifs"],["activite_commerciale","Activité commerciale"]].map(([v, l]) => (
               <button key={v} type="button" onClick={() => s("origine_revenu", v)} className={btn("origine_revenu", v) + " w-full text-left px-3 text-xs"}>{l}</button>
             ))}

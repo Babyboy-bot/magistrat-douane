@@ -267,6 +267,7 @@ export interface ContratEpargne {
   clientNom: string;
   agentId?: string;
   prisEnChargeNom?: string;
+  prisEnChargeTelephone?: string;
   dureeAnnees: number;
   periodicite: PeriodiciteEpargne;
   datePremiereCotisation?: string;
@@ -304,6 +305,7 @@ export interface ContratEpargne {
   pieceIdentiteVersoUrl?: string;
   ribDocumentUrl?: string;
   prisEnChargeId?: string;
+  envoyeNsiaAt?: string;
 }
 
 export interface AssureAssocie {
@@ -351,7 +353,9 @@ export interface ContratPrevoyance {
   clientNom: string;
   agentId?: string;
   prisEnChargeNom?: string;
+  prisEnChargeTelephone?: string;
   prisEnChargeId?: string;
+  envoyeNsiaAt?: string;
   garantiePrevoyanceDeces: boolean;
   garantiefraisFuneraires: boolean;
   dateEffet?: string;

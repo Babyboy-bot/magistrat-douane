@@ -13,20 +13,20 @@ interface Props {
   prevCorresp: CorrespondantState; setPrevCorresp: (v: CorrespondantState) => void;
 }
 
-function CorrespondantCard({ label, data, set }: { label: string; data: CorrespondantState; set: (v: CorrespondantState) => void }) {
+function CorrespondantCard({ label, data, set, fieldPrefix = "" }: { label: string; data: CorrespondantState; set: (v: CorrespondantState) => void; fieldPrefix?: string }) {
   const s = (field: keyof CorrespondantState, val: string) => set({ ...data, [field]: val });
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader><CardTitle className="text-base">{label}</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Nom {label.includes("1") ? <span className="text-red-500">*</span> : ""}</Label><Input value={data.nom} onChange={e => s("nom", e.target.value)} /></div>
-          <div><Label>Prénom {label.includes("1") ? <span className="text-red-500">*</span> : ""}</Label><Input value={data.prenom} onChange={e => s("prenom", e.target.value)} /></div>
+          <div><Label>Nom {label.includes("1") ? <span className="text-red-500">*</span> : ""}</Label><Input data-field={fieldPrefix ? `${fieldPrefix}_nom` : undefined} value={data.nom} onChange={e => s("nom", e.target.value)} /></div>
+          <div><Label>Prénom {label.includes("1") ? <span className="text-red-500">*</span> : ""}</Label><Input data-field={fieldPrefix ? `${fieldPrefix}_prenom` : undefined} value={data.prenom} onChange={e => s("prenom", e.target.value)} /></div>
         </div>
         <div><Label>Domicile (Ville-Commune-Quartier-Rue-Lot-Ilot)</Label><Input value={data.domicile} onChange={e => s("domicile", e.target.value)} /></div>
         <div><Label>Adresse Postale</Label><Input value={data.adresse_postale} onChange={e => s("adresse_postale", e.target.value)} /></div>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Tél. / Cél. {label.includes("1") ? <span className="text-red-500">*</span> : ""}</Label><Input value={data.telephone} onChange={e => s("telephone", e.target.value)} /></div>
+          <div><Label>Tél. / Cél. {label.includes("1") ? <span className="text-red-500">*</span> : ""}</Label><Input data-field={fieldPrefix ? `${fieldPrefix}_telephone` : undefined} value={data.telephone} onChange={e => s("telephone", e.target.value)} /></div>
           <div><Label>E-mail</Label><Input type="email" value={data.email} onChange={e => s("email", e.target.value)} /></div>
         </div>
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Réf. Réseaux Sociaux</p>
@@ -69,7 +69,7 @@ export function StepCorrespondants({ corresp1, setCorresp1, corresp2, setCorresp
           Identique à moi (m&apos;utiliser comme correspondant)
         </Button>
       </div>
-      <CorrespondantCard label="2. Correspondant 1 *" data={corresp1} set={setCorresp1} />
+      <CorrespondantCard label="2. Correspondant 1 *" data={corresp1} set={setCorresp1} fieldPrefix="c1" />
       <CorrespondantCard label="Correspondant 2 (optionnel)" data={corresp2} set={setCorresp2} />
 
       {/* ── Correspondant Prévoyance ── */}
@@ -116,10 +116,10 @@ export function StepCorrespondants({ corresp1, setCorresp1, corresp2, setCorresp
           {prevCorrespIdem === false && (
             <div className="space-y-3 pt-1">
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Nom <span className="text-red-500">*</span></Label><Input value={prevCorresp.nom} onChange={e => sp("nom", e.target.value)} /></div>
-                <div><Label>Prénom <span className="text-red-500">*</span></Label><Input value={prevCorresp.prenom} onChange={e => sp("prenom", e.target.value)} /></div>
+                <div><Label>Nom <span className="text-red-500">*</span></Label><Input data-field="pc_nom" value={prevCorresp.nom} onChange={e => sp("nom", e.target.value)} /></div>
+                <div><Label>Prénom <span className="text-red-500">*</span></Label><Input data-field="pc_prenom" value={prevCorresp.prenom} onChange={e => sp("prenom", e.target.value)} /></div>
               </div>
-              <div><Label>Domicile <span className="text-red-500">*</span></Label><Input value={prevCorresp.domicile} onChange={e => sp("domicile", e.target.value)} /></div>
+              <div><Label>Domicile <span className="text-red-500">*</span></Label><Input data-field="pc_domicile" value={prevCorresp.domicile} onChange={e => sp("domicile", e.target.value)} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Téléphone</Label><Input value={prevCorresp.telephone} onChange={e => sp("telephone", e.target.value)} /></div>
                 <div><Label>E-mail</Label><Input type="email" value={prevCorresp.email} onChange={e => sp("email", e.target.value)} /></div>

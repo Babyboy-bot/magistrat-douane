@@ -73,6 +73,23 @@ export default function ClientDashboard() {
     }
   };
 
+  const STATUT_LABELS: Record<string, string> = {
+    en_cours: "En cours",
+    rachete: "Racheté",
+    arrive_terme: "Arrivé à terme",
+    suspendu: "Suspendu",
+    cloture: "Clôturé",
+    sinistre: "Sinistre déclaré",
+    expire: "Expiré",
+    resilie: "Résilié",
+  };
+  const statutLabel = (s: unknown) => STATUT_LABELS[String(s)] || String(s || "—");
+
+  const conseillerLigne = (c: Record<string, unknown>) =>
+    c.prisEnChargeNom
+      ? `Conseiller : ${c.prisEnChargeNom}${c.prisEnChargeTelephone ? ` · Tél ${c.prisEnChargeTelephone}` : ""}`
+      : "En attente d'un conseiller";
+
   // Livrables récents (toutes requêtes confondues)
   const livrablesRecents = requests
     .flatMap((r: ClientRequest) => r.livrables.map((d) => ({ ...d, requestNumero: r.numero, requestType: r.type })))
@@ -119,16 +136,14 @@ export default function ClientDashboard() {
               <div className="bg-amber-100 rounded-lg p-4 text-left">
                 <h4 className="font-medium text-amber-900 mb-2">Pendant l’attente :</h4>
                 <ul className="text-sm text-amber-700 space-y-1">
-                  <li>✅ Vous pouvez demander des cotations</li>
-                  <li>✅ Un agent ACS vous contactera pour validation</li>
+                  <li>✅ Un agent ACS vérifie votre identité professionnelle</li>
+                  <li>✅ Vous serez notifié dès l&apos;activation de votre compte</li>
                   <li>✅ Vos données sont sécurisées</li>
                 </ul>
               </div>
-              <Link href="/client/subscribe/magist-assur">
-                <Button className="bg-amber-600 hover:bg-amber-700">
-                  Souscrire à Magist'Assur
-                </Button>
-              </Link>
+              <p className="text-xs text-amber-600">
+                La souscription à Magist&apos;Assur sera disponible une fois votre compte vérifié.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -145,7 +160,7 @@ export default function ClientDashboard() {
                   {contratsEnAttente} dossier{contratsEnAttente > 1 ? "s" : ""} Magist'Assur en attente de traitement
                 </p>
               </div>
-              <Link href="/client/subscribe/magist-assur">
+              <Link href="/client/history">
                 <Button size="sm" variant="outline" className="text-xs border-orange-400 text-orange-700 hover:bg-orange-100">
                   Suivre mes dossiers
                 </Button>
@@ -257,11 +272,14 @@ export default function ClientDashboard() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">Épargne — {c.numPolice as string || `#${c.id}`}</p>
-                      <p className="text-xs text-gray-500">Statut: {c.statut as string}</p>
+                      <p className="text-xs text-gray-500">{conseillerLigne(c)}</p>
+                      {Number(c.capitalConstitue) > 0 && (
+                        <p className="text-xs text-blue-700">Capital : {formatCurrency(Number(c.capitalConstitue))}</p>
+                      )}
                     </div>
                   </div>
                   <Badge className="bg-blue-100 text-blue-800 shrink-0" variant="secondary">
-                    {c.statut as string}
+                    {statutLabel(c.statut)}
                   </Badge>
                 </div>
               </div>
@@ -275,11 +293,11 @@ export default function ClientDashboard() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">Prévoyance — {c.numPolice as string || `#${c.id}`}</p>
-                      <p className="text-xs text-gray-500">Statut: {c.statut as string}</p>
+                      <p className="text-xs text-gray-500">{conseillerLigne(c)}</p>
                     </div>
                   </div>
                   <Badge className="bg-rose-100 text-rose-800 shrink-0" variant="secondary">
-                    {c.statut as string}
+                    {statutLabel(c.statut)}
                   </Badge>
                 </div>
               </div>

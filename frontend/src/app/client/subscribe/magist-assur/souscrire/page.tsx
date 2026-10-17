@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, Loader2, CheckCircle, ChevronDown, ChevronUp, Tr
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
-import { magistassurApi, requestsApi } from "@/lib/api";
+import { magistassurApi } from "@/lib/api";
 import { toast } from "sonner";
 
 import { StepIdentite } from "./components/step-identite";
@@ -146,6 +146,7 @@ export default function SouscrirePage() {
   const { user } = useAuthStore();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [invalidField, setInvalidField] = useState<string | null>(null);
   const [hasDraft, setHasDraft] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showEncadre, setShowEncadre] = useState(false);
@@ -189,7 +190,7 @@ export default function SouscrirePage() {
   const [corresp2, setCorresp2] = useState<CorrespondantState>(emptyCorresp(2));
   const [assureIdem, setAssureIdem] = useState(true);
   const [assure, setAssure] = useState<AssureState>(emptyAssure());
-  const [cot, setCot] = useState<CotisationState>({ duree_annees: "10", periodicite: "mensuelle", date_premiere_cotisation: "", date_effet: "", montant_cotisation: "25000", mode_paiement: "prelevement", numero_compte: "" });
+  const [cot, setCot] = useState<CotisationState>({ duree_annees: "10", periodicite: "mensuelle", date_premiere_cotisation: "", date_effet: "", montant_cotisation: "25000", mode_paiement: "prelevement", numero_compte: "CI" });
   const [benefConjoint_e, setBenefConjoint_e] = useState(false);
   const [benefEnfants_e, setBenefEnfants_e] = useState(false);
   const [autresBenef_e, setAutresBenef_e] = useState<BeneficiaireEpargne[]>([{ nom: "", en_qualite_de: "", date_naissance: "", domicile: "", adresse_postale: "", telephone: "", whatsapp: "", email: "", taux_repartition: "" }]);
@@ -240,7 +241,7 @@ export default function SouscrirePage() {
         if (d.prevCorresp) setPrevCorresp(p => ({ ...p, ...d.prevCorresp }));
         if (d.assureIdem !== undefined) setAssureIdem(d.assureIdem);
         if (d.assure) setAssure(d.assure);
-        if (d.cot) setCot(d.cot);
+        if (d.cot) setCot({ ...d.cot, numero_compte: d.cot.numero_compte || "CI" });
         if (d.benefConjoint_e !== undefined) setBenefConjoint_e(d.benefConjoint_e);
         if (d.benefEnfants_e !== undefined) setBenefEnfants_e(d.benefEnfants_e);
         if (d.autresBenef_e) setAutresBenef_e(d.autresBenef_e);
@@ -255,7 +256,6 @@ export default function SouscrirePage() {
         if (d.antecedents) setAntecedents(d.antecedents);
         if (d.step !== undefined) setStep(d.step);
         setHasDraft(true);
-        setShowIntro(false);
         toast.info("Brouillon restauré — vous pouvez reprendre votre saisie.");
         // Restaurer les fichiers depuis IndexedDB
         getFileFromIndexedDB("pieceIdentite").then(setPieceIdentiteFile);
@@ -320,72 +320,102 @@ export default function SouscrirePage() {
     toast.success("Brouillon effacé.");
   };
 
+  /* ── Erreur de champ : scroll + surbrillance rouge ── */
+  const fail = (field: string, msg: string): boolean => {
+    toast.error(msg);
+    setInvalidField(field);
+    return false;
+  };
+
+  useEffect(() => {
+    if (!invalidField) return;
+    const el = document.querySelector<HTMLElement>(`[data-field="${invalidField}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("field-invalid");
+    if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) {
+      el.focus({ preventScroll: true });
+    }
+    const clear = () => { el.classList.remove("field-invalid"); setInvalidField(null); };
+    el.addEventListener("input", clear, { once: true });
+    el.addEventListener("click", clear, { once: true });
+    return () => {
+      el.removeEventListener("input", clear);
+      el.removeEventListener("click", clear);
+    };
+  }, [invalidField]);
+
   const validateStep = (): boolean => {
     const isMaried = id.situation_matrimoniale === "marie" || id.situation_matrimoniale === "concubin";
     switch (stepId) {
       case "identite":
-        if (!id.civilite) { toast.error("Veuillez sélectionner une civilité."); return false; }
-        if (!id.nom.trim()) { toast.error("Le nom est obligatoire."); return false; }
-        if (!id.prenoms.trim()) { toast.error("Les prénoms sont obligatoires."); return false; }
-        if (!id.date_naissance) { toast.error("La date de naissance est obligatoire."); return false; }
-        if (!id.pays_naissance.trim()) { toast.error("Le pays/ville de naissance est obligatoire."); return false; }
-        if (!id.type_piece) { toast.error("Veuillez sélectionner un type de pièce d'identité."); return false; }
-        if (!id.nni.trim()) { toast.error("Le NNI est obligatoire."); return false; }
-        if (!id.situation_matrimoniale) { toast.error("La situation matrimoniale est obligatoire."); return false; }
-        if (!id.email_personnel.trim()) { toast.error("L'email personnel est obligatoire."); return false; }
-        if (!id.telephone.trim()) { toast.error("Le numéro de téléphone est obligatoire."); return false; }
-        if (!id.statut_professionnel) { toast.error("Le statut professionnel est obligatoire."); return false; }
-        if (!id.origine_revenu) { toast.error("L'origine des cotisations est obligatoire."); return false; }
+        if (!id.civilite) return fail("civilite", "Veuillez sélectionner une civilité.");
+        if (!id.nom.trim()) return fail("nom", "Le nom est obligatoire.");
+        if (!id.prenoms.trim()) return fail("prenoms", "Les prénoms sont obligatoires.");
+        if (!id.date_naissance) return fail("date_naissance", "La date de naissance est obligatoire.");
+        if (!id.pays_naissance.trim()) return fail("pays_naissance", "Le pays/ville de naissance est obligatoire.");
+        if (!id.type_piece) return fail("type_piece", "Veuillez sélectionner un type de pièce d'identité.");
+        if (!id.nni.trim()) return fail("nni", "Le NNI est obligatoire.");
+        if (!id.situation_matrimoniale) return fail("situation_matrimoniale", "La situation matrimoniale est obligatoire.");
+        if (!id.email_personnel.trim()) return fail("email_personnel", "L'email personnel est obligatoire.");
+        if (!id.telephone.trim()) return fail("telephone", "Le numéro de téléphone est obligatoire.");
+        if (!id.statut_professionnel) return fail("statut_professionnel", "Le statut professionnel est obligatoire.");
+        if (!id.origine_revenu) return fail("origine_revenu", "L'origine des cotisations est obligatoire.");
         return true;
       case "correspondants":
-        if (!corresp1.nom.trim()) { toast.error("Le nom du correspondant 1 est obligatoire."); return false; }
-        if (!corresp1.prenom.trim()) { toast.error("Le prénom du correspondant 1 est obligatoire."); return false; }
-        if (!corresp1.telephone.trim()) { toast.error("Le téléphone du correspondant 1 est obligatoire."); return false; }
+        if (!corresp1.nom.trim()) return fail("c1_nom", "Le nom du correspondant 1 est obligatoire.");
+        if (!corresp1.prenom.trim()) return fail("c1_prenom", "Le prénom du correspondant 1 est obligatoire.");
+        if (!corresp1.telephone.trim()) return fail("c1_telephone", "Le téléphone du correspondant 1 est obligatoire.");
         if (prevCorrespIdem === false) {
-          if (!prevCorresp.nom.trim()) { toast.error("Correspondant Prévoyance — le nom est obligatoire."); return false; }
-          if (!prevCorresp.prenom.trim()) { toast.error("Correspondant Prévoyance — le prénom est obligatoire."); return false; }
-          if (!prevCorresp.domicile.trim()) { toast.error("Correspondant Prévoyance — le domicile est obligatoire."); return false; }
+          if (!prevCorresp.nom.trim()) return fail("pc_nom", "Correspondant Prévoyance — le nom est obligatoire.");
+          if (!prevCorresp.prenom.trim()) return fail("pc_prenom", "Correspondant Prévoyance — le prénom est obligatoire.");
+          if (!prevCorresp.domicile.trim()) return fail("pc_domicile", "Correspondant Prévoyance — le domicile est obligatoire.");
         }
         return true;
       case "assure":
         if (!assureIdem) {
-          if (!assure.assure_nom.trim()) { toast.error("Le nom de l'assuré est obligatoire."); return false; }
-          if (!assure.assure_prenoms.trim()) { toast.error("Les prénoms de l'assuré sont obligatoires."); return false; }
-          if (!assure.assure_date_naissance) { toast.error("La date de naissance de l'assuré est obligatoire."); return false; }
+          if (!assure.assure_nom.trim()) return fail("assure_nom", "Le nom de l'assuré est obligatoire.");
+          if (!assure.assure_prenoms.trim()) return fail("assure_prenoms", "Les prénoms de l'assuré sont obligatoires.");
+          if (!assure.assure_date_naissance) return fail("assure_date_naissance", "La date de naissance de l'assuré est obligatoire.");
         }
         return true;
       case "cotisation": {
-        if (!cot.duree_annees || Number(cot.duree_annees) < 1) { toast.error("La durée doit être d'au moins 1 an."); return false; }
-        if (!cot.periodicite) { toast.error("La périodicité est obligatoire."); return false; }
-        if (!cot.date_premiere_cotisation) { toast.error("La date de 1ère cotisation est obligatoire."); return false; }
+        if (!cot.duree_annees || Number(cot.duree_annees) < 1) return fail("duree_annees", "La durée doit être d'au moins 1 an.");
+        if (!cot.periodicite) return fail("periodicite", "La périodicité est obligatoire.");
+        if (!cot.date_premiere_cotisation) return fail("date_premiere_cotisation", "La date de 1ère cotisation est obligatoire.");
         const todayStr = new Date().toISOString().slice(0, 10);
-        if (cot.date_premiere_cotisation < todayStr) { toast.error("La date de 1ère cotisation ne peut pas être dans le passé."); return false; }
-        if (cot.date_effet && cot.date_effet < todayStr) { toast.error("La date d'effet ne peut pas être dans le passé."); return false; }
-        if (!cot.montant_cotisation || Number(cot.montant_cotisation) < 25000) { toast.error("Le montant doit être au minimum de 25 000 FCFA."); return false; }
+        if (cot.date_premiere_cotisation < todayStr) return fail("date_premiere_cotisation", "La date de 1ère cotisation ne peut pas être dans le passé.");
+        if (cot.date_effet && cot.date_effet < todayStr) return fail("date_effet", "La date d'effet ne peut pas être dans le passé.");
+        if (!cot.montant_cotisation || Number(cot.montant_cotisation) < 25000) return fail("montant_cotisation", "Le montant doit être au minimum de 25 000 FCFA.");
         const rib = cot.numero_compte.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-        if (!rib) { toast.error("Le numéro de compte (RIB) est obligatoire."); return false; }
-        if (rib.startsWith("CI") ? rib.length !== 28 : rib.length < 8) {
-          toast.error("Le numéro de compte (RIB) semble invalide — attendu : CI93 + 24 caractères, ou un n° de compte local.");
-          return false;
+        if (!rib) return fail("numero_compte", "Le numéro de compte (RIB) est obligatoire.");
+        if (rib.startsWith("CI")) {
+          // RIB imprimé sur le chèque : CIxx + 20 car. (= 24) — IBAN complet : CIxx + 24 car. (= 28)
+          const rest = rib.slice(4).length;
+          if (rest !== 20 && rest !== 24) {
+            return fail("numero_compte", `RIB incomplet — 20 caractères attendus après « CIxx » (comme imprimé sur le chèque), ${rest} saisi${rest > 1 ? "s" : ""}.`);
+          }
+        } else if (rib.length < 8 || rib.length > 24) {
+          return fail("numero_compte", "Le n° de compte local doit contenir entre 8 et 24 caractères.");
         }
         return true;
       }
       case "benef-epargne": {
         const hasAny = benefConjoint_e || benefEnfants_e || autresBenef_e.some(b => b.nom.trim());
-        if (!hasAny) { toast.error("Désignez au moins un bénéficiaire."); return false; }
-        if (consentementDonnees === null) { toast.error("Veuillez indiquer votre consentement au traitement de vos données personnelles (OUI ou NON)."); return false; }
+        if (!hasAny) return fail("benef_choix", "Désignez au moins un bénéficiaire.");
+        if (consentementDonnees === null) return fail("consentement", "Veuillez indiquer votre consentement au traitement de vos données personnelles (OUI ou NON).");
         for (let i = 0; i < autresBenef_e.length; i++) {
           const b = autresBenef_e[i];
           if (!b.nom.trim()) continue;
-          if (!b.en_qualite_de.trim()) { toast.error(`Bénéficiaire ${i + 1} — « En qualité de » est obligatoire.`); return false; }
-          if (!b.domicile.trim()) { toast.error(`Bénéficiaire ${i + 1} — Le domicile est obligatoire.`); return false; }
-          if (!b.adresse_postale.trim()) { toast.error(`Bénéficiaire ${i + 1} — L'adresse postale est obligatoire.`); return false; }
-          if (!b.telephone.trim()) { toast.error(`Bénéficiaire ${i + 1} — Le numéro de téléphone est obligatoire.`); return false; }
+          if (!b.en_qualite_de.trim()) return fail(`benef_e_${i}`, `Bénéficiaire ${i + 1} — « En qualité de » est obligatoire.`);
+          if (!b.domicile.trim()) return fail(`benef_e_${i}`, `Bénéficiaire ${i + 1} — Le domicile est obligatoire.`);
+          if (!b.adresse_postale.trim()) return fail(`benef_e_${i}`, `Bénéficiaire ${i + 1} — L'adresse postale est obligatoire.`);
+          if (!b.telephone.trim()) return fail(`benef_e_${i}`, `Bénéficiaire ${i + 1} — Le numéro de téléphone est obligatoire.`);
         }
         const named_e = autresBenef_e.filter(b => b.nom.trim());
         if (named_e.length > 0) {
           const total_e = named_e.reduce((s, b) => s + (Number(b.taux_repartition) || 0), 0);
-          if (total_e !== 100) { toast.error(`Répartition des bénéficiaires : ${total_e}% — le total doit être de 100%.`); return false; }
+          if (total_e !== 100) return fail("benef_e_total", `Répartition des bénéficiaires : ${total_e}% — le total doit être de 100%.`);
         }
         return true;
       }
@@ -393,8 +423,8 @@ export default function SouscrirePage() {
         if (garantieFuneraires) {
           for (let i = 0; i < assuresAssocies.length; i++) {
             const a = assuresAssocies[i];
-            if (!a.nom.trim()) { toast.error(`Assuré associé ${i + 1} — le nom est obligatoire.`); return false; }
-            if (!a.contact.trim()) { toast.error(`Assuré associé ${i + 1} — le contact est obligatoire.`); return false; }
+            if (!a.nom.trim()) return fail(`assure_assoc_${i}`, `Assuré associé ${i + 1} — le nom est obligatoire.`);
+            if (!a.contact.trim()) return fail(`assure_assoc_${i}`, `Assuré associé ${i + 1} — le contact est obligatoire.`);
           }
         }
         return true;
@@ -402,21 +432,21 @@ export default function SouscrirePage() {
         for (let i = 0; i < autresBenef_p.length; i++) {
           const b = autresBenef_p[i];
           if (!b.nom.trim()) continue;
-          if (!b.en_qualite_de.trim()) { toast.error(`Bénéficiaire prévoyance ${i + 1} — « En qualité de » est obligatoire.`); return false; }
+          if (!b.en_qualite_de.trim()) return fail(`benef_p_${i}`, `Bénéficiaire prévoyance ${i + 1} — « En qualité de » est obligatoire.`);
         }
         const named_p = autresBenef_p.filter(b => b.nom.trim());
         if (named_p.length > 0) {
           const total_p = named_p.reduce((s, b) => s + (Number(b.taux_repartition) || 0), 0);
-          if (total_p !== 100) { toast.error(`Répartition des bénéficiaires prévoyance : ${total_p}% — le total doit être de 100%.`); return false; }
+          if (total_p !== 100) return fail("benef_p_total", `Répartition des bénéficiaires prévoyance : ${total_p}% — le total doit être de 100%.`);
         }
         return true;
       }
       case "questionnaire": {
-        if (!q.taille_cm) { toast.error("La taille est obligatoire."); return false; }
-        if (!q.poids_kg) { toast.error("Le poids est obligatoire."); return false; }
-        if (!q.tension_arterielle.trim()) { toast.error("La tension artérielle est obligatoire."); return false; }
-        if (!q.alcool) { toast.error("Veuillez indiquer votre consommation d'alcool."); return false; }
-        if (!q.distractions.trim()) { toast.error("Les distractions/loisirs sont obligatoires."); return false; }
+        if (!q.taille_cm) return fail("taille_cm", "La taille est obligatoire.");
+        if (!q.poids_kg) return fail("poids_kg", "Le poids est obligatoire.");
+        if (!q.tension_arterielle.trim()) return fail("tension_arterielle", "La tension artérielle est obligatoire.");
+        if (!q.alcool) return fail("alcool", "Veuillez indiquer votre consommation d'alcool.");
+        if (!q.distractions.trim()) return fail("distractions", "Les distractions/loisirs sont obligatoires.");
         const isAutres = (item: string) => item.toLowerCase().includes("autres") || item.toLowerCase().includes("préciser");
         const PATHOLOGIES_LOCAL = [
           { items: ["AVC", "HTA", "Paralysie", "Autres / à préciser"] },
@@ -435,8 +465,7 @@ export default function SouscrirePage() {
             if (isAutres(item)) continue;
             for (const mk of MEMBRES_KEYS_LOCAL) {
               if (!antecedents[item]?.[mk]) {
-                toast.error(`Antécédents — remplissez toutes les cases pour "${item}". Utilisez le bouton "Non partout" si aucun antécédent.`);
-                return false;
+                return fail("antecedents", `Antécédents — remplissez toutes les cases pour "${item}". Utilisez le bouton "Non partout" si aucun antécédent.`);
               }
             }
           }
@@ -534,14 +563,6 @@ export default function SouscrirePage() {
           prevoyanceError = err instanceof Error ? err.message : "Erreur prévoyance";
         }
       }
-
-      const produits = ["Épargne", ...(garantieDeces ? ["Prévoyance Décès"] : []), ...(garantieFuneraires ? ["Frais Funéraires"] : [])];
-      await requestsApi.create("souscription_magist", {
-        produits,
-        montant_cotisation: Number(cot.montant_cotisation),
-        periodicite: cot.periodicite,
-        duree_annees: Number(cot.duree_annees),
-      });
 
       if (finalPieceFile || finalRibFile) {
         await magistassurApi.uploadDocumentsEpargne(epargneContrat.id, { pieceIdentite: finalPieceFile ?? undefined, pieceIdentiteVerso: finalPieceVersoFile ?? undefined, ribDocument: finalRibFile ?? undefined });
@@ -731,12 +752,32 @@ export default function SouscrirePage() {
         </div>
 
         {/* CTA */}
-        <Button
-          onClick={() => setShowIntro(false)}
-          className="w-full bg-amber-600 hover:bg-amber-700 text-white h-12 text-base font-semibold rounded-xl">
-          Commencer ma souscription
-          <ArrowRight className="h-5 w-5 ml-2" />
-        </Button>
+        {hasDraft ? (
+          <>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800 text-center">
+              📋 Un brouillon est en cours — votre saisie reprendra à l&apos;étape <strong>{step + 1}/{steps.length}</strong>.
+            </div>
+            <Button
+              onClick={() => setShowIntro(false)}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white h-12 text-base font-semibold rounded-xl">
+              Reprendre ma souscription
+              <ArrowRight className="h-5 w-5 ml-2" />
+            </Button>
+            <button
+              type="button"
+              onClick={async () => { await clearDraft(); window.location.reload(); }}
+              className="w-full text-sm text-red-500 hover:text-red-700 underline">
+              Recommencer à zéro (effacer le brouillon)
+            </button>
+          </>
+        ) : (
+          <Button
+            onClick={() => setShowIntro(false)}
+            className="w-full bg-amber-600 hover:bg-amber-700 text-white h-12 text-base font-semibold rounded-xl">
+            Commencer ma souscription
+            <ArrowRight className="h-5 w-5 ml-2" />
+          </Button>
+        )}
         <p className="text-xs text-center text-gray-400">Votre saisie est sauvegardée automatiquement. Vous pouvez reprendre à tout moment.</p>
       </div>
     );

@@ -199,7 +199,10 @@ export default function HistoryPage() {
                   <div className="mt-0.5">{statusIcon(r.status)}</div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm font-semibold">{REQUEST_TYPE_LABELS[r.type]}</h3>
+                      <h3 className="text-sm font-semibold">
+                        {REQUEST_TYPE_LABELS[r.type]}
+                        {r.type === "souscription_magist" && r.details?.produit ? ` — ${String(r.details.produit)}` : ""}
+                      </h3>
                       <Badge className={statusColor(r.status)} variant="secondary">
                         {REQUEST_STATUS_LABELS[r.status]}
                       </Badge>
@@ -207,10 +210,12 @@ export default function HistoryPage() {
                     <p className="text-xs text-gray-500 mt-1">
                       {r.numero} • Soumis le {r.createdAt}
                     </p>
-                    {r.agentNom && r.status === "en_cours" && (
+                    {r.agentNom && (r.status === "en_cours" || r.status === "traite") && (
                       <div className="flex items-center gap-3 mt-1.5 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5">
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-blue-800">Agent en charge : {r.agentNom}</p>
+                          <p className="text-xs font-medium text-blue-800">
+                            {r.status === "traite" ? "Traité par" : "Agent en charge"} : {r.agentNom}
+                          </p>
                           {r.agentTelephone && (
                             <a
                               href={`tel:${r.agentTelephone}`}
@@ -222,11 +227,6 @@ export default function HistoryPage() {
                           )}
                         </div>
                       </div>
-                    )}
-                    {r.agentNom && r.status === "traite" && (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        Traité par : {r.agentNom}
-                      </p>
                     )}
                     {r.treatedAt && (
                       <p className="text-xs text-green-600 mt-0.5">

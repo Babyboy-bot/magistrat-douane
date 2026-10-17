@@ -308,7 +308,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-3">
             <p className="text-sm text-amber-800 text-center">
               <strong>⏳ Compte en attente de vérification</strong> — Un agent ACS vérifiera votre identité professionnelle sous 24h.
-              En attendant, vous pouvez demander des cotations.
+              Vous serez notifié dès l&apos;activation de votre compte.
             </p>
           </div>
         )}
