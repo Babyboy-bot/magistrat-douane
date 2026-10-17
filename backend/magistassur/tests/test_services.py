@@ -251,17 +251,29 @@ class TestAjouterCotisationEdgeCases:
 
 @pytest.mark.django_db
 class TestTraiterRequeteMagist:
-    def test_no_pending_request_does_not_raise(self, client_user, agent):
+    def test_no_pending_request_does_not_raise(self, client_user, agent, contrat_epargne):
         from magistassur.services import traiter_requete_magist
-        traiter_requete_magist(client_user.id, agent)
+        traiter_requete_magist(contrat_epargne, agent)
 
-    def test_treats_most_recent_only(self, client_user, agent):
+    def test_treats_most_recent_only(self, client_user, agent, contrat_epargne):
         from core.models import ClientRequest
         from magistassur.services import traiter_requete_magist
         req1 = ClientRequest.objects.create(client=client_user, type="souscription_magist", details={})
         req2 = ClientRequest.objects.create(client=client_user, type="souscription_magist", details={})
-        traiter_requete_magist(client_user.id, agent)
+        traiter_requete_magist(contrat_epargne, agent)
         req1.refresh_from_db()
         req2.refresh_from_db()
         assert req2.status == ClientRequest.Status.TRAITE
         assert req1.status == ClientRequest.Status.EN_ATTENTE
+
+    def test_treats_only_linked_request(self, client_user, agent, contrat_epargne):
+        """Avec requête liée, seule celle du contrat passe à « traité »."""
+        from core.models import ClientRequest
+        from magistassur.services import traiter_requete_magist, creer_requete_contrat
+        other = ClientRequest.objects.create(client=client_user, type="souscription_magist", details={})
+        own = creer_requete_contrat(contrat_epargne, "Épargne")
+        traiter_requete_magist(contrat_epargne, agent)
+        own.refresh_from_db()
+        other.refresh_from_db()
+        assert own.status == ClientRequest.Status.TRAITE
+        assert other.status == ClientRequest.Status.EN_ATTENTE

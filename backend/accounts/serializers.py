@@ -69,6 +69,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'email': {'required': False, 'allow_blank': True},
             'telephone': {'required': True},
             'profession': {'required': False, 'allow_blank': True},
+            'profession_type': {'required': True},
         }
 
     def validate_telephone(self, value):
@@ -85,6 +86,13 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def validate_password(self, value):
         validate_password(value)
+        return value
+
+    def validate_profession_type(self, value):
+        if value not in ("magistrat", "douanier"):
+            raise serializers.ValidationError(
+                "L'inscription est réservée aux magistrats et aux douaniers."
+            )
         return value
 
     def create(self, validated_data):

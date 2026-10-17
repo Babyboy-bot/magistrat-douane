@@ -14,7 +14,7 @@ def force_login(api_client, user):
 class TestRegisterView:
     def test_register_creates_client(self, api_client):
         resp = api_client.post("/api/auth/register/", {
-            "nom": "Kouassi", "prenoms": "Jean",
+            "nom": "Kouassi", "prenoms": "Jean", "profession_type": "magistrat",
             "telephone": "0102030405", "password": "SecurePass123!",
         }, format="json")
         assert resp.status_code == 201
@@ -24,7 +24,7 @@ class TestRegisterView:
 
     def test_duplicate_telephone_rejected(self, api_client, client_user):
         resp = api_client.post("/api/auth/register/", {
-            "nom": "Dup", "prenoms": "Test",
+            "nom": "Dup", "prenoms": "Test", "profession_type": "magistrat",
             "telephone": client_user.telephone or "0700000001",
             "password": "SecurePass123!",
         }, format="json")
@@ -34,7 +34,7 @@ class TestRegisterView:
 
     def test_weak_password_rejected(self, api_client):
         resp = api_client.post("/api/auth/register/", {
-            "nom": "Weak", "prenoms": "Pass",
+            "nom": "Weak", "prenoms": "Pass", "profession_type": "magistrat",
             "telephone": "0701112233", "password": "123",
         }, format="json")
         assert resp.status_code == 400

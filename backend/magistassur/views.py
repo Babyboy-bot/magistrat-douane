@@ -11,7 +11,8 @@ from core.file_validators import validate_upload
 from core.permissions import IsAgentOrAdmin
 from .services import (
     assigner_police_epargne, changer_statut_epargne, ajouter_cotisation_epargne,
-    assigner_police_prevoyance, changer_statut_prevoyance,
+    assigner_police_prevoyance, changer_statut_prevoyance, marquer_envoye_nsia,
+    marquer_requete_en_cours, creer_requete_contrat,
 )
 from .exports import (
     export_epargne_excel, export_epargne_pdf,
@@ -25,18 +26,23 @@ from .models import (
 )
 
 
-def _notify_client_epargne(contrat, title, message, notif_type="info", contrat_type="epargne"):
+def _notify_client_epargne(contrat, title, message, notif_type="info", contrat_type="epargne", data=None):
     try:
         if contrat.client_id:
             from notifications.models import Notification
             from notifications.ws import send_notification_to_user
+            payload = {
+                "event": "magist_assur",
+                "contrat_id": str(contrat.id), "contrat_type": contrat_type,
+                **(data or {}),
+            }
             notif = Notification.create_notification(
-                user_id=contrat.client_id, title=title, message=message, type=notif_type
+                user_id=contrat.client_id, title=title, message=message, type=notif_type,
+                data=payload,
             )
             try:
                 send_notification_to_user(contrat.client_id, {
-                    "event": "magist_assur", "id": str(notif.id),
-                    "contrat_id": str(contrat.id), "contrat_type": contrat_type,
+                    **payload, "id": str(notif.id),
                     "title": title, "message": message, "type": notif_type,
                 })
             except Exception:
@@ -81,6 +87,32 @@ from .serializers import (
 )
 
 
+
+
+def _notify_prise_en_charge(contrat, agent, contrat_type, produit):
+    """Informe le client que son dossier est traité, avec le contact de l'agent,
+    et passe la requête de souscription à « en cours » pour l'historique."""
+    req = marquer_requete_en_cours(contrat, agent)
+    contact = f" Tél : {agent.telephone}." if getattr(agent, "telephone", None) else ""
+    _notify_client_epargne(
+        contrat,
+        "Votre dossier Magist-Assur est en cours de traitement",
+        f"{agent.full_name} a pris en charge votre dossier {produit}.{contact} "
+        "Vous pouvez le contacter pour toute question.",
+        "info",
+        contrat_type=contrat_type,
+        data={"request_id": str(req.id)} if req else None,
+    )
+
+
+def _envoye_nsia_response(contrat, user, serializer_class):
+    try:
+        marquer_envoye_nsia(contrat, user)
+    except PermissionError as e:
+        return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
+    except ValueError as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(serializer_class(contrat).data)
 
 
 class MagistassurPagination(PageNumberPagination):
@@ -136,7 +168,7 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         if user.role in ("agent", "admin"):
-            serializer.save(agent=user)
+            contrat = serializer.save(agent=user)
         else:
             _check_magistassur_eligibility(user)
             contrat = serializer.save(client=user)
@@ -151,6 +183,11 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
                 "Nouvelle souscription Magist-Assur",
                 f"{contrat.client.full_name} a soumis un dossier épargne Magist-Assur.",
             )
+        creer_requete_contrat(contrat, "Épargne", {
+            "montant_cotisation": str(contrat.montant_cotisation or ""),
+            "periodicite": contrat.periodicite,
+            "duree_annees": contrat.duree_annees,
+        })
 
     @action(detail=True, methods=["post"], url_path="prise-en-charge",
             permission_classes=[IsAuthenticated])
@@ -172,8 +209,11 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
                     {"detail": f"Ce contrat est déjà pris en charge par {contrat.pris_en_charge_par.full_name}."},
                     status=status.HTTP_409_CONFLICT,
                 )
+            nouveau = contrat.pris_en_charge_par != request.user
             contrat.pris_en_charge_par = request.user
             contrat.save(update_fields=["pris_en_charge_par"])
+        if nouveau:
+            _notify_prise_en_charge(contrat, request.user, "epargne", "épargne")
         return Response(ContratEpargneSerializer(contrat).data)
 
     @action(detail=True, methods=["post"], url_path="liberer",
@@ -185,11 +225,18 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         contrat = self.get_object()
         if contrat.statut == "cloture":
             return Response({"detail": "Un contrat clôturé ne peut pas être libéré."}, status=status.HTTP_400_BAD_REQUEST)
+        if contrat.envoye_nsia_at or contrat.num_police:
+            return Response({"detail": "Ce dossier a déjà été transmis à NSIA — il ne peut plus être libéré."}, status=status.HTTP_400_BAD_REQUEST)
         if request.user.role == "agent" and contrat.pris_en_charge_par and contrat.pris_en_charge_par != request.user:
             return Response({"detail": "Vous ne pouvez libérer que vos propres contrats."}, status=status.HTTP_403_FORBIDDEN)
         contrat.pris_en_charge_par = None
         contrat.save(update_fields=["pris_en_charge_par"])
         return Response(ContratEpargneSerializer(contrat).data)
+
+    @action(detail=True, methods=["post"], url_path="envoye-nsia")
+    def envoye_nsia(self, request, pk=None):
+        """Marque le dossier comme transmis à NSIA."""
+        return _envoye_nsia_response(self.get_object(), request.user, ContratEpargneSerializer)
 
     @action(detail=True, methods=["post"], url_path="upload-documents",
             permission_classes=[IsAuthenticated])
@@ -331,7 +378,7 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         if user.role in ("agent", "admin"):
-            serializer.save(agent=user)
+            contrat = serializer.save(agent=user)
         else:
             _check_magistassur_eligibility(user)
             # Forcer client=user, ignorer toute valeur client envoyée dans le body
@@ -349,6 +396,12 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
                 f"{contrat.client.full_name} a soumis un dossier prévoyance Magist-Assur.",
                 contrat_type="prevoyance",
             )
+        creer_requete_contrat(contrat, "Prévoyance", {
+            "garanties": [
+                *(["Décès"] if contrat.garantie_prevoyance_deces else []),
+                *(["Frais funéraires"] if contrat.garantie_frais_funeraires else []),
+            ],
+        })
 
     @action(detail=True, methods=["post"], url_path="prise-en-charge",
             permission_classes=[IsAuthenticated])
@@ -370,8 +423,11 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
                     {"detail": f"Ce contrat est déjà pris en charge par {contrat.pris_en_charge_par.full_name}."},
                     status=status.HTTP_409_CONFLICT,
                 )
+            nouveau = contrat.pris_en_charge_par != request.user
             contrat.pris_en_charge_par = request.user
             contrat.save(update_fields=["pris_en_charge_par"])
+        if nouveau:
+            _notify_prise_en_charge(contrat, request.user, "prevoyance", "prévoyance")
         return Response(ContratPrevoyanceSerializer(contrat).data)
 
     @action(detail=True, methods=["post"], url_path="liberer",
@@ -383,11 +439,18 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         contrat = self.get_object()
         if contrat.statut == "cloture":
             return Response({"detail": "Un contrat clôturé ne peut pas être libéré."}, status=status.HTTP_400_BAD_REQUEST)
+        if contrat.envoye_nsia_at or contrat.num_police:
+            return Response({"detail": "Ce dossier a déjà été transmis à NSIA — il ne peut plus être libéré."}, status=status.HTTP_400_BAD_REQUEST)
         if request.user.role == "agent" and contrat.pris_en_charge_par and contrat.pris_en_charge_par != request.user:
             return Response({"detail": "Vous ne pouvez libérer que vos propres contrats."}, status=status.HTTP_403_FORBIDDEN)
         contrat.pris_en_charge_par = None
         contrat.save(update_fields=["pris_en_charge_par"])
         return Response(ContratPrevoyanceSerializer(contrat).data)
+
+    @action(detail=True, methods=["post"], url_path="envoye-nsia")
+    def envoye_nsia(self, request, pk=None):
+        """Marque le dossier comme transmis à NSIA."""
+        return _envoye_nsia_response(self.get_object(), request.user, ContratPrevoyanceSerializer)
 
     @action(detail=True, methods=["post"], url_path="assign-police",
             permission_classes=[IsAuthenticated])

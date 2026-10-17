@@ -26,7 +26,7 @@ def register(api_client, **overrides):
     payload = {
         "nom": "Nouveau", "prenoms": "Compte",
         "telephone": "0700000099", "password": "Zx9!kLmQ2026",
-        "profession_type": "autre",
+        "profession_type": "magistrat",
     }
     payload.update(overrides)
     return api_client.post("/api/auth/register/", payload, format="json")
@@ -59,6 +59,32 @@ class TestRegistrationStatus:
         user.refresh_from_db()
         assert user.verified and user.account_status == "verified"
         assert user.risk_level == "premium"
+
+    def test_agents_notifies_on_magistrat_registration(self, api_client, agent):
+        from notifications.models import Notification
+        register(api_client, profession_type="magistrat")
+        user = User.objects.get(telephone="0700000099")
+        notif = Notification.objects.filter(
+            user=agent, title__icontains="à vérifier"
+        ).latest("created_at")
+        assert user.full_name in notif.message
+        assert "Magistrat" in notif.message
+
+    def test_autre_profession_rejected(self, api_client):
+        """L'inscription publique est réservée aux magistrats et douaniers."""
+        resp = register(api_client, profession_type="autre")
+        assert resp.status_code == 400
+        assert not User.objects.filter(telephone="0700000099").exists()
+
+    def test_missing_profession_type_rejected(self, api_client):
+        """Sans profession_type, le défaut 'autre' ne doit pas passer."""
+        payload = {
+            "nom": "Sans", "prenoms": "Profession",
+            "telephone": "0755555555", "password": "Zx9!kLmQ2026",
+        }
+        resp = api_client.post("/api/auth/register/", payload, format="json")
+        assert resp.status_code == 400
+        assert not User.objects.filter(telephone="0755555555").exists()
 
 
 @pytest.mark.django_db

@@ -8,19 +8,68 @@ from .models import ContratEpargne, ContratPrevoyance, CotisationEpargne
 # ── Requêtes client ──────────────────────────────────────────────────────────
 
 
-def traiter_requete_magist(client_id, agent) -> None:
+def _derniere_requete_magist(client_id, statuses):
+    from core.models import ClientRequest
+    return (
+        ClientRequest.objects
+        .filter(client_id=client_id, type="souscription_magist", status__in=statuses)
+        .order_by("-created_at")
+        .first()
+    )
+
+
+def creer_requete_contrat(contrat, produit: str, extra_details: dict | None = None):
     """
-    Marque comme traitée la dernière requête souscription_magist en attente du client.
-    Appelé après activation d'un contrat.
+    Crée la ligne d'historique « Souscription Magist-Assur » propre au contrat
+    (une requête par contrat) et la lie au contrat.
+    """
+    from core.models import ClientRequest
+    req = ClientRequest.objects.create(
+        client=contrat.client,
+        type="souscription_magist",
+        details={"produit": produit, **(extra_details or {})},
+    )
+    contrat.requete = req
+    contrat.save(update_fields=["requete"])
+    return req
+
+
+def _requete_du_contrat(contrat, statuses):
+    """Requête liée au contrat ; repli sur la dernière requête ouverte (données legacy)."""
+    req = getattr(contrat, "requete", None)
+    if req:
+        return req if req.status in statuses else None
+    return _derniere_requete_magist(contrat.client_id, statuses)
+
+
+def marquer_requete_en_cours(contrat, agent):
+    """
+    Passe la requête liée au contrat à « en cours » et l'assigne à l'agent —
+    appelé à la prise en charge d'un contrat.
+    """
+    try:
+        req = _requete_du_contrat(contrat, ["en_attente", "en_cours"])
+        if req:
+            req.status = "en_cours"
+            req.agent = agent
+            req.save(update_fields=["status", "agent"])
+        return req
+    except Exception as e:
+        import logging
+        logging.getLogger("magistassur").warning(
+            "marquer_requete_en_cours failed for contrat_id=%s: %s", contrat.id, e
+        )
+        return None
+
+
+def traiter_requete_magist(contrat, agent) -> None:
+    """
+    Marque comme traitée la requête liée au contrat.
+    Appelé après activation d'un contrat (attribution du N° de police).
     """
     try:
         from core.models import ClientRequest
-        req = (
-            ClientRequest.objects
-            .filter(client_id=client_id, type="souscription_magist", status="en_attente")
-            .order_by("-created_at")
-            .first()
-        )
+        req = _requete_du_contrat(contrat, ["en_attente", "en_cours"])
         if req:
             req.status = ClientRequest.Status.TRAITE
             req.agent = agent
@@ -29,8 +78,18 @@ def traiter_requete_magist(client_id, agent) -> None:
     except Exception as e:
         import logging
         logging.getLogger("magistassur").warning(
-            "traiter_requete_magist failed for client_id=%s: %s", client_id, e
+            "traiter_requete_magist failed for contrat_id=%s: %s", contrat.id, e
         )
+
+
+def marquer_envoye_nsia(contrat, agent) -> None:
+    """Marque le dossier comme transmis à NSIA (en attente du N° de police)."""
+    if contrat.num_police:
+        raise ValueError("Ce contrat a déjà un numéro de police.")
+    if agent.role != "admin" and contrat.pris_en_charge_par_id != agent.id:
+        raise PermissionError("Prenez le dossier en charge avant de l'envoyer à NSIA.")
+    contrat.envoye_nsia_at = timezone.now()
+    contrat.save(update_fields=["envoye_nsia_at"])
 
 
 # ── Épargne ──────────────────────────────────────────────────────────────────
@@ -57,7 +116,7 @@ def assigner_police_epargne(contrat: ContratEpargne, num_police: str, code_inspe
     contrat.statut = ContratEpargne.Statut.EN_COURS
     contrat.agent = agent
     contrat.save(update_fields=["num_police", "code_inspection", "statut", "agent"])
-    traiter_requete_magist(contrat.client_id, agent)
+    traiter_requete_magist(contrat, agent)
 
 
 def changer_statut_epargne(contrat: ContratEpargne, nouveau_statut: str) -> None:
@@ -89,10 +148,13 @@ def ajouter_cotisation_epargne(contrat: ContratEpargne, data: dict) -> Cotisatio
     date_echeance = data.get("date_echeance")
     if not date_echeance:
         raise ValueError("La date d'échéance est obligatoire.")
+    date_paiement = data.get("date_paiement") or timezone.localdate()
     cotisation = CotisationEpargne.objects.create(
         contrat=contrat,
         montant=montant,
         date_echeance=date_echeance,
+        date_paiement=date_paiement,
+        reference=(data.get("reference") or "").strip(),
         statut=CotisationEpargne.Statut.PAYEE,
     )
     contrat.capital_constitue = (contrat.capital_constitue or 0) + montant
@@ -136,7 +198,7 @@ def assigner_police_prevoyance(
         except ValueError:
             pass
     contrat.save(update_fields=["num_police", "code_inspection", "statut", "agent", "date_effet", "date_echeance"])
-    traiter_requete_magist(contrat.client_id, agent)
+    traiter_requete_magist(contrat, agent)
 
 
 def changer_statut_prevoyance(contrat: ContratPrevoyance, nouveau_statut: str) -> None:

@@ -36,6 +36,7 @@ class ContratEpargneSerializer(serializers.ModelSerializer):
     cout_police = serializers.ReadOnlyField()
     taux_interet = serializers.ReadOnlyField()
     pris_en_charge_nom = serializers.SerializerMethodField()
+    pris_en_charge_telephone = serializers.SerializerMethodField()
     piece_identite_url = serializers.SerializerMethodField()
     piece_identite_verso_url = serializers.SerializerMethodField()
     rib_document_url = serializers.SerializerMethodField()
@@ -50,6 +51,11 @@ class ContratEpargneSerializer(serializers.ModelSerializer):
     def get_pris_en_charge_nom(self, obj):
         if obj.pris_en_charge_par:
             return f"{obj.pris_en_charge_par.nom} {obj.pris_en_charge_par.prenoms}"
+        return None
+
+    def get_pris_en_charge_telephone(self, obj):
+        if obj.pris_en_charge_par:
+            return obj.pris_en_charge_par.telephone or None
         return None
 
     def get_piece_identite_url(self, obj):
@@ -91,6 +97,7 @@ class ContratEpargneCreateSerializer(serializers.ModelSerializer):
             "agent",
             "pris_en_charge_par",
             "code_inspection",
+            "envoye_nsia_at",
         ]
 
     def to_internal_value(self, data):
@@ -162,6 +169,7 @@ class ContratPrevoyanceSerializer(serializers.ModelSerializer):
     prime_annuelle = serializers.ReadOnlyField()
     frais_fixes = serializers.ReadOnlyField()
     pris_en_charge_nom = serializers.SerializerMethodField()
+    pris_en_charge_telephone = serializers.SerializerMethodField()
 
     class Meta:
         model = ContratPrevoyance
@@ -173,6 +181,11 @@ class ContratPrevoyanceSerializer(serializers.ModelSerializer):
     def get_pris_en_charge_nom(self, obj):
         if obj.pris_en_charge_par:
             return f"{obj.pris_en_charge_par.nom} {obj.pris_en_charge_par.prenoms}"
+        return None
+
+    def get_pris_en_charge_telephone(self, obj):
+        if obj.pris_en_charge_par:
+            return obj.pris_en_charge_par.telephone or None
         return None
 
 
@@ -192,6 +205,7 @@ class ContratPrevoyanceCreateSerializer(serializers.ModelSerializer):
             "code_inspection",
             "date_effet",
             "date_echeance",
+            "envoye_nsia_at",
         ]
 
     def to_internal_value(self, data):

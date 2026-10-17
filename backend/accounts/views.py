@@ -1,7 +1,6 @@
 from django.conf import settings as conf
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.tokens import default_token_generator
-from django.core.cache import cache
 from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -168,6 +167,33 @@ class CookieRefreshView(APIView):
             return _clear_auth_cookies(response)
 
 
+def _notify_agents_pending_verification(user):
+    """Prévient tous les agents/admins qu'un compte professionnel attend leur vérification."""
+    try:
+        from notifications.models import Notification
+        from notifications.ws import send_notification_to_user
+        agents = list(User.objects.filter(role__in=("agent", "admin"), is_active=True))
+        title = "Nouveau compte à vérifier"
+        message = (
+            f"{user.full_name} ({user.get_profession_type_display()}) vient de s'inscrire "
+            "et attend la validation de son compte. Rendez-vous dans « Assurés / Prospects »."
+        )
+        for agent in agents:
+            notif = Notification.create_notification(
+                user_id=agent.id, title=title, message=message, type="warning",
+                data={"event": "verification_requise", "compte_id": str(user.id)},
+            )
+            try:
+                send_notification_to_user(agent.id, {
+                    "event": "verification_requise", "id": str(notif.id),
+                    "title": title, "message": message, "type": "warning",
+                })
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -182,6 +208,8 @@ class RegisterView(generics.CreateAPIView):
         log_register(user, get_client_ip(request))
         log_user_action(user, user, "creation", {"role": user.role}, ip=get_client_ip(request))
         send_welcome_email(user)
+        if not user.verified:
+            _notify_agents_pending_verification(user)
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
@@ -256,16 +284,6 @@ class UserListView(generics.ListAPIView):
     """Only agents and admins can list users."""
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated, IsAgentOrAdmin]
-
-    def list(self, request, *args, **kwargs):
-        params = request.query_params.urlencode()
-        cache_key = f"user_list_{request.user.id}_{params}"
-        cached = cache.get(cache_key)
-        if cached is not None:
-            return Response(cached)
-        response = super().list(request, *args, **kwargs)
-        cache.set(cache_key, response.data, timeout=30)
-        return response
 
     def get_queryset(self):
         user = self.request.user

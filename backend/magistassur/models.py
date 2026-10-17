@@ -65,6 +65,14 @@ class ContratEpargne(models.Model):
         related_name="epargnes_en_traitement",
         verbose_name="En traitement par",
     )
+    requete = models.ForeignKey(
+        "core.ClientRequest",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="contrats_epargne",
+        verbose_name="Requête liée",
+    )
+    envoye_nsia_at = models.DateTimeField("Dossier envoyé à NSIA le", null=True, blank=True)
 
     # Documents
     piece_identite = models.FileField(
@@ -292,6 +300,14 @@ class ContratPrevoyance(models.Model):
         related_name="prevoyances_en_traitement",
         verbose_name="En traitement par",
     )
+    requete = models.ForeignKey(
+        "core.ClientRequest",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="contrats_prevoyance",
+        verbose_name="Requête liée",
+    )
+    envoye_nsia_at = models.DateTimeField("Dossier envoyé à NSIA le", null=True, blank=True)
 
     # Souscripteur — données supplémentaires
     civilite = models.CharField("Civilité", max_length=20, blank=True, default="")
