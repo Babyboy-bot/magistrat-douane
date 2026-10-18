@@ -63,10 +63,30 @@ def _pending_requests_payload():
 get_pending_requests = database_sync_to_async(_pending_requests_payload)
 
 
+def _origin_allowed(scope) -> bool:
+    """Vérifie le header Origin du handshake WebSocket.
+
+    Avec des cookies SameSite=None (HTTPS), un site malveillant pourrait
+    ouvrir le WS depuis le navigateur de la victime et recevoir ses
+    notifications. On n'accepte que les origines de confiance.
+    Les clients sans Origin (non-navigateur) passent."""
+    from django.conf import settings
+    headers = dict(scope.get("headers", []))
+    origin = headers.get(b"origin", b"").decode("latin1").strip().rstrip("/")
+    if not origin or settings.DEBUG:
+        return True
+    allowed = {o.rstrip("/") for o in settings.CSRF_TRUSTED_ORIGINS}
+    return origin in allowed
+
+
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.user = self.scope.get("user")
         self.group_name = None
+
+        if not _origin_allowed(self.scope):
+            await self.close(code=4403)
+            return
 
         if not self.user or not self.user.is_authenticated or not self.user.is_active:
             await self.close(code=4401)

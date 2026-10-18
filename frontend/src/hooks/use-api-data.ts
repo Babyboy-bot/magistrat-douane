@@ -32,7 +32,7 @@ function useApi<T>(apiFn: () => Promise<T>, defaultValue: T, options?: UseApiOpt
         console.warn("[useApi] API returned null/undefined, using default");
         setData(defaultValue);
       } else if (Array.isArray(defaultValue) && !Array.isArray(result)) {
-        console.warn("[useApi] Expected array but got:", typeof result, result);
+        console.warn("[useApi] Expected array but got:", typeof result);
         setData(defaultValue);
       } else {
         setData(result);

@@ -257,7 +257,10 @@ ACCESS_TOKEN_COOKIE = 'access_token'
 REFRESH_TOKEN_COOKIE = 'refresh_token'
 COOKIE_HTTPONLY = True
 COOKIE_SECURE = config('COOKIE_SECURE', default=not DEBUG, cast=bool)
-COOKIE_SAMESITE = 'None' if COOKIE_SECURE else 'Lax'
+# 'Lax' suffit : le frontend est servi en same-origin via nginx.
+# 'None' n'est nécessaire que si l'API et le front sont sur des domaines
+# différents — il expose alors aux requêtes cross-site (CSRF, WS).
+COOKIE_SAMESITE = config('COOKIE_SAMESITE', default='Lax')
 COOKIE_PATH = '/'
 ACCESS_COOKIE_MAX_AGE = 15 * 60              # 15 min  (= ACCESS_TOKEN_LIFETIME)
 REFRESH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 jours (= REFRESH_TOKEN_LIFETIME)

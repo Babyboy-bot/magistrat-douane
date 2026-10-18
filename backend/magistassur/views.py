@@ -189,6 +189,21 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
             "duree_annees": contrat.duree_annees,
         })
 
+    def destroy(self, request, *args, **kwargs):
+        if request.user.role != "admin":
+            return Response({"detail": "Suppression réservée aux administrateurs."}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        user = request.user
+        if user.role == "agent":
+            contrat = self.get_object()
+            if contrat.pris_en_charge_par_id != user.id:
+                raise PermissionDenied("Vous ne pouvez modifier que les dossiers dont vous êtes en charge.")
+            if contrat.envoye_nsia_at or contrat.num_police:
+                raise PermissionDenied("Ce dossier a été transmis à NSIA ou activé — modification impossible.")
+        return super().update(request, *args, **kwargs)
+
     @action(detail=True, methods=["post"], url_path="prise-en-charge",
             permission_classes=[IsAuthenticated])
     def prise_en_charge(self, request, pk=None):
@@ -402,6 +417,21 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
                 *(["Frais funéraires"] if contrat.garantie_frais_funeraires else []),
             ],
         })
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.role != "admin":
+            return Response({"detail": "Suppression réservée aux administrateurs."}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        user = request.user
+        if user.role == "agent":
+            contrat = self.get_object()
+            if contrat.pris_en_charge_par_id != user.id:
+                raise PermissionDenied("Vous ne pouvez modifier que les dossiers dont vous êtes en charge.")
+            if contrat.envoye_nsia_at or contrat.num_police:
+                raise PermissionDenied("Ce dossier a été transmis à NSIA ou activé — modification impossible.")
+        return super().update(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"], url_path="prise-en-charge",
             permission_classes=[IsAuthenticated])

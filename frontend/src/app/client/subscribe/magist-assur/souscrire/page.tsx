@@ -23,7 +23,11 @@ import type {
   BeneficiaireEpargne, AssureAssocie, BeneficiairePrev, QuestionnaireState,
 } from "./components/types";
 
-const DRAFT_KEY = "magistassur_unifie_draft";
+// Le brouillon et les fichiers sont scopés par utilisateur : sur un poste
+// partagé, le compte B ne doit jamais voir les données du compte A.
+const DRAFT_KEY_LEGACY = "magistassur_unifie_draft";
+const draftKeyFor = (uid: string | number) => `magistassur_unifie_draft_${uid}`;
+const fileKeyFor = (uid: string | number, name: string) => `${uid}:${name}`;
 const FILES_DB_NAME = "magistassur_files";
 const FILES_STORE_NAME = "files";
 
@@ -157,32 +161,37 @@ export default function SouscrirePage() {
   const [pieceIdentiteVersoFile, setPieceIdentiteVersoFile] = useState<File | null>(null);
   const [ribFile, setRibFile] = useState<File | null>(null);
 
+  const fileKey = useCallback(
+    (name: string) => fileKeyFor(user?.id ?? "anon", name),
+    [user?.id],
+  );
+
   const handleSetPieceIdentiteFile = useCallback(async (file: File | null) => {
     setPieceIdentiteFile(file);
     if (file) {
-      await saveFileToIndexedDB("pieceIdentite", file);
+      await saveFileToIndexedDB(fileKey("pieceIdentite"), file);
     } else {
-      await deleteFileFromIndexedDB("pieceIdentite");
+      await deleteFileFromIndexedDB(fileKey("pieceIdentite"));
     }
-  }, []);
+  }, [fileKey]);
 
   const handleSetPieceIdentiteVersoFile = useCallback(async (file: File | null) => {
     setPieceIdentiteVersoFile(file);
     if (file) {
-      await saveFileToIndexedDB("pieceIdentiteVerso", file);
+      await saveFileToIndexedDB(fileKey("pieceIdentiteVerso"), file);
     } else {
-      await deleteFileFromIndexedDB("pieceIdentiteVerso");
+      await deleteFileFromIndexedDB(fileKey("pieceIdentiteVerso"));
     }
-  }, []);
+  }, [fileKey]);
 
   const handleSetRibFile = useCallback(async (file: File | null) => {
     setRibFile(file);
     if (file) {
-      await saveFileToIndexedDB("rib", file);
+      await saveFileToIndexedDB(fileKey("rib"), file);
     } else {
-      await deleteFileFromIndexedDB("rib");
+      await deleteFileFromIndexedDB(fileKey("rib"));
     }
-  }, []);
+  }, [fileKey]);
 
   /* ── État Épargne ── */
   const [id, setId] = useState<IdentiteState>(emptyId());
@@ -230,7 +239,13 @@ export default function SouscrirePage() {
   /* ── Brouillon ── */
   useEffect(() => {
     if (!user) return;
-    const raw = localStorage.getItem(DRAFT_KEY);
+    // Migration : brouillon créé sous l'ancienne clé globale → clé par utilisateur
+    const legacy = localStorage.getItem(DRAFT_KEY_LEGACY);
+    if (legacy && !localStorage.getItem(draftKeyFor(user.id))) {
+      localStorage.setItem(draftKeyFor(user.id), legacy);
+    }
+    if (legacy) localStorage.removeItem(DRAFT_KEY_LEGACY);
+    const raw = localStorage.getItem(draftKeyFor(user.id));
     if (raw) {
       try {
         const d = JSON.parse(raw);
@@ -257,10 +272,24 @@ export default function SouscrirePage() {
         if (d.step !== undefined) setStep(d.step);
         setHasDraft(true);
         toast.info("Brouillon restauré — vous pouvez reprendre votre saisie.");
-        // Restaurer les fichiers depuis IndexedDB
-        getFileFromIndexedDB("pieceIdentite").then(setPieceIdentiteFile);
-        getFileFromIndexedDB("pieceIdentiteVerso").then(setPieceIdentiteVersoFile);
-        getFileFromIndexedDB("rib").then(setRibFile);
+        // Restaurer les fichiers depuis IndexedDB (clé scopée, repli sur
+        // l'ancienne clé globale pour les brouillons existants)
+        ["pieceIdentite", "pieceIdentiteVerso", "rib"].forEach(async (name) => {
+          const setters: Record<string, (f: File | null) => void> = {
+            pieceIdentite: setPieceIdentiteFile,
+            pieceIdentiteVerso: setPieceIdentiteVersoFile,
+            rib: setRibFile,
+          };
+          let f = await getFileFromIndexedDB(fileKey(name));
+          if (!f) {
+            f = await getFileFromIndexedDB(name);
+            if (f) {
+              await saveFileToIndexedDB(fileKey(name), f);
+              await deleteFileFromIndexedDB(name);
+            }
+          }
+          setters[name](f);
+        });
         return;
       } catch { /* brouillon corrompu */ }
     }
@@ -285,7 +314,7 @@ export default function SouscrirePage() {
       garantieDeces, garantieFuneraires,
       assuresAssocies, benefConjoint_p, benefEnfants_p, autresBenef_p, q, antecedents,
     };
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    localStorage.setItem(draftKeyFor(user.id), JSON.stringify(draft));
     setLastSaved(new Date());
   }, [step, id, corresp1, corresp2, prevCorrespIdem, prevCorresp, assureIdem, assure, cot, benefConjoint_e, benefEnfants_e, autresBenef_e, consentementDonnees, garantieDeces, garantieFuneraires, assuresAssocies, benefConjoint_p, benefEnfants_p, autresBenef_p, q, antecedents, user]);
 
@@ -309,10 +338,10 @@ export default function SouscrirePage() {
   }, [cot.date_premiere_cotisation]);
 
   const clearDraft = async () => {
-    localStorage.removeItem(DRAFT_KEY);
-    await deleteFileFromIndexedDB("pieceIdentite");
-    await deleteFileFromIndexedDB("pieceIdentiteVerso");
-    await deleteFileFromIndexedDB("rib");
+    localStorage.removeItem(draftKeyFor(user?.id ?? "anon"));
+    await deleteFileFromIndexedDB(fileKey("pieceIdentite"));
+    await deleteFileFromIndexedDB(fileKey("pieceIdentiteVerso"));
+    await deleteFileFromIndexedDB(fileKey("rib"));
     setPieceIdentiteFile(null);
     setPieceIdentiteVersoFile(null);
     setRibFile(null);
@@ -493,9 +522,9 @@ export default function SouscrirePage() {
   const handleSubmit = async () => {
     if (!user) return;
     // Tenter de récupérer depuis IndexedDB si le state est null (après refresh)
-    const finalPieceFile = pieceIdentiteFile ?? await getFileFromIndexedDB("pieceIdentite");
-    const finalPieceVersoFile = pieceIdentiteVersoFile ?? await getFileFromIndexedDB("pieceIdentiteVerso");
-    const finalRibFile = ribFile ?? await getFileFromIndexedDB("rib");
+    const finalPieceFile = pieceIdentiteFile ?? await getFileFromIndexedDB(fileKey("pieceIdentite"));
+    const finalPieceVersoFile = pieceIdentiteVersoFile ?? await getFileFromIndexedDB(fileKey("pieceIdentiteVerso"));
+    const finalRibFile = ribFile ?? await getFileFromIndexedDB(fileKey("rib"));
     if (!finalPieceFile) { toast.error("La pièce d'identité (recto) est obligatoire."); return; }
     if (!finalPieceVersoFile) { toast.error("La pièce d'identité (verso) est obligatoire."); return; }
     if (!finalRibFile) { toast.error("Le document RIB est obligatoire."); return; }
@@ -567,10 +596,10 @@ export default function SouscrirePage() {
       if (finalPieceFile || finalRibFile) {
         await magistassurApi.uploadDocumentsEpargne(epargneContrat.id, { pieceIdentite: finalPieceFile ?? undefined, pieceIdentiteVerso: finalPieceVersoFile ?? undefined, ribDocument: finalRibFile ?? undefined });
       }
-      localStorage.removeItem(DRAFT_KEY);
-      await deleteFileFromIndexedDB("pieceIdentite");
-      await deleteFileFromIndexedDB("pieceIdentiteVerso");
-      await deleteFileFromIndexedDB("rib");
+      localStorage.removeItem(draftKeyFor(user.id));
+      await deleteFileFromIndexedDB(fileKey("pieceIdentite"));
+      await deleteFileFromIndexedDB(fileKey("pieceIdentiteVerso"));
+      await deleteFileFromIndexedDB(fileKey("rib"));
       if (prevoyanceError) {
         toast.warning(`Épargne soumis avec succès, mais la prévoyance a échoué : ${prevoyanceError}. Vous pourrez retenter la prévoyance séparément.`);
       } else {

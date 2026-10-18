@@ -14,6 +14,21 @@ def normalize_phone(value):
     return re.sub(r'[\s\-\.\(\)\+]', '', value or '')
 
 
+def validate_photo_file(value):
+    """La photo de profil doit être une vraie image (magic bytes).
+    Sans validation, un client pouvait uploader du SVG/HTML servi sur
+    le même domaine — XSS stocké touchant les agents qui consultent
+    les profils."""
+    if value:
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from core.file_validators import validate_upload, ALLOWED_TYPES_IMAGE
+        try:
+            validate_upload(value, ALLOWED_TYPES_IMAGE)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.messages)
+    return value
+
+
 def validate_unique_phone(value, instance=None):
     """Normalise le téléphone et vérifie qu'il n'est pas déjà utilisé (le login se fait aussi par téléphone)."""
     phone = normalize_phone(value)
@@ -133,6 +148,9 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     def validate_telephone2(self, value):
         return validate_unique_phone(value, self.instance)
 
+    def validate_photo(self, value):
+        return validate_photo_file(value)
+
     def validate(self, attrs):
         # Prevent password changes for inactive users
         password = attrs.get('password')
@@ -173,6 +191,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def validate_telephone2(self, value):
         return validate_unique_phone(value, self.instance)
+
+    def validate_photo(self, value):
+        return validate_photo_file(value)
 
 
 class VerifyUserSerializer(serializers.Serializer):
