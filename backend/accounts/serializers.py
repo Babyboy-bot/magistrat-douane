@@ -29,10 +29,34 @@ def validate_photo_file(value):
     return value
 
 
+def validate_phone_format(phone: str) -> str:
+    """Valide le format d'un numéro déjà normalisé (chiffres seuls).
+
+    Accepté : numéro ivoirien à 10 chiffres commençant par 0 ou 2
+    (mobiles 01/05/07, fixes 2x) ou international 11–15 chiffres.
+    Retourne le numéro normalisé prêt à stocker/comparer.
+    """
+    digits = phone
+    if digits.startswith("00225"):
+        digits = digits[5:]
+    elif digits.startswith("225") and len(digits) >= 13:
+        digits = digits[3:]
+    if not digits.isdigit():
+        raise serializers.ValidationError("Numéro de téléphone invalide.")
+    if len(digits) == 10 and digits[0] in "02":
+        return digits
+    if 11 <= len(digits) <= 15:
+        return digits
+    raise serializers.ValidationError(
+        "Numéro invalide : 10 chiffres attendus (ex. 07XXXXXXXX) ou format international."
+    )
+
+
 def validate_unique_phone(value, instance=None):
-    """Normalise le téléphone et vérifie qu'il n'est pas déjà utilisé (le login se fait aussi par téléphone)."""
+    """Normalise, valide le format puis vérifie que le téléphone n'est pas déjà utilisé."""
     phone = normalize_phone(value)
     if phone:
+        phone = validate_phone_format(phone)
         qs = User.objects.filter(Q(telephone=phone) | Q(telephone2=phone))
         if instance is not None:
             qs = qs.exclude(pk=instance.pk)
@@ -65,10 +89,10 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "email", "nom", "prenoms", "profession", "profession_type",
-            "telephone", "telephone2", "photo", "role", "verified",
+            "telephone", "telephone2", "photo", "role", "verified", "email_verified",
             "verified_at", "date_joined", "created_at", "is_active", "account_status", "risk_level",
         ]
-        read_only_fields = ["id", "role", "verified", "verified_at", "date_joined"]
+        read_only_fields = ["id", "role", "verified", "email_verified", "verified_at", "date_joined"]
 
 
 class UserCreateSerializer(serializers.ModelSerializer):

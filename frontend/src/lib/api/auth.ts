@@ -103,4 +103,12 @@ export const authApi = {
     });
     return raw as { message: string };
   },
+
+  async verifyEmail(uid: string, token: string): Promise<{ message: string }> {
+    const raw = await apiFetch<Record<string, unknown>>("/api/auth/verify-email/", {
+      method: "POST",
+      body: JSON.stringify({ uid, token }),
+    });
+    return raw as { message: string };
+  },
 };

@@ -167,6 +167,21 @@ class CookieRefreshView(APIView):
             return _clear_auth_cookies(response)
 
 
+def _send_email_verification(user):
+    """Envoie le lien signé de vérification d'email (silencieux si SMTP absent)."""
+    if not user.email:
+        return
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    verify_url = f"{conf.FRONTEND_URL}/verify-email?uid={uid}&token={token}"
+    try:
+        from notifications.emails import send_verification_email
+        send_verification_email(user, verify_url)
+    except Exception:
+        import logging
+        logging.getLogger("accounts").exception("Failed to send verification email to user %s", user.pk)
+
+
 def _notify_agents_pending_verification(user):
     """Prévient tous les agents/admins qu'un compte professionnel attend leur vérification."""
     try:
@@ -208,6 +223,7 @@ class RegisterView(generics.CreateAPIView):
         log_register(user, get_client_ip(request))
         log_user_action(user, user, "creation", {"role": user.role}, ip=get_client_ip(request))
         send_welcome_email(user)
+        _send_email_verification(user)
         if not user.verified:
             _notify_agents_pending_verification(user)
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
@@ -258,8 +274,15 @@ class MeView(generics.RetrieveUpdateAPIView):
         return Response(UserSerializer(instance, context={"request": request}).data)
 
     def perform_update(self, serializer):
+        old_email = serializer.instance.email
         instance = serializer.save()
         _ip = get_client_ip(self.request)
+
+        # Changement d'email → la nouvelle adresse doit être re-vérifiée
+        if instance.email and instance.email != old_email:
+            instance.email_verified = False
+            instance.save(update_fields=["email_verified"])
+            _send_email_verification(instance)
 
         if serializer.validated_data.get("password"):
             log_user_action(self.request.user, instance, "password_reset", {}, ip=_ip)
@@ -444,6 +467,31 @@ class ResetPasswordConfirmView(APIView):
         user.save(update_fields=["password"])
         log_password_change(user, get_client_ip(request))
         return Response({"detail": "Mot de passe réinitialisé avec succès."})
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class VerifyEmailView(APIView):
+    """Confirme la propriété de l'email : uid + token signé (même mécanisme que le reset)."""
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [LoginRateThrottle]
+
+    class InputSerializer(drf_serializers.Serializer):
+        uid = drf_serializers.CharField()
+        token = drf_serializers.CharField()
+
+    def post(self, request):
+        serializer = self.InputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            user = User.objects.get(pk=force_str(urlsafe_base64_decode(serializer.validated_data["uid"])))
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = None
+        if not user or not default_token_generator.check_token(user, serializer.validated_data["token"]):
+            return Response({"detail": "Lien de vérification invalide ou expiré."}, status=status.HTTP_400_BAD_REQUEST)
+        if not user.email_verified:
+            user.email_verified = True
+            user.save(update_fields=["email_verified"])
+        return Response({"detail": "Adresse email confirmée avec succès."})
 
 
 class AgentCreateClientView(generics.CreateAPIView):

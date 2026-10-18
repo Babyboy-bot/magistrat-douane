@@ -144,6 +144,8 @@ class User(AbstractUser):
 
     verified = models.BooleanField("Compte vérifié", default=False)
 
+    email_verified = models.BooleanField("Email vérifié", default=False)
+
     verified_at = models.DateTimeField("Date de vérification", null=True, blank=True)
 
     verified_by = models.ForeignKey(

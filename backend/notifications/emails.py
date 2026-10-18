@@ -294,3 +294,45 @@ def send_password_reset_email(user, reset_url: str):
 </body></html>"""
 
     _send(subject, body_txt, body_html, user.email)
+
+
+# ── Vérification d'email (inscription / changement d'adresse) ────────────────
+
+def send_verification_email(user, verify_url: str):
+    """Lien signé prouvant que l'utilisateur contrôle l'adresse email déclarée."""
+    if not user.email:
+        return
+    subject = "ACS — Confirmez votre adresse email"
+    nom_complet = f"{user.nom} {user.prenoms}"
+    nom_html = escape(nom_complet)
+    url_html = escape(verify_url)
+    body_txt = (
+        f"Bonjour M./Mme {nom_complet},\n\n"
+        "Pour confirmer que cette adresse email vous appartient, ouvrez ce lien :\n"
+        f"{verify_url}\n\n"
+        "Si vous n'avez pas créé de compte sur la plateforme ACS, ignorez cet email.\n\n"
+        f"Pour toute question, contactez-nous au : {_acs_contact()}\n\n"
+        "Cordialement,\nL'équipe ACS"
+    )
+    body_html = f"""
+<html><body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:auto">
+  <div style="background:#1e3a5f;padding:20px;border-radius:8px 8px 0 0">
+    <h2 style="color:#f59e0b;margin:0">ACS — Vérification de votre email</h2>
+  </div>
+  <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
+    <p>Bonjour M./Mme <strong>{nom_html}</strong>,</p>
+    <p>Pour confirmer que cette adresse email vous appartient, cliquez sur le bouton :</p>
+    <p style="text-align:center;margin:24px 0">
+      <a href="{url_html}" style="background:#1e3a5f;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none">
+        Confirmer mon email
+      </a>
+    </p>
+    <p style="color:#6b7280;font-size:13px">Si vous n'avez pas créé de compte sur la plateforme ACS,
+       ignorez cet email.</p>
+    <p style="color:#6b7280;font-size:13px">Besoin d'aide ? {_acs_contact()}</p>
+    <br>
+    <p>Cordialement,<br><strong>L'équipe ACS</strong></p>
+  </div>
+</body></html>"""
+
+    _send(subject, body_txt, body_html, user.email)
