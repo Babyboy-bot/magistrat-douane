@@ -56,6 +56,12 @@ def verify_prospect(target: User, agent: User) -> None:
         )
     except Exception:
         pass
+    from notifications.emails import send_critical_notification_email
+    send_critical_notification_email(
+        target, "Votre compte est validé",
+        f"Votre identité a été validée par {agent.full_name}. Vous pouvez maintenant "
+        "vous connecter et souscrire à Magist-Assur depuis votre espace.",
+    )
 
 
 def reject_prospect(target: User, agent: User) -> None:

@@ -26,7 +26,15 @@ from .models import (
 )
 
 
-def _notify_client_epargne(contrat, title, message, notif_type="info", contrat_type="epargne", data=None):
+STATUTS_CRITIQUES = {"suspendu", "resilie", "rachete", "cloture"}
+
+
+def _notify_client_epargne(contrat, title, message, notif_type="info", contrat_type="epargne", data=None,
+                           email=False):
+    if email and contrat.client_id:
+        from notifications.emails import send_critical_notification_email
+        client = contrat.client
+        transaction.on_commit(lambda: send_critical_notification_email(client, title, message))
     try:
         if contrat.client_id:
             from notifications.models import Notification
@@ -302,6 +310,7 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
             "Contrat Magist-Assur activé",
             f"Votre contrat épargne est actif. Police n° {num_police}.",
             "success",
+            email=True,
         )
         return Response(ContratEpargneSerializer(contrat).data)
 
@@ -320,8 +329,9 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         _notify_client_epargne(
             contrat,
             "Statut de votre contrat mis à jour",
-            f"Votre contrat épargne Magist-Assur est désormais : {nouveau_statut.replace('_', ' ')}.",
+            f"Votre contrat épargne Magist-Assur est désormais : {contrat.get_statut_display()}.",
             "info",
+            email=nouveau_statut in STATUTS_CRITIQUES,
         )
         return Response(ContratEpargneSerializer(contrat).data)
 
@@ -511,6 +521,7 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
             f"Votre contrat prévoyance est actif. Police n° {num_police}.",
             "success",
             contrat_type="prevoyance",
+            email=True,
         )
         return Response(ContratPrevoyanceSerializer(contrat).data)
 
@@ -529,9 +540,10 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         _notify_client_epargne(
             contrat,
             "Statut de votre contrat mis à jour",
-            f"Votre contrat prévoyance Magist-Assur est désormais : {nouveau_statut.replace('_', ' ')}.",
+            f"Votre contrat prévoyance Magist-Assur est désormais : {contrat.get_statut_display()}.",
             "info",
             contrat_type="prevoyance",
+            email=nouveau_statut in STATUTS_CRITIQUES,
         )
         return Response(ContratPrevoyanceSerializer(contrat).data)
 

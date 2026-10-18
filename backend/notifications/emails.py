@@ -296,6 +296,43 @@ def send_password_reset_email(user, reset_url: str):
     _send(subject, body_txt, body_html, user.email)
 
 
+# ── Notifications critiques doublées par email ───────────────────────────────
+
+def send_critical_notification_email(user, title: str, message: str):
+    """Double par email une notification in-app jugée critique (compte validé,
+    contrat activé, suspension/résiliation…). Désactivable via EMAIL_NOTIFICATIONS."""
+    if not getattr(settings, 'EMAIL_NOTIFICATIONS', True) or not user or not user.email:
+        return
+    nom_complet = f"{user.nom} {user.prenoms}"
+    espace_url = f"{getattr(settings, 'FRONTEND_URL', '').rstrip('/')}/client/dashboard"
+    body_txt = (
+        f"Bonjour M./Mme {nom_complet},\n\n"
+        f"{message}\n\n"
+        f"Retrouvez le détail dans votre espace : {espace_url}\n\n"
+        f"Pour toute question, contactez-nous au : {_acs_contact()}\n\n"
+        "Cordialement,\nL'équipe ACS"
+    )
+    body_html = f"""
+<html><body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:auto">
+  <div style="background:#1e3a5f;padding:20px;border-radius:8px 8px 0 0">
+    <h2 style="color:#f59e0b;margin:0">ACS — {escape(title)}</h2>
+  </div>
+  <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
+    <p>Bonjour M./Mme <strong>{escape(nom_complet)}</strong>,</p>
+    <p>{escape(message)}</p>
+    <p style="text-align:center;margin:24px 0">
+      <a href="{escape(espace_url)}" style="background:#1e3a5f;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none">
+        Accéder à mon espace
+      </a>
+    </p>
+    <p style="color:#6b7280;font-size:13px">Besoin d'aide ? {_acs_contact()}</p>
+    <br>
+    <p>Cordialement,<br><strong>L'équipe ACS</strong></p>
+  </div>
+</body></html>"""
+    _send(f"ACS — {title}", body_txt, body_html, user.email)
+
+
 # ── Vérification d'email (inscription / changement d'adresse) ────────────────
 
 def send_verification_email(user, verify_url: str):
