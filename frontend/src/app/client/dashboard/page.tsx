@@ -1,9 +1,9 @@
 "use client";
 
-import { Wallet, AlertCircle, FileText, Shield, Download, Eye, Clock, CheckCircle, PiggyBank, Heart } from "lucide-react";
+import { AlertCircle, FileText, Shield, Download, Eye, Clock, CheckCircle, PiggyBank, Heart } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { StatCard } from "@/components/brand";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/stores/auth-store";
@@ -19,26 +19,6 @@ function buildUrl(f: string) {
   return `${API_BASE}${f.startsWith("/") ? f : "/" + f}`;
 }
 
-function daysUntil(dateStr: string): number {
-  const d = new Date(dateStr);
-  return Math.ceil((d.getTime() - Date.now()) / 86400000);
-}
-
-function urgencyClass(days: number): string {
-  if (days <= 0) return "border-l-4 border-gray-400 bg-gray-50";
-  if (days <= 7) return "border-l-4 border-red-500 bg-red-50";
-  if (days <= 15) return "border-l-4 border-orange-400 bg-orange-50";
-  if (days <= 30) return "border-l-4 border-yellow-400 bg-yellow-50";
-  return "border-l-4 border-green-400 bg-green-50";
-}
-
-function urgencyBadge(days: number) {
-  if (days <= 0) return <Badge className="text-xs bg-gray-100 text-gray-600">Expiré</Badge>;
-  if (days <= 7) return <Badge className="text-xs bg-red-100 text-red-700">J-{days}</Badge>;
-  if (days <= 15) return <Badge className="text-xs bg-orange-100 text-orange-700">J-{days}</Badge>;
-  if (days <= 30) return <Badge className="text-xs bg-yellow-100 text-yellow-700">J-{days}</Badge>;
-  return null;
-}
 
 export default function ClientDashboard() {
   const { user } = useAuthStore();
@@ -99,294 +79,221 @@ export default function ClientDashboard() {
   const contratsEnAttente = [...epargne, ...prevoyance].filter((c) => !(c as Record<string, unknown>).numPolice).length;
   const contratsActifs = [...epargne, ...prevoyance].filter((c) => (c as Record<string, unknown>).numPolice && (c as Record<string, unknown>).statut === "en_cours").length;
 
+  const isMagistrat = user?.professionType === "magistrat";
+  const contrats = [
+    ...epargne.map((c) => ({ c, kind: "epargne" as const })),
+    ...prevoyance.map((c) => ({ c, kind: "prevoyance" as const })),
+  ];
+  const recentRequests = requests.filter((r: ClientRequest) => r.type !== "declaration_sinistre").slice(0, 5);
+  const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+
   return (
-    <div className="space-y-6">
-      {/* Welcome */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Bienvenue, {user?.prenoms || "Jean-Baptiste"} 👋
-        </h1>
-        <p className="text-gray-500 mt-1">
-          {user?.verified 
-            ? "Voici un résumé de votre situation d’assurance"
-            : "Votre compte est en attente de validation"
-          }
-        </p>
-      </div>
-
-      {/* Message pour prospect */}
-      {!user?.verified && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
-                <AlertCircle className="h-8 w-8 text-amber-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-amber-900">
-                  Compte en attente de validation
-                </h3>
-                <p className="text-amber-700 mt-2">
-                  Votre compte sera activé après validation par un agent ACS.
-                </p>
-                <p className="text-amber-600 text-sm mt-1">
-                  Délai habituel : sous 24h
-                </p>
-              </div>
-              <div className="bg-amber-100 rounded-lg p-4 text-left">
-                <h4 className="font-medium text-amber-900 mb-2">Pendant l’attente :</h4>
-                <ul className="text-sm text-amber-700 space-y-1">
-                  <li>✅ Un agent ACS vérifie votre identité professionnelle</li>
-                  <li>✅ Vous serez notifié dès l&apos;activation de votre compte</li>
-                  <li>✅ Vos données sont sécurisées</li>
-                </ul>
-              </div>
-              <p className="text-xs text-amber-600">
-                La souscription à Magist&apos;Assur sera disponible une fois votre compte vérifié.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Bannière contrats en attente */}
-      {user?.verified && contratsEnAttente > 0 && (
-        <Card className="border-orange-300 bg-orange-50 border-0 shadow-sm">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-start gap-3">
-              <Clock className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-semibold text-orange-900 text-sm">
-                  {contratsEnAttente} dossier{contratsEnAttente > 1 ? "s" : ""} Magist'Assur en attente de traitement
-                </p>
-              </div>
-              <Link href="/client/history">
-                <Button size="sm" variant="outline" className="text-xs border-orange-400 text-orange-700 hover:bg-orange-100">
-                  Suivre mes dossiers
+    <div className="space-y-6 lg:space-y-8">
+      {/* ── Accueil ── */}
+      <section className="relative overflow-hidden rounded-3xl bg-[radial-gradient(120%_120%_at_100%_0%,var(--color-navy-700)_0%,var(--color-navy-900)_45%,var(--color-navy-950)_100%)] p-6 text-white shadow-[0_24px_60px_-28px_rgb(10_18_36/0.7)] sm:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-amber-400/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-0 hidden h-full w-1/2 bg-[repeating-linear-gradient(135deg,transparent_0_22px,rgb(255_255_255/0.025)_22px_23px)] sm:block" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-xl">
+            <p className="text-xs font-medium capitalize text-amber-300/90">{today}</p>
+            <h1 className="mt-2 font-display text-3xl font-semibold leading-tight sm:text-4xl">
+              Bonjour, {user?.prenoms?.split(" ")[0]}
+            </h1>
+            <p className="mt-2 text-sm text-white/65 sm:text-base">
+              {!user?.verified
+                ? "Votre compte est en cours de vérification par nos équipes."
+                : contratsEnAttente > 0
+                  ? `${contratsEnAttente} dossier${contratsEnAttente > 1 ? "s" : ""} Magist'Assur en cours de traitement par votre conseiller.`
+                  : totalContrats > 0
+                    ? "Vos contrats Magist'Assur sont à jour."
+                    : "Préparez votre retraite et protégez votre famille avec Magist'Assur."}
+            </p>
+          </div>
+          {user?.verified && isMagistrat && (
+            <div className="flex flex-wrap gap-2">
+              {contratsEnAttente > 0 && (
+                <Link href="/client/history">
+                  <Button variant="outline" className="h-11 rounded-xl border-white/20 bg-white/5 px-5 text-white hover:bg-white/10 hover:text-white">
+                    <Clock className="mr-2 h-4 w-4" /> Suivre mes dossiers
+                  </Button>
+                </Link>
+              )}
+              <Link href="/client/subscribe/magist-assur">
+                <Button className="h-11 rounded-xl bg-amber-400 px-5 font-semibold text-navy-950 hover:bg-amber-300">
+                  <Shield className="mr-2 h-4 w-4" />
+                  {totalContrats > 0 ? "Nouvelle souscription" : "Découvrir Magist'Assur"}
                 </Button>
               </Link>
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
+      </section>
+
+      {/* ── Compte en attente ── */}
+      {!user?.verified && (
+        <section className="grid gap-4 rounded-3xl border border-amber-200 bg-white p-6 sm:grid-cols-[auto_1fr] sm:gap-6 sm:p-8">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 ring-1 ring-amber-200">
+            <AlertCircle className="h-7 w-7 text-amber-600" />
+          </div>
+          <div>
+            <h3 className="font-display text-xl font-semibold text-navy-900">Vérification de votre identité professionnelle</h3>
+            <p className="mt-1 text-sm text-navy-500">Un agent ACS valide votre compte, généralement sous 24 h. Vous serez notifié dès l&apos;activation.</p>
+            <ol className="mt-5 grid gap-3 sm:grid-cols-3">
+              {[
+                ["Compte créé", true],
+                ["Vérification par un agent", false],
+                ["Accès à Magist'Assur", false],
+              ].map(([label, done], i) => (
+                <li key={String(label)} className="flex items-center gap-3 rounded-xl bg-navy-50/60 p-3">
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${done ? "bg-emerald-500 text-white" : "bg-white text-navy-500 ring-1 ring-navy-200"}`}>
+                    {done ? <CheckCircle className="h-4 w-4" /> : i + 1}
+                  </span>
+                  <span className="text-sm font-medium text-navy-800">{label}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
       )}
 
-      {/* Sinistres en cours — masqué, fonctionnalité en développement */}
-
-      {/* Stats cards Magist'Assur */}
+      {/* ── Statistiques ── */}
       {user?.verified && loadingMagist && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
-                  <Skeleton className="h-3 w-24" />
-                  <Skeleton className="h-7 w-40" />
-                </div>
-                <Skeleton className="h-12 w-12 rounded-xl" />
-              </div>
+            <div key={i} className="rounded-2xl border border-navy-100 bg-white p-5">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="mt-3 h-8 w-16" />
             </div>
           ))}
         </div>
       )}
       {user?.verified && !loadingMagist && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 font-medium">Contrats Magist'Assur</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{totalContrats}</p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-purple-50 flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 font-medium">Contrats Épargne</p>
-                  <p className="text-2xl font-bold text-blue-600 mt-1">{epargne.length}</p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <PiggyBank className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 font-medium">Contrats Prévoyance</p>
-                  <p className="text-2xl font-bold text-rose-600 mt-1">{prevoyance.length}</p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-rose-50 flex items-center justify-center">
-                  <Heart className="h-6 w-6 text-rose-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard label="Contrats Magist'Assur" value={totalContrats} icon={Shield} tone="navy"
+            hint={contratsActifs > 0 ? `${contratsActifs} actif${contratsActifs > 1 ? "s" : ""}` : undefined} />
+          <StatCard label="Épargne retraite" value={epargne.length} icon={PiggyBank} tone="gold" />
+          <StatCard label="Prévoyance" value={prevoyance.length} icon={Heart} tone="rose" />
         </div>
       )}
 
-      {/* Quick actions - Magist'Assur uniquement */}
-      {user?.verified && (
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">Actions rapides</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <Link href="/client/subscribe/magist-assur">
-                <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
-                  <Shield className="h-5 w-5 text-purple-600" />
-                  <span className="text-xs font-medium">Magist'Assur</span>
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Contrats Magist'Assur */}
+      {/* ── Contrats ── */}
       {user?.verified && !loadingMagist && (
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg">Mes contrats Magist'Assur</CardTitle>
-            <Link href="/client/subscribe/magist-assur">
-              <Button variant="ghost" size="sm" className="text-xs">Souscrire</Button>
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {epargne.slice(0, 3).map((c) => (
-              <div key={c.id as string} className="p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="h-9 w-9 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
-                      <PiggyBank className="h-4 w-4 text-white" />
+        <section className="rounded-3xl border border-navy-100 bg-white p-5 sm:p-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-xl font-semibold text-navy-900">Mes contrats</h2>
+              <p className="text-xs text-navy-400">Épargne et prévoyance Magist&apos;Assur</p>
+            </div>
+            {totalContrats > 0 && (
+              <Link href="/client/history" className="text-sm font-medium text-amber-700 hover:text-amber-800">Tout voir →</Link>
+            )}
+          </div>
+
+          {totalContrats === 0 ? (
+            <div className="flex flex-col items-center rounded-2xl border border-dashed border-navy-200 bg-navy-50/40 px-6 py-10 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-amber-600 ring-1 ring-navy-100">
+                <Shield className="h-6 w-6" />
+              </div>
+              <p className="mt-3 font-medium text-navy-900">Aucun contrat pour le moment</p>
+              <p className="mt-1 max-w-sm text-sm text-navy-400">Souscrivez à l&apos;Épargne retraite Magist&apos;Assur en 15 minutes, avec un conseiller dédié.</p>
+              {isMagistrat && (
+                <Link href="/client/subscribe/magist-assur" className="mt-5">
+                  <Button className="rounded-xl bg-navy-900 px-5 hover:bg-navy-800">Souscrire maintenant</Button>
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {contrats.slice(0, 6).map(({ c, kind }) => {
+                const actif = Boolean(c.numPolice) && c.statut === "en_cours";
+                return (
+                  <div key={`${kind}-${c.id}`} className="flex items-start gap-3 rounded-2xl border border-navy-100 p-4 transition hover:border-amber-200 hover:shadow-[0_10px_30px_-18px_rgb(16_28_52/0.35)]">
+                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${kind === "epargne" ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-600"}`}>
+                      {kind === "epargne" ? <PiggyBank className="h-5 w-5" /> : <Heart className="h-5 w-5" />}
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">Épargne — {c.numPolice as string || `#${c.id}`}</p>
-                      <p className="text-xs text-gray-500">{conseillerLigne(c)}</p>
-                      {Number(c.capitalConstitue) > 0 && (
-                        <p className="text-xs text-blue-700">Capital : {formatCurrency(Number(c.capitalConstitue))}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-medium text-navy-900">{kind === "epargne" ? "Épargne retraite" : "Prévoyance"}</p>
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${actif ? "bg-emerald-50 text-emerald-700" : c.numPolice ? "bg-navy-50 text-navy-600" : "bg-amber-50 text-amber-700"}`}>
+                          {c.numPolice ? statutLabel(c.statut) : "En traitement"}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 font-mono text-xs text-navy-400">{(c.numPolice as string) || `Dossier n° ${c.id}`}</p>
+                      <p className="mt-2 text-xs text-navy-500">{conseillerLigne(c)}</p>
+                      {kind === "epargne" && Number(c.capitalConstitue) > 0 && (
+                        <p className="mt-1 text-xs font-medium text-amber-700">Capital constitué : {formatCurrency(Number(c.capitalConstitue))}</p>
                       )}
                     </div>
                   </div>
-                  <Badge className="bg-blue-100 text-blue-800 shrink-0" variant="secondary">
-                    {statutLabel(c.statut)}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-            {prevoyance.slice(0, 3).map((c) => (
-              <div key={c.id as string} className="p-3 rounded-lg bg-rose-50 hover:bg-rose-100 transition">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="h-9 w-9 rounded-lg bg-rose-600 flex items-center justify-center shrink-0">
-                      <Heart className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">Prévoyance — {c.numPolice as string || `#${c.id}`}</p>
-                      <p className="text-xs text-gray-500">{conseillerLigne(c)}</p>
-                    </div>
-                  </div>
-                  <Badge className="bg-rose-100 text-rose-800 shrink-0" variant="secondary">
-                    {statutLabel(c.statut)}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-            {totalContrats === 0 && (
-              <div className="text-center py-6">
-                <p className="text-sm text-gray-400 mb-3">Aucun contrat Magist'Assur pour le moment</p>
-                <Link href="/client/subscribe/magist-assur">
-                  <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
-                    <Shield className="h-4 w-4 mr-1" /> Souscrire maintenant
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                );
+              })}
+            </div>
+          )}
+        </section>
       )}
 
-      {/* Livrables récents + Requêtes */}
+      {/* ── Documents & demandes ── */}
       {user?.verified && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-          {/* Livrables récents */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg">Documents disponibles</CardTitle>
-              <Link href="/client/history">
-                <Button variant="ghost" size="sm" className="text-xs">Voir tout</Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {livrablesRecents.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-4">Aucun document disponible</p>
-              ) : (
-                <div className="space-y-2">
-                  {livrablesRecents.map((d) => (
-                    <div key={d.id} className="flex items-center justify-between p-2 rounded-lg bg-green-50 hover:bg-green-100 transition">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FileText className="h-4 w-4 text-green-600 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-green-800 truncate">{d.nom}</p>
-                          <p className="text-xs text-green-600">{d.requestNumero} — {REQUEST_TYPE_LABELS[d.requestType as keyof typeof REQUEST_TYPE_LABELS]}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        <button onClick={() => window.open(buildUrl(d.fichier), "_blank")} className="text-green-600 hover:text-green-800 p-1">
-                          <Eye className="h-3.5 w-3.5" />
-                        </button>
-                        <button onClick={() => downloadFile(buildUrl(d.fichier), d.nom)} className="text-green-600 hover:text-green-800 p-1">
-                          <Download className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section className="rounded-3xl border border-navy-100 bg-white p-5 sm:p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-display text-lg font-semibold text-navy-900">Documents disponibles</h2>
+              <Link href="/client/history" className="text-sm font-medium text-amber-700 hover:text-amber-800">Tout voir →</Link>
+            </div>
+            {livrablesRecents.length === 0 ? (
+              <div className="flex items-center gap-3 rounded-2xl bg-navy-50/50 p-4 text-sm text-navy-400">
+                <FileText className="h-5 w-5 shrink-0" />
+                Vos attestations et contrats apparaîtront ici dès leur émission.
+              </div>
+            ) : (
+              <ul className="divide-y divide-navy-50">
+                {livrablesRecents.map((d) => (
+                  <li key={d.id} className="flex items-center gap-3 py-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                      <FileText className="h-4 w-4" />
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-navy-900">{d.nom}</p>
+                      <p className="text-xs text-navy-400">{d.requestNumero} · {REQUEST_TYPE_LABELS[d.requestType as keyof typeof REQUEST_TYPE_LABELS]}</p>
+                    </div>
+                    <button onClick={() => window.open(buildUrl(d.fichier), "_blank")} className="rounded-lg p-2 text-navy-400 hover:bg-navy-50 hover:text-navy-800" title="Consulter">
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => downloadFile(buildUrl(d.fichier), d.nom)} className="rounded-lg p-2 text-navy-400 hover:bg-navy-50 hover:text-navy-800" title="Télécharger">
+                      <Download className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
-          {/* Requêtes récentes */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg">Requêtes récentes</CardTitle>
-              <Link href="/client/history">
-                <Button variant="ghost" size="sm" className="text-xs">Voir tout</Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {requests.filter((r: ClientRequest) => r.type !== "declaration_sinistre").slice(0, 5).map((r: ClientRequest) => (
-                  <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition">
+          <section className="rounded-3xl border border-navy-100 bg-white p-5 sm:p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-display text-lg font-semibold text-navy-900">Demandes récentes</h2>
+              <Link href="/client/history" className="text-sm font-medium text-amber-700 hover:text-amber-800">Tout voir →</Link>
+            </div>
+            {recentRequests.length === 0 ? (
+              <div className="flex items-center gap-3 rounded-2xl bg-navy-50/50 p-4 text-sm text-navy-400">
+                <Clock className="h-5 w-5 shrink-0" />
+                Aucune demande pour le moment.
+              </div>
+            ) : (
+              <ul className="divide-y divide-navy-50">
+                {recentRequests.map((r: ClientRequest) => (
+                  <li key={r.id} className="flex items-center justify-between gap-3 py-3">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                        <p className="text-sm font-medium truncate">{REQUEST_TYPE_LABELS[r.type as keyof typeof REQUEST_TYPE_LABELS]}</p>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-0.5">{r.numero} • {r.createdAt}</p>
+                      <p className="truncate text-sm font-medium text-navy-900">{REQUEST_TYPE_LABELS[r.type as keyof typeof REQUEST_TYPE_LABELS]}</p>
+                      <p className="mt-0.5 text-xs text-navy-400">{r.numero} · {r.createdAt}</p>
                     </div>
                     <Badge className={`${statusColor(r.status)} shrink-0`} variant="secondary">
                       {REQUEST_STATUS_LABELS[r.status as keyof typeof REQUEST_STATUS_LABELS]}
                     </Badge>
-                  </div>
+                  </li>
                 ))}
-                {requests.filter((r: ClientRequest) => r.type !== "declaration_sinistre").length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-4">Aucune requête pour le moment</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </ul>
+            )}
+          </section>
         </div>
       )}
     </div>

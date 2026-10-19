@@ -57,17 +57,17 @@ export function StepRecap(props: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500 text-center">Vérifiez vos informations avant de soumettre votre demande.</p>
+      <p className="text-sm text-navy-500 text-center">Vérifiez vos informations avant de soumettre votre demande.</p>
 
       {/* ── SOUSCRIPTEUR ── */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <User className="h-4 w-4 text-gray-600" />
+            <User className="h-4 w-4 text-navy-600" />
             Souscripteur
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1.5 text-sm bg-gray-50 rounded-lg p-4">
+        <CardContent className="space-y-1.5 text-sm bg-navy-50/60 rounded-xl p-4">
           <Row label="Nom & Prénoms" value={`${id.civilite ? id.civilite + " " : ""}${id.nom} ${id.prenoms}`} />
           {id.nni && <Row label="NNI" value={id.nni} />}
           <Row label="Date de naissance" value={id.date_naissance || "—"} />
@@ -81,32 +81,32 @@ export function StepRecap(props: Props) {
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-purple-600" />
-            MAGIST&apos;ASSUR ÉPARGNE
+            <TrendingUp className="h-4 w-4 text-amber-600" />
+            Magist&apos;Assur Épargne
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm bg-purple-50 rounded-lg p-4">
+        <CardContent className="space-y-2 text-sm bg-amber-50/50 rounded-xl p-4">
           <Row label="Durée" value={`${cot.duree_annees} ans`} />
           <Row label="Périodicité" value={periodeLabel} />
           <Row label="Date d'effet" value={cot.date_effet || "—"} />
           <Row label="1ère cotisation" value={cot.date_premiere_cotisation || "—"} />
-          <div className="border-t border-purple-200 pt-2 space-y-1">
+          <div className="border-t border-amber-200/70 pt-2 space-y-1">
             <Row label={`Cotisation ${periodeLabel.toLowerCase()}`} value={formatCFA(montant)} bold />
             <Row label="Frais accessoires" value={formatCFA(1_000)} />
             <Row label="Total / période" value={formatCFA(totalEpargne)} bold />
             <Row label="1ère cotisation (avec coût police)" value={formatCFA(totalEpargne + 10_000)} />
             <Row label="Taux garanti" value="3,5% / an + participations bénéfices" />
           </div>
-          <div className="border-t border-purple-200 pt-2 space-y-1">
+          <div className="border-t border-amber-200/70 pt-2 space-y-1">
             <Row label="Mode de paiement" value={MODE_LABELS[cot.mode_paiement] || cot.mode_paiement || "—"} />
             {cot.numero_compte && <Row label="N° de compte (RIB)" value={cot.numero_compte} />}
           </div>
           {benefEpargneList.length > 0 && (
-            <div className="border-t border-purple-200 pt-2 space-y-1">
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Bénéficiaires Épargne</p>
+            <div className="border-t border-amber-200/70 pt-2 space-y-1">
+              <p className="text-xs font-semibold text-navy-600 uppercase tracking-wide">Bénéficiaires Épargne</p>
               {benefEpargneList.map((b, i) => (
                 <div key={i} className="flex justify-between text-xs">
-                  <span className="text-gray-600">• {b.nom}</span>
+                  <span className="text-navy-600">• {b.nom}</span>
                   {b.taux && <span className="font-medium">{b.taux}</span>}
                 </div>
               ))}
@@ -121,10 +121,10 @@ export function StepRecap(props: Props) {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-amber-600" />
-              MAGIST&apos;ASSUR PRÉVOYANCE
+              Magist&apos;Assur Prévoyance
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm bg-amber-50 rounded-lg p-4">
+          <CardContent className="space-y-2 text-sm bg-amber-50/70 rounded-xl p-4">
             {garantieDeces && (
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -140,7 +140,7 @@ export function StepRecap(props: Props) {
                 {assuresAssocies.length > 0 && (
                   <div className="ml-6 space-y-0.5">
                     {assuresAssocies.map((a, i) => (
-                      <p key={i} className="text-xs text-gray-600">• {LIEN_LABELS[a.lien_parente]} : {a.nom} ({a.date_naissance})</p>
+                      <p key={i} className="text-xs text-navy-600">• {LIEN_LABELS[a.lien_parente]} : {a.nom} ({a.date_naissance})</p>
                     ))}
                   </div>
                 )}
@@ -152,9 +152,9 @@ export function StepRecap(props: Props) {
             </div>
             {benefPrevList.length > 0 && (
               <div className="border-t border-amber-200 pt-2 space-y-1">
-                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Bénéficiaires Prévoyance</p>
+                <p className="text-xs font-semibold text-navy-600 uppercase tracking-wide">Bénéficiaires Prévoyance</p>
                 {benefPrevList.map((b, i) => (
-                  <p key={i} className="text-xs text-gray-600">• {b.nom}</p>
+                  <p key={i} className="text-xs text-navy-600">• {b.nom}</p>
                 ))}
               </div>
             )}
@@ -167,22 +167,22 @@ export function StepRecap(props: Props) {
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-600" />
+              <Users className="h-4 w-4 text-navy-600" />
               Correspondants
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {corresp1.nom && (
-              <div className="bg-blue-50 rounded-lg p-3 space-y-1">
-                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Correspondant 1</p>
+              <div className="bg-navy-50/60 rounded-xl p-3 space-y-1 ring-1 ring-navy-100">
+                <p className="text-xs font-semibold text-navy-700 uppercase tracking-wide">Correspondant 1</p>
                 <Row label="Nom & Prénom" value={`${corresp1.nom} ${corresp1.prenom}`} />
                 {corresp1.telephone && <Row label="Téléphone" value={corresp1.telephone} />}
                 {corresp1.domicile && <Row label="Domicile" value={corresp1.domicile} />}
               </div>
             )}
             {corresp2.nom && (
-              <div className="bg-blue-50 rounded-lg p-3 space-y-1">
-                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Correspondant 2</p>
+              <div className="bg-navy-50/60 rounded-xl p-3 space-y-1 ring-1 ring-navy-100">
+                <p className="text-xs font-semibold text-navy-700 uppercase tracking-wide">Correspondant 2</p>
                 <Row label="Nom & Prénom" value={`${corresp2.nom} ${corresp2.prenom}`} />
                 {corresp2.telephone && <Row label="Téléphone" value={corresp2.telephone} />}
                 {corresp2.domicile && <Row label="Domicile" value={corresp2.domicile} />}
@@ -196,26 +196,26 @@ export function StepRecap(props: Props) {
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <CreditCard className="h-4 w-4 text-green-600" />
+            <CreditCard className="h-4 w-4 text-emerald-600" />
             Paiement
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1.5 text-sm bg-green-50 rounded-lg p-4">
+        <CardContent className="space-y-1.5 text-sm bg-emerald-50/60 rounded-xl p-4">
           <Row label="Mode" value={MODE_LABELS[cot.mode_paiement] || cot.mode_paiement || "—"} bold />
           {cot.numero_compte && <Row label="N° de compte" value={cot.numero_compte} />}
           <Row label="1ère cotisation totale" value={formatCFA(totalEpargne + 10_000 + (hasPrevoyance ? primePrevo + 3_500 : 0))} bold />
-          <p className="text-xs text-gray-500 pt-1">Cotisations suivantes : {formatCFA(totalEpargne)}{hasPrevoyance ? ` + ${formatCFA(primePrevo)} (prévoyance)` : ""}</p>
+          <p className="text-xs text-navy-500 pt-1">Cotisations suivantes : {formatCFA(totalEpargne)}{hasPrevoyance ? ` + ${formatCFA(primePrevo)} (prévoyance)` : ""}</p>
         </CardContent>
       </Card>
 
       {/* ── Déclaration ── */}
       <Card className="border-0 shadow-sm">
-        <CardContent className="pt-4 space-y-3 text-xs text-gray-700">
-          <div className="bg-gray-50 rounded-lg p-3">
+        <CardContent className="pt-4 space-y-3 text-xs text-navy-700">
+          <div className="bg-navy-50/60 rounded-xl p-3 ring-1 ring-navy-100">
             <strong>Lu et approuvé :</strong> Je soussigné(e) {userName}, certifie l&apos;exactitude des informations fournies et demande la souscription au(x) contrat(s) MAGIST&apos;ASSUR auprès de NSIA Vie Assurances.
           </div>
           {hasPrevoyance && (
-            <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+            <div className="bg-amber-50 rounded-xl p-3 ring-1 ring-amber-100">
               <strong>Déclaration médicale :</strong> Je certifie avoir répondu avec sincérité et exactitude au questionnaire médical, sans rien dissimuler sur mon état de santé passé ou actuel. Toute réticence ou fausse déclaration entraînera la nullité du contrat.
             </div>
           )}
@@ -228,8 +228,8 @@ export function StepRecap(props: Props) {
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
     <div className="flex justify-between gap-4">
-      <span className="text-gray-500 shrink-0">{label}</span>
-      <span className={`text-right ${bold ? "font-bold text-gray-900" : "font-medium"}`}>{value}</span>
+      <span className="text-navy-500 shrink-0">{label}</span>
+      <span className={`text-right text-navy-800 ${bold ? "font-bold" : "font-medium"}`}>{value}</span>
     </div>
   );
 }

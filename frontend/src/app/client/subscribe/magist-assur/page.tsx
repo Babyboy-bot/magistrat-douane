@@ -1,12 +1,38 @@
 "use client";
 
 import { useEffect } from "react";
-import { Shield, ArrowLeft, Lock } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { ArrowLeft, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BrandMark } from "@/components/brand";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+
+function Locked({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+  const router = useRouter();
+  return (
+    <div className="mx-auto max-w-xl space-y-4 py-4">
+      <button onClick={() => router.push("/client/dashboard")} className="inline-flex items-center gap-1.5 text-sm font-medium text-navy-500 hover:text-navy-900">
+        <ArrowLeft className="h-4 w-4" /> Tableau de bord
+      </button>
+      <div className="overflow-hidden rounded-3xl border border-navy-100 bg-white text-center shadow-[0_24px_60px_-32px_rgb(16_28_52/0.35)]">
+        <div className="bg-[radial-gradient(120%_120%_at_50%_0%,var(--color-navy-700),var(--color-navy-950))] px-8 py-10">
+          <BrandMark size="lg" className="mx-auto" />
+          <h1 className="mt-4 font-display text-2xl font-semibold text-white">Magist&apos;Assur</h1>
+          <p className="mt-1 text-xs text-white/55">Assurance vie des magistrats — NSIA Vie Assurances</p>
+        </div>
+        <div className="p-8">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 ring-1 ring-amber-200">
+            <Lock className="h-6 w-6 text-amber-600" />
+          </div>
+          <h2 className="mt-4 font-display text-xl font-semibold text-navy-900">{title}</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-navy-500">{children}</p>
+          {action}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function MagistAssurPage() {
   const router = useRouter();
@@ -22,55 +48,25 @@ export default function MagistAssurPage() {
 
   if (isMagistrat && !isVerified) {
     return (
-      <div className="max-w-lg mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/client/dashboard")}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Shield className="h-6 w-6 text-purple-600" />
-            MAGIST&apos;ASSUR
-          </h1>
-        </div>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="pt-8 pb-8 text-center">
-            <Lock className="h-16 w-16 text-amber-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-700 mb-2">Compte en attente de vérification</h2>
-            <p className="text-gray-500 max-w-sm mx-auto">
-              Votre compte magistrat doit d&apos;abord être vérifié par un agent ACS avant de souscrire à MAGIST&apos;ASSUR.
-              Vous serez notifié dès l&apos;activation de vos accès.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <Locked title="Compte en attente de vérification">
+        Votre compte magistrat doit d&apos;abord être vérifié par un agent ACS avant de souscrire.
+        Vous serez notifié dès l&apos;activation de vos accès.
+      </Locked>
     );
   }
 
   if (!isMagistrat) {
     return (
-      <div className="max-w-lg mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/client/dashboard")}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Shield className="h-6 w-6 text-purple-600" />
-            MAGIST&apos;ASSUR
-          </h1>
-        </div>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="pt-8 pb-8 text-center">
-            <Lock className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-700 mb-2">Accès réservé aux magistrats</h2>
-            <p className="text-gray-500 max-w-sm mx-auto">
-              MAGIST&apos;ASSUR est le programme d&apos;assurance vie exclusivement réservé aux magistrats de Côte d&apos;Ivoire.
-            </p>
-            <Link href="/client/profile">
-              <Button variant="outline" className="mt-6">Modifier mon profil</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      <Locked
+        title="Programme réservé aux magistrats"
+        action={
+          <Link href="/client/profile">
+            <Button variant="outline" className="mt-6 rounded-xl">Voir mon profil</Button>
+          </Link>
+        }
+      >
+        Magist&apos;Assur est le programme d&apos;assurance vie exclusivement réservé aux magistrats de Côte d&apos;Ivoire.
+      </Locked>
     );
   }
 

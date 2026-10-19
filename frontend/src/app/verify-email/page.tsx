@@ -38,7 +38,7 @@ function VerifyEmailContent() {
   return (
     <Card className="shadow-xl border-0">
       <CardHeader className="space-y-1 pb-4">
-        <CardTitle className="text-2xl font-bold">Vérification de l'email</CardTitle>
+        <CardTitle className="text-2xl font-bold">Vérification de l&apos;email</CardTitle>
         <CardDescription>Confirmation de votre adresse email</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

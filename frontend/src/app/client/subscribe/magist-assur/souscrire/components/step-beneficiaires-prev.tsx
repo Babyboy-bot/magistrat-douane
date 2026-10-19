@@ -48,9 +48,9 @@ export function StepBeneficiairesPrev({ benefConjoint, setBenefConjoint, benefEn
 
   return (
     <Card className="border-0 shadow-sm">
-      <CardHeader><CardTitle className="text-base">Bénéficiaires Prévoyance</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">Bénéficiaires de la Prévoyance</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-gray-600">L&apos;assuré désigne comme bénéficiaire(s) en cas de décès avant le terme du contrat :</p>
+        <p className="text-sm text-navy-600">L&apos;assuré désigne comme bénéficiaire(s) en cas de décès avant le terme du contrat :</p>
 
         {epargneData && (
           <Button type="button" variant="outline" size="sm" onClick={copyFromEpargne} className="text-xs">
@@ -59,17 +59,17 @@ export function StepBeneficiairesPrev({ benefConjoint, setBenefConjoint, benefEn
         )}
 
         <div className="space-y-2">
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-3 p-3 bg-navy-50/60 rounded-xl ring-1 ring-navy-100">
             <Checkbox checked={benefConjoint} onCheckedChange={c => setBenefConjoint(!!c)} id="bcp" />
             <Label htmlFor="bcp" className="cursor-pointer">Conjoint(e) non séparé(e) de corps</Label>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-3 p-3 bg-navy-50/60 rounded-xl ring-1 ring-navy-100">
             <Checkbox checked={benefEnfants} onCheckedChange={c => setBenefEnfants(!!c)} id="bep" />
             <Label htmlFor="bep" className="cursor-pointer">Enfants nés ou à naître</Label>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+        <div className="flex items-center gap-3 p-3 bg-navy-50/60 rounded-xl ring-1 ring-navy-100">
           <Checkbox checked={hasAutres} onCheckedChange={c => toggleAutres(!!c)} id="bap" />
           <Label htmlFor="bap" className="cursor-pointer">Autre(s) bénéficiaire(s)</Label>
         </div>
@@ -77,31 +77,31 @@ export function StepBeneficiairesPrev({ benefConjoint, setBenefConjoint, benefEn
         {hasAutres && autresBenef.some(b => b.nom) && (
           <div className="space-y-1.5" data-field="benef_p_total">
             <div className="flex justify-between text-xs">
-              <span className="font-medium text-gray-600">Total répartition</span>
+              <span className="font-medium text-navy-600">Total répartition</span>
               <span className={`font-bold ${taux100 ? "text-emerald-600" : "text-orange-600"}`}>{totalTaux} % / 100 %</span>
             </div>
-            <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-2 w-full bg-navy-100 rounded-full overflow-hidden">
               <div className={`h-full rounded-full transition-all ${taux100 ? "bg-emerald-500" : "bg-orange-500"}`}
                 style={{ width: `${Math.min(100, totalTaux)}%` }} />
             </div>
             {!taux100 && (
-              <p className="text-xs text-orange-600 bg-orange-50 rounded px-3 py-1.5">⚠ La somme des taux de répartition doit être de 100% pour continuer.</p>
+              <p className="text-xs text-orange-700 bg-orange-50 rounded-lg px-3 py-1.5 ring-1 ring-orange-100">La somme des taux de répartition doit être de 100 % pour continuer.</p>
             )}
           </div>
         )}
         {hasAutres && (
           <div className="space-y-3">
             {autresBenef.map((b, i) => (
-              <div key={i} className="border rounded-lg p-3 space-y-2" data-field={`benef_p_${i}`}>
+              <div key={i} className="border border-navy-200 rounded-xl p-3 space-y-2" data-field={`benef_p_${i}`}>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-semibold text-gray-500">Bénéficiaire {i + 1}</span>
+                  <span className="text-xs font-semibold text-navy-500">Bénéficiaire {i + 1}</span>
                   {autresBenef.length > 1 && (
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAutresBenef(autresBenef.filter((_, idx) => idx !== i))}>
                       <Trash2 className="h-3 w-3 text-red-500" />
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div><Label className="text-xs">Nom &amp; Prénom(s)</Label><Input className="h-8 text-sm" value={b.nom} onChange={e => update(i, "nom", e.target.value)} /></div>
                   <div><Label className="text-xs">Date de naissance</Label><Input className="h-8 text-sm" type="date" max={new Date().toISOString().slice(0, 10)} value={b.date_naissance} onChange={e => update(i, "date_naissance", e.target.value)} /></div>
                   <div><Label className="text-xs">N° téléphone</Label><Input className="h-8 text-sm" value={b.telephone} onChange={e => update(i, "telephone", e.target.value)} /></div>

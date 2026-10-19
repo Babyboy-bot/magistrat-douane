@@ -138,7 +138,7 @@ export default function ProfilePage() {
                   <Badge className="text-xs bg-amber-100 text-amber-700">En attente de vérification</Badge>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mt-1">Membre depuis {user?.createdAt}</p>
+              <p className="text-xs text-gray-400 mt-1">Membre depuis {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "—"}</p>
             </div>
           </div>
         </CardContent>

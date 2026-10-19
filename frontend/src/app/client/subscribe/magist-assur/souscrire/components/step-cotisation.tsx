@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FileDrop } from "@/components/brand";
 import { PERIODICITE_LABELS, formatCFA } from "./types";
 import type { CotisationState } from "./types";
 
@@ -43,7 +44,7 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
 
   return (
     <Card className="border-0 shadow-sm">
-      <CardHeader><CardTitle className="text-base">3. Cotisation ÉPARGNE</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">Cotisation Épargne retraite</CardTitle></CardHeader>
       <CardContent className="space-y-4">
 
         <div>
@@ -64,23 +65,23 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
                 s("duree_annees", val);
               }}
             />
-            <span className="text-sm text-gray-500">ans{maxAnnees !== null ? ` (max ${maxAnnees})` : ""}</span>
+            <span className="text-sm text-navy-500">ans{maxAnnees !== null ? ` (max ${maxAnnees})` : ""}</span>
           </div>
         </div>
 
         <div>
           <Label>2. Périodicité <span className="text-red-500">*</span></Label>
-          <div className="grid grid-cols-4 gap-2 mt-2" data-field="periodicite">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2" data-field="periodicite">
             {Object.entries(PERIODICITE_LABELS).map(([k, v]) => (
               <button key={k} type="button" onClick={() => s("periodicite", k)}
-                className={`border rounded-lg py-2 text-sm font-medium transition ${cot.periodicite === k ? "bg-amber-600 text-white border-amber-600" : "border-gray-300 hover:border-amber-400"}`}>
+                className={`border rounded-xl py-2.5 text-sm font-medium transition shadow-xs ${cot.periodicite === k ? "bg-navy-900 text-white border-navy-900 shadow-[0_6px_16px_-8px_rgb(16_28_52/0.6)]" : "bg-white border-navy-200 text-navy-700 hover:border-amber-400 hover:bg-amber-50/40"}`}>
                 {v}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div><Label>3. Date 1ère cotisation <span className="text-red-500">*</span></Label><Input data-field="date_premiere_cotisation" type="date" min={new Date().toISOString().slice(0, 10)} value={cot.date_premiere_cotisation} onChange={e => s("date_premiere_cotisation", e.target.value)} /></div>
           <div><Label>Date d&apos;effet du contrat</Label><Input data-field="date_effet" type="date" min={new Date().toISOString().slice(0, 10)} value={cot.date_effet} onChange={e => s("date_effet", e.target.value)} /></div>
         </div>
@@ -89,19 +90,19 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
           <Label>4. Montant périodique <span className="text-red-500">*</span></Label>
           <div className="flex items-center gap-2 mt-1">
             <Input data-field="montant_cotisation" type="number" min={25000} step={5000} className="w-48" value={cot.montant_cotisation} onChange={e => s("montant_cotisation", e.target.value)} />
-            <span className="text-sm text-gray-500">FCFA (min. 25 000)</span>
+            <span className="text-sm text-navy-500">FCFA (min. 25 000)</span>
           </div>
         </div>
 
         {montant >= 25000 && (
           <div className="bg-amber-50 rounded-lg p-4 space-y-2 border border-amber-200">
             <p className="text-sm font-semibold text-amber-800">Détail — cotisation {periodeLabel.toLowerCase()}</p>
-            <div className="flex justify-between text-sm"><span className="text-gray-600">Cotisation Épargne</span><span className="font-medium">{formatCFA(montant)}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-gray-600">Frais accessoires</span><span className="font-medium">{formatCFA(1000)}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-navy-600">Cotisation Épargne</span><span className="font-medium">{formatCFA(montant)}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-navy-600">Frais accessoires</span><span className="font-medium">{formatCFA(1000)}</span></div>
             <div className="flex justify-between text-sm font-bold border-t border-amber-200 pt-2">
               <span>Total par période</span><span className="text-amber-700">{formatCFA(total)}</span>
             </div>
-            <p className="text-xs text-gray-500">+ 10 000 FCFA coût de police sur la 1ère cotisation → <strong>{formatCFA(total + 10000)}</strong></p>
+            <p className="text-xs text-navy-500">+ 10 000 FCFA coût de police sur la 1ère cotisation → <strong>{formatCFA(total + 10000)}</strong></p>
           </div>
         )}
 
@@ -126,7 +127,7 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
               }}
             />
             {ribStatus === null ? (
-              <p className="text-xs text-gray-400 mt-1">Recopiez le RIB tel qu&apos;imprimé sur votre chèque : CIxx + code guichet + n° compte + clé (ex. CI16 3012 4000 0000 6581 016). Ou n° de compte local — effacez « CI » si besoin.</p>
+              <p className="text-xs text-navy-400 mt-1">Recopiez le RIB tel qu&apos;imprimé sur votre chèque : CIxx + code guichet + n° compte + clé (exemple fictif : CI05 1234 5678 9012 3456 7890). Ou n° de compte local — effacez « CI » si besoin.</p>
             ) : isIban ? (
               <p className={`text-xs mt-1 font-medium ${ribStatus === "ok" ? "text-emerald-600" : ribStatus === "court" ? "text-amber-600" : "text-red-600"}`}>
                 {ribStatus === "ok"
@@ -140,26 +141,14 @@ export function StepCotisation({ cot, setCot, dateNaissance, ribFile, setRibFile
                 {ribStatus === "ok" ? `✓ N° de compte local (${ribClean.length} caractères)` : ribStatus === "court" ? `N° local incomplet — ${ribClean.length} caractère(s), min. 8` : `N° local trop long — ${ribClean.length} caractères, max. 24`}
               </p>
             )}
-            <div className="mt-2">
-              <p className="text-xs font-medium text-gray-700 mb-1">Importer le RIB *</p>
-              <label className="inline-flex items-center gap-2 cursor-pointer bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition">
-                <span>Choisir un fichier</span>
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  className="hidden"
-                  onChange={e => setRibFile?.(e.target.files?.[0] ?? null)}
-                />
-              </label>
-              {ribFile
-                ? <p className="text-xs text-green-700 mt-1">✓ {ribFile.name}</p>
-                : <p className="text-xs text-gray-400 mt-1">Aucun fichier sélectionné</p>
-              }
+            <div className="mt-3">
+              <FileDrop label="Relevé d'identité bancaire (RIB)" required file={ribFile} onChange={setRibFile}
+                hint="Photo ou PDF de votre RIB" />
             </div>
           </div>
         </div>
 
-        <p className="text-xs text-gray-400 italic">Contrat valide sous réserve d&apos;acceptation du risque par NSIA Vie et paiement de la 1ère cotisation.</p>
+        <p className="text-xs text-navy-400 italic">Contrat valide sous réserve d&apos;acceptation du risque par NSIA Vie et paiement de la 1ère cotisation.</p>
       </CardContent>
     </Card>
   );

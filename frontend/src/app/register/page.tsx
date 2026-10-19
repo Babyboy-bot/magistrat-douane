@@ -31,7 +31,6 @@ const getDashboardUrl = (role: string): string => {
 export default function RegisterPage() {
   const router = useRouter();
   const login = useAuthStore((state) => state.login);
-  const user = useAuthStore((state) => state.user);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({

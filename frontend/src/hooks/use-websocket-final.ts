@@ -217,7 +217,6 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
   const [notifications, setNotifications] = useState<AppNotification[]>(
     userId && _notifCache.has(userId) ? _notifCache.get(userId)! : []
   );
-  const initialLoadedRef = useRef(false); // garde uniquement pour compat (inutilisé)
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);

@@ -40,24 +40,24 @@ export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, bene
 
   return (
     <Card className="border-0 shadow-sm">
-      <CardHeader><CardTitle className="text-base">4. Bénéficiaires Épargne</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">Bénéficiaires de l&apos;Épargne</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-gray-600">Le souscripteur désigne comme bénéficiaire(s) en cas de décès de l&apos;assuré avant le terme du contrat :</p>
+        <p className="text-sm text-navy-600">Le souscripteur désigne comme bénéficiaire(s) en cas de décès de l&apos;assuré avant le terme du contrat :</p>
 
         <div className="space-y-2" data-field="benef_choix">
           {hasConjoint && (
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-3 p-3 bg-navy-50/60 rounded-xl ring-1 ring-navy-100">
             <Checkbox checked={benefConjoint} onCheckedChange={c => setBenefConjoint(!!c)} id="bc" />
             <Label htmlFor="bc" className="cursor-pointer">Conjoint(e) du souscripteur non séparé(e) de corps</Label>
           </div>
           )}
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-3 p-3 bg-navy-50/60 rounded-xl ring-1 ring-navy-100">
             <Checkbox checked={benefEnfants} onCheckedChange={c => setBenefEnfants(!!c)} id="be" />
             <Label htmlFor="be" className="cursor-pointer">Enfants nés ou à naître du souscripteur</Label>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+        <div className="flex items-center gap-3 p-3 bg-navy-50/60 rounded-xl ring-1 ring-navy-100">
           <Checkbox checked={hasAutres} onCheckedChange={c => toggleAutres(!!c)} id="ba" />
           <Label htmlFor="ba" className="cursor-pointer">Autre(s) bénéficiaire(s)</Label>
         </div>
@@ -65,31 +65,31 @@ export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, bene
         {hasAutres && autresBenef.some(b => b.nom) && (
           <div className="space-y-1.5" data-field="benef_e_total">
             <div className="flex justify-between text-xs">
-              <span className="font-medium text-gray-600">Total répartition</span>
+              <span className="font-medium text-navy-600">Total répartition</span>
               <span className={`font-bold ${taux100 ? "text-emerald-600" : "text-orange-600"}`}>{totalTaux} % / 100 %</span>
             </div>
-            <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-2 w-full bg-navy-100 rounded-full overflow-hidden">
               <div className={`h-full rounded-full transition-all ${taux100 ? "bg-emerald-500" : "bg-orange-500"}`}
                 style={{ width: `${Math.min(100, totalTaux)}%` }} />
             </div>
             {!taux100 && (
-              <p className="text-xs text-orange-600 bg-orange-50 rounded px-3 py-1.5">⚠ La somme des taux de répartition doit être de 100% pour continuer.</p>
+              <p className="text-xs text-orange-700 bg-orange-50 rounded-lg px-3 py-1.5 ring-1 ring-orange-100">La somme des taux de répartition doit être de 100 % pour continuer.</p>
             )}
           </div>
         )}
         {hasAutres && (
           <div className="space-y-3">
             {autresBenef.map((b, i) => (
-              <div key={i} className="border rounded-lg p-3 space-y-3" data-field={`benef_e_${i}`}>
+              <div key={i} className="border border-navy-200 rounded-xl p-3 space-y-3" data-field={`benef_e_${i}`}>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-semibold text-gray-500">Bénéficiaire {i + 1}</span>
+                  <span className="text-xs font-semibold text-navy-500">Bénéficiaire {i + 1}</span>
                   {autresBenef.length > 1 && (
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAutresBenef(autresBenef.filter((_, idx) => idx !== i))}>
                       <Trash2 className="h-3 w-3 text-red-500" />
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div><Label className="text-xs">Nom &amp; Prénom(s)</Label><Input className="h-8 text-sm" value={b.nom} onChange={e => update(i, "nom", e.target.value)} /></div>
                   <div><Label className="text-xs">En qualité de <span className="text-red-500">*</span></Label><Input className="h-8 text-sm" value={b.en_qualite_de} onChange={e => update(i, "en_qualite_de", e.target.value)} /></div>
                   <div><Label className="text-xs">Date de naissance</Label><Input className="h-8 text-sm" type="date" max={new Date().toISOString().slice(0, 10)} value={b.date_naissance} onChange={e => update(i, "date_naissance", e.target.value)} /></div>
@@ -108,17 +108,17 @@ export function StepBeneficiairesEpargne({ benefConjoint, setBenefConjoint, bene
           </div>
         )}
 
-        <div className="border border-gray-200 rounded-lg p-4 space-y-3 mt-2" data-field="consentement">
-          <p className="text-xs text-gray-600">
+        <div className="border border-navy-200 rounded-xl p-4 space-y-3 mt-2" data-field="consentement">
+          <p className="text-xs text-navy-600">
             Permettez-vous une intégration de votre profil dans notre base de données de clients susceptibles de recevoir des communications dans le cadre de nos programmes de fidélisation et de l&apos;actualité de NSIA Vie Assurances ?
           </p>
           <div className="flex gap-4">
             <button type="button" onClick={() => setConsentementDonnees(true)}
-              className={`px-6 py-2 rounded-lg border text-sm font-semibold transition ${consentementDonnees === true ? "bg-amber-600 text-white border-amber-600" : "border-gray-300 hover:border-amber-400"}`}>OUI</button>
+              className={`px-6 py-2 rounded-xl border text-sm font-semibold transition shadow-xs ${consentementDonnees === true ? "bg-navy-900 text-white border-navy-900 shadow-[0_6px_16px_-8px_rgb(16_28_52/0.6)]" : "bg-white border-navy-200 text-navy-700 hover:border-amber-400 hover:bg-amber-50/40"}`}>OUI</button>
             <button type="button" onClick={() => setConsentementDonnees(false)}
-              className={`px-6 py-2 rounded-lg border text-sm font-semibold transition ${consentementDonnees === false ? "bg-gray-700 text-white border-gray-700" : "border-gray-300 hover:border-gray-500"}`}>NON</button>
+              className={`px-6 py-2 rounded-xl border text-sm font-semibold transition shadow-xs ${consentementDonnees === false ? "bg-gray-700 text-white border-gray-700" : "bg-white border-navy-200 text-navy-700 hover:border-navy-300 hover:bg-navy-50/40"}`}>NON</button>
           </div>
-          <p className="text-xs text-gray-400">Vous pouvez retirer ce consentement à tout moment à : <span className="text-amber-600">ecoute.ci@nsiaassurances.com</span></p>
+          <p className="text-xs text-navy-400">Vous pouvez retirer ce consentement à tout moment à : <span className="text-amber-700">ecoute.ci@nsiaassurances.com</span></p>
         </div>
       </CardContent>
     </Card>

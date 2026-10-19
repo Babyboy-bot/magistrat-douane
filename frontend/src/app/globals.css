@@ -45,6 +45,35 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  --font-display: var(--font-playfair), Georgia, "Times New Roman", serif;
+
+  /* ── Identité ACS : marine institutionnel ── */
+  --color-navy-50: #f3f6fa;
+  --color-navy-100: #e4eaf3;
+  --color-navy-200: #c6d2e5;
+  --color-navy-300: #94a8cb;
+  --color-navy-400: #5f7aa8;
+  --color-navy-500: #3d5a8a;
+  --color-navy-600: #2a4472;
+  --color-navy-700: #1f3459;
+  --color-navy-800: #172745;
+  --color-navy-900: #101c34;
+  --color-navy-950: #0a1224;
+
+  /* ── Or antique : remplace la palette amber dans toute l'app ── */
+  --color-amber-50: #fbf8f0;
+  --color-amber-100: #f4ecd7;
+  --color-amber-200: #e8d6ab;
+  --color-amber-300: #d9bb78;
+  --color-amber-400: #c9a24f;
+  --color-amber-500: #b48a3a;
+  --color-amber-600: #8f6b22;
+  --color-amber-700: #74561c;
+  --color-amber-800: #5d451a;
+  --color-amber-900: #4b3818;
+  --color-amber-950: #2b1f0c;
+
+  --color-ivory: #f7f5f0;
 }
 
 :root {
@@ -123,6 +152,43 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ── Assistant Magist-Assur : cartes d'étape homogènes ── */
+.ma-wizard [data-slot="card"] {
+  border: 1px solid var(--color-navy-100);
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgb(16 28 52 / 0.04), 0 8px 24px -12px rgb(16 28 52 / 0.12);
+  background: white;
+}
+.ma-wizard [data-slot="card-header"] {
+  border-bottom: 1px solid var(--color-navy-50);
+  padding-bottom: 1rem;
+}
+.ma-wizard [data-slot="card-title"] {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-navy-900);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.ma-wizard [data-slot="card-title"]::before {
+  content: "";
+  width: 4px;
+  height: 1.1em;
+  border-radius: 999px;
+  background: linear-gradient(var(--color-amber-400), var(--color-amber-600));
+  flex-shrink: 0;
+}
+.ma-wizard [data-slot="label"] {
+  color: var(--color-navy-800);
+  font-weight: 500;
+}
+.ma-wizard input[data-slot="input"],
+.ma-wizard textarea {
+  background: white;
 }
 
 /* Champ en erreur dans le wizard Magist-Assur (défilement + focus sur le champ manquant) */

@@ -104,7 +104,7 @@ export default function HistoryPage() {
       case "valide": return "bg-emerald-100 text-emerald-800";
       case "refuse": return "bg-red-100 text-red-800";
       case "traite": return "bg-green-100 text-green-800";
-      default: return "bg-gray-100 text-gray-800";
+      default: return "bg-navy-50 text-navy-700";
     }
   };
 
@@ -114,16 +114,16 @@ export default function HistoryPage() {
       {cotationAction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
-            <h3 className="font-semibold text-gray-900">
+            <h3 className="font-semibold text-navy-900">
               {cotationAction.action === "valider" && "Valider le devis"}
               {cotationAction.action === "revision" && "Demander une révision"}
               {cotationAction.action === "refuser" && "Refuser le devis"}
             </h3>
             {cotationAction.action !== "valider" && (
               <div className="space-y-1.5">
-                <label className="text-sm text-gray-600">Motif (optionnel)</label>
+                <label className="text-sm text-navy-600">Motif (optionnel)</label>
                 <textarea
-                  className="w-full border rounded-lg p-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  className="w-full border border-navy-200 rounded-lg p-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-300"
                   rows={3}
                   placeholder={cotationAction.action === "revision" ? "Ex : Veuillez revoir la prime TTC..." : "Ex : Prix trop élevé..."}
                   value={cotationNote}
@@ -132,12 +132,12 @@ export default function HistoryPage() {
               </div>
             )}
             {cotationAction.action === "valider" && (
-              <p className="text-sm text-gray-500">Vous confirmez accepter ce devis. L&apos;agent recevra une notification et vous enverra les attestations.</p>
+              <p className="text-sm text-navy-500">Vous confirmez accepter ce devis. L&apos;agent recevra une notification et vous enverra les attestations.</p>
             )}
             <div className="flex gap-2 pt-1">
               <button
                 onClick={() => { setCotationAction(null); setCotationNote(""); }}
-                className="flex-1 border rounded-lg py-2 text-sm text-gray-600 hover:bg-gray-50"
+                className="flex-1 border border-navy-200 rounded-lg py-2 text-sm text-navy-600 hover:bg-navy-50"
                 disabled={cotationLoading}
               >Annuler</button>
               <button
@@ -159,11 +159,11 @@ export default function HistoryPage() {
       )}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Historique des opérations</h1>
-          <p className="text-gray-500 mt-1">Suivez l&apos;évolution de vos requêtes</p>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-navy-900">Historique des opérations</h1>
+          <p className="text-navy-500 mt-1">Suivez l&apos;évolution de vos requêtes</p>
         </div>
         <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-navy-400" />
           <Input
             placeholder="Rechercher une requête..."
             value={search}
@@ -192,7 +192,7 @@ export default function HistoryPage() {
           </>
         )}
         {!loading && filtered.map((r) => (
-          <Card key={r.id} id={`request-${r.id}`} className={`border-0 shadow-sm hover:shadow-md transition ${String(r.id) === String(targetId) ? "ring-2 ring-blue-400 bg-blue-50" : ""}`}>
+          <Card key={r.id} id={`request-${r.id}`} className={`border-0 shadow-sm hover:shadow-md transition ${String(r.id) === String(targetId) ? "ring-2 ring-amber-400 bg-amber-50/40" : ""}`}>
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
@@ -207,19 +207,19 @@ export default function HistoryPage() {
                         {REQUEST_STATUS_LABELS[r.status]}
                       </Badge>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-navy-500 mt-1">
                       {r.numero} • Soumis le {r.createdAt}
                     </p>
                     {r.agentNom && (r.status === "en_cours" || r.status === "traite") && (
-                      <div className="flex items-center gap-3 mt-1.5 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5">
+                      <div className="flex items-center gap-3 mt-1.5 bg-navy-50 ring-1 ring-navy-100 rounded-lg px-2.5 py-1.5">
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-blue-800">
+                          <p className="text-xs font-medium text-navy-800">
                             {r.status === "traite" ? "Traité par" : "Agent en charge"} : {r.agentNom}
                           </p>
                           {r.agentTelephone && (
                             <a
                               href={`tel:${r.agentTelephone}`}
-                              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium mt-0.5"
+                              className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-800 font-medium mt-0.5"
                             >
                               <Phone className="h-3 w-3" />
                               {r.agentTelephone}
@@ -237,7 +237,7 @@ export default function HistoryPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {r.documents.length > 0 && (
-                    <div className="flex items-center gap-1 text-xs text-gray-400">
+                    <div className="flex items-center gap-1 text-xs text-navy-400">
                       <FileText className="h-3.5 w-3.5" />
                       {r.documents.length} doc{r.documents.length > 1 ? "s" : ""}
                     </div>
@@ -253,7 +253,7 @@ export default function HistoryPage() {
               {/* Actions cotation — devis reçu */}
               {COTATION_TYPES.includes(r.type) && r.status === "devis_envoye" && (
                 <div className="mt-3 pt-3 border-t">
-                  <p className="text-xs text-purple-700 font-medium mb-2">📄 Votre devis est disponible ci-dessous. Quelle est votre décision ?</p>
+                  <p className="text-xs text-purple-700 font-medium mb-2">Votre devis est disponible ci-dessous. Quelle est votre décision ?</p>
                   <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => setCotationAction({ id: r.id, action: "valider" })}
@@ -282,10 +282,10 @@ export default function HistoryPage() {
                 <div className="mt-3 pt-3 border-t space-y-2">
                   {r.documents.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-gray-500 mb-1">Documents soumis</p>
+                      <p className="text-xs font-medium text-navy-500 mb-1">Documents soumis</p>
                       <div className="flex flex-wrap gap-2">
                         {r.documents.map((d) => (
-                          <span key={d.id} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                          <span key={d.id} className="text-xs bg-navy-50 text-navy-600 px-2 py-1 rounded">
                             {d.nom}
                           </span>
                         ))}
@@ -337,10 +337,13 @@ export default function HistoryPage() {
           </Card>
         ))}
 
-        {filtered.length === 0 && (
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400">Aucune requête trouvée</p>
+        {filtered.length === 0 && !loading && (
+          <div className="flex flex-col items-center rounded-2xl border border-dashed border-navy-200 bg-white px-6 py-12 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-navy-50 text-navy-400 ring-1 ring-navy-100">
+              <FileText className="h-6 w-6" />
+            </div>
+            <p className="mt-3 font-medium text-navy-900">Aucune requête trouvée</p>
+            <p className="mt-1 text-sm text-navy-400">Vos souscriptions et demandes apparaîtront ici.</p>
           </div>
         )}
       </div>

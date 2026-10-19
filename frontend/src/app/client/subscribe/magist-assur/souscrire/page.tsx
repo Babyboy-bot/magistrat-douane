@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { ArrowLeft, ArrowRight, Loader2, CheckCircle, ChevronDown, ChevronUp, TrendingUp, Shield, Heart, Clock, FileText, CreditCard, Users, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BrandMark } from "@/components/brand";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
 import { magistassurApi } from "@/lib/api";
@@ -111,35 +112,64 @@ const emptyQ = (): QuestionnaireState => ({
 const STEP_LABELS_FIXED = ["Identité", "Correspondants", "Assuré", "Cotisation", "Bénéf. Épargne", "Options"];
 const STEP_LABELS_PREV  = ["Garanties", "Bénéf. Prévoyance", "Questionnaire médical"];
 
-function StepIndicator({ current, steps, onJump }: { current: number; steps: string[]; onJump?: (i: number) => void }) {
-  const pct = Math.round(((current) / (steps.length - 1)) * 100);
+const STEP_HINTS: Record<string, string> = {
+  "Identité": "Vos informations personnelles et professionnelles",
+  "Correspondants": "Les personnes à contacter si nous ne pouvons pas vous joindre",
+  "Assuré": "La personne couverte par le contrat",
+  "Cotisation": "Montant, rythme et compte de prélèvement",
+  "Bénéf. Épargne": "Qui recevra votre capital",
+  "Options": "Complétez votre protection, si vous le souhaitez",
+  "Garanties": "Les membres de votre famille couverts",
+  "Bénéf. Prévoyance": "Qui recevra le capital prévoyance",
+  "Questionnaire médical": "Quelques questions sur votre état de santé",
+  "Récapitulatif": "Vérifiez avant d'envoyer votre demande",
+};
+
+function StepProgress({ current, steps, onJump, lastSaved }: {
+  current: number; steps: string[]; onJump?: (i: number) => void; lastSaved: Date | null;
+}) {
+  const pct = Math.round(((current + 1) / steps.length) * 100);
   return (
-    <div className="mb-6 space-y-2">
-      <div className="flex items-center justify-between text-xs text-gray-500">
-        <span className="font-medium text-amber-700">{steps[current]}</span>
-        <span>{current + 1} / {steps.length}</span>
-      </div>
-      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-        <div className="h-full bg-amber-600 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-      </div>
-      <div className="flex items-center gap-1 overflow-x-auto pb-1">
-        {steps.map((s, i) => (
-          <div key={`${s}-${i}`} className="flex items-center gap-1 shrink-0">
+    <div className="sticky top-16 z-30 -mx-4 border-b border-navy-100/70 bg-ivory/90 px-4 pb-4 pt-3 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="mx-auto max-w-3xl">
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-600">
+              Étape {current + 1} sur {steps.length}
+            </p>
+            <h2 className="truncate font-display text-xl font-semibold text-navy-900 sm:text-2xl">{steps[current]}</h2>
+            <p className="hidden truncate text-xs text-navy-400 sm:block">{STEP_HINTS[steps[current]]}</p>
+          </div>
+          {lastSaved && (
+            <p className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-100">
+              <CheckCircle className="h-3 w-3" />
+              <span className="hidden sm:inline">Enregistré</span> {lastSaved.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+          )}
+        </div>
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-navy-100">
+          <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-600 transition-all duration-500" style={{ width: `${pct}%` }} />
+        </div>
+        <div className="mt-2.5 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+          {steps.map((s, i) => (
             <button
+              key={`${s}-${i}`}
               type="button"
               disabled={i >= current}
               onClick={() => i < current && onJump?.(i)}
-              title={i < current ? `Revenir à l'étape « ${s} »` : undefined}
-              className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition ${
-                i < current ? "bg-amber-600 text-white cursor-pointer hover:ring-2 hover:ring-amber-300" :
-                i === current ? "bg-amber-600 text-white ring-2 ring-amber-300" :
-                "bg-gray-200 text-gray-500 cursor-default"}`}>
-              {i < current ? <CheckCircle className="h-3.5 w-3.5" /> : i + 1}
+              title={i < current ? `Revenir à « ${s} »` : undefined}
+              className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                i < current
+                  ? "bg-white text-navy-700 ring-1 ring-navy-100 hover:ring-amber-300"
+                  : i === current
+                    ? "bg-navy-900 text-white"
+                    : "text-navy-300"}`}
+            >
+              {i < current ? <CheckCircle className="h-3 w-3 text-emerald-600" /> : <span className="tabular-nums">{i + 1}</span>}
+              <span className={i === current ? "" : "hidden md:inline"}>{s}</span>
             </button>
-            <span className={`text-[10px] hidden sm:block mr-1 ${i === current ? "text-amber-700 font-semibold" : "text-gray-400"}`}>{s}</span>
-            {i < steps.length - 1 && <div className={`w-4 h-0.5 mx-0.5 ${i < current ? "bg-amber-600" : "bg-gray-200"}`} />}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -327,7 +357,6 @@ export default function SouscrirePage() {
       - (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0);
     const max = Math.max(1, 65 - age);
     setCot(prev => ({ ...prev, duree_annees: String(max) }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id.date_naissance]);
 
   useEffect(() => {
@@ -375,7 +404,6 @@ export default function SouscrirePage() {
   }, [invalidField]);
 
   const validateStep = (): boolean => {
-    const isMaried = id.situation_matrimoniale === "marie" || id.situation_matrimoniale === "concubin";
     switch (stepId) {
       case "identite":
         if (!id.civilite) return fail("civilite", "Veuillez sélectionner une civilité.");
@@ -633,26 +661,24 @@ export default function SouscrirePage() {
   /* ── Compte non vérifié : blocage avant toute saisie ── */
   if (user && !user.verified) {
     return (
-      <div className="max-w-lg mx-auto space-y-5">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/client/dashboard")}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Shield className="h-5 w-5 text-amber-600" />
-            MAGIST&apos;ASSUR
-          </h1>
-        </div>
-        <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-8 text-center">
-          <Lock className="h-14 w-14 text-amber-300 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-gray-700 mb-2">Compte en attente de vérification</h2>
-          <p className="text-sm text-gray-500 max-w-sm mx-auto">
-            Votre compte magistrat doit d&apos;abord être vérifié par un agent ACS avant de souscrire à MAGIST&apos;ASSUR.
-            Vous serez notifié dès l&apos;activation de vos accès.
-          </p>
-          <Button variant="outline" className="mt-6" onClick={() => router.push("/client/dashboard")}>
-            Retour au tableau de bord
-          </Button>
+      <div className="mx-auto max-w-xl py-6">
+        <div className="overflow-hidden rounded-3xl border border-navy-100 bg-white text-center shadow-[0_24px_60px_-32px_rgb(16_28_52/0.35)]">
+          <div className="bg-[radial-gradient(120%_120%_at_50%_0%,var(--color-navy-700),var(--color-navy-950))] px-8 py-10">
+            <BrandMark size="lg" className="mx-auto" />
+            <h1 className="mt-4 font-display text-2xl font-semibold text-white">Magist&apos;Assur</h1>
+          </div>
+          <div className="p-8">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 ring-1 ring-amber-200">
+              <Lock className="h-6 w-6 text-amber-600" />
+            </div>
+            <h2 className="mt-4 font-display text-xl font-semibold text-navy-900">Compte en attente de vérification</h2>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-navy-500">
+              Votre compte magistrat doit d&apos;abord être vérifié par un agent ACS. Vous serez notifié dès l&apos;activation de vos accès.
+            </p>
+            <Button variant="outline" className="mt-6 rounded-xl" onClick={() => router.push("/client/dashboard")}>
+              Retour au tableau de bord
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -660,229 +686,223 @@ export default function SouscrirePage() {
 
   /* ── Écran d'introduction ── */
   if (showIntro) {
+    const produits = [
+      {
+        icon: TrendingUp, titre: "Épargne retraite", tag: "Inclus", accent: true,
+        texte: "Constituez un capital retraite complémentaire, transmis à vos bénéficiaires en cas de décès avant le terme.",
+        points: ["Dès 25 000 FCFA par période", "Taux garanti 3,5 %/an + participations", "Rachat possible dès 15 % des cotisations"],
+      },
+      {
+        icon: Shield, titre: "Prévoyance décès", tag: "Optionnel", accent: false,
+        texte: "Un capital versé à vos proches en cas de décès, toutes causes.",
+        points: ["45 000 FCFA par an", "Capital de 10 000 000 FCFA", "Questionnaire médical simple"],
+      },
+      {
+        icon: Heart, titre: "Frais funéraires", tag: "Optionnel", accent: false,
+        texte: "Une indemnité forfaitaire pour les obsèques du magistrat et de sa famille.",
+        points: ["58 000 FCFA par an", "Magistrat et conjoint : 1 000 000 FCFA", "Enfants 500 000 · ascendants 750 000"],
+      },
+    ];
     return (
-      <div className="max-w-2xl mx-auto space-y-5 pb-10">
-        {/* En-tête */}
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/client/dashboard")}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Shield className="h-5 w-5 text-amber-600" />
-              MAGIST&apos;ASSUR
-            </h1>
-            <p className="text-xs text-gray-500">Assurance vie des magistrats — NSIA Vie Assurances</p>
-          </div>
-        </div>
+      <div className="mx-auto max-w-5xl space-y-6 pb-10 lg:space-y-8">
+        <button onClick={() => router.push("/client/dashboard")} className="inline-flex items-center gap-1.5 text-sm font-medium text-navy-500 hover:text-navy-900">
+          <ArrowLeft className="h-4 w-4" /> Tableau de bord
+        </button>
 
-        {/* Bannière personnalisée */}
-        <div className="bg-gradient-to-br from-amber-600 to-amber-800 rounded-2xl p-5 text-white">
-          <p className="text-sm opacity-80">Bienvenue,</p>
-          <p className="text-xl font-bold mt-0.5">{user?.nom} {user?.prenoms}</p>
-          <p className="text-sm opacity-75 mt-2">Après avoir rendu justice, assurez votre avenir et protégez votre famille.</p>
-          <div className="flex items-center gap-2 mt-3 text-xs opacity-70">
-            <Clock className="h-3.5 w-3.5" />
-            <span>Durée estimée : 15 à 20 minutes</span>
-          </div>
-        </div>
-
-        {/* Explication du parcours */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-          <p className="font-semibold mb-1">Comment ça fonctionne ?</p>
-          <p>Ce formulaire couvre jusqu&apos;à <strong>3 produits</strong> en une seule souscription. L&apos;Épargne est <strong>obligatoire</strong>. Les garanties Prévoyance sont <strong>optionnelles</strong> et vous seront proposées après l&apos;Épargne.</p>
-        </div>
-
-        {/* Les 3 produits */}
-        <p className="text-sm font-semibold text-gray-700 px-1">Les produits inclus dans ce formulaire</p>
-
-        <div className="space-y-3">
-          {/* Épargne */}
-          <div className="rounded-xl border-2 border-purple-200 bg-white p-4">
-            <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-gray-900">ÉPARGNE Retraite</span>
-                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">Obligatoire</span>
-                </div>
-                <p className="text-sm text-gray-500 mt-1">Constituez un capital retraite complémentaire. Transmis à vos bénéficiaires en cas de décès avant le terme.</p>
-                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
-                  <span>✓ Prime libre ≥ 25 000 FCFA / période</span>
-                  <span>✓ Taux garanti 3,5%/an + participations</span>
-                  <span>✓ Rachat possible dès 15% des cotisations</span>
+        {/* Hero */}
+        <section className="relative overflow-hidden rounded-3xl bg-[radial-gradient(130%_130%_at_100%_0%,var(--color-navy-700)_0%,var(--color-navy-900)_45%,var(--color-navy-950)_100%)] px-6 py-8 text-white shadow-[0_30px_70px_-34px_rgb(10_18_36/0.8)] sm:px-10 sm:py-12">
+          <div className="pointer-events-none absolute -right-20 -top-24 h-80 w-80 rounded-full bg-amber-400/15 blur-3xl" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-2/5 bg-[repeating-linear-gradient(135deg,transparent_0_26px,rgb(255_255_255/0.03)_26px_27px)] md:block" />
+          <div className="relative grid gap-8 md:grid-cols-[1.4fr_1fr] md:items-end">
+            <div>
+              <div className="flex items-center gap-3">
+                <BrandMark size="lg" />
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-300">Programme exclusif magistrats</p>
+                  <p className="text-xs text-white/50">en partenariat avec NSIA Vie Assurances</p>
                 </div>
               </div>
+              <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.1] sm:text-5xl">Magist&apos;Assur</h1>
+              <p className="mt-3 max-w-lg text-base text-white/70 sm:text-lg">
+                Après avoir rendu justice, assurez votre avenir et protégez votre famille.
+              </p>
+              <p className="mt-5 text-sm text-white/55">
+                Bienvenue, <span className="font-medium text-white">{user?.prenoms} {user?.nom}</span>
+              </p>
             </div>
-          </div>
-
-          {/* Prévoyance Décès */}
-          <div className="rounded-xl border-2 border-amber-100 bg-white p-4">
-            <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                <Shield className="h-5 w-5 text-amber-500" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-gray-900">PRÉVOYANCE Décès</span>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-semibold">Optionnel</span>
+            <dl className="grid grid-cols-3 gap-3 md:grid-cols-1">
+              {[
+                ["3,5 %", "taux annuel garanti"],
+                ["10 M", "FCFA de capital décès"],
+                ["15 min", "pour souscrire en ligne"],
+              ].map(([v, l]) => (
+                <div key={l} className="rounded-2xl bg-white/[0.06] p-3 ring-1 ring-white/10 backdrop-blur-sm md:flex md:items-baseline md:gap-3 md:p-4">
+                  <dt className="font-display text-2xl font-semibold text-amber-300 sm:text-3xl">{v}</dt>
+                  <dd className="mt-0.5 text-[11px] leading-tight text-white/60 sm:text-xs">{l}</dd>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">Capital versé à vos bénéficiaires en cas de décès toutes causes.</p>
-                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
-                  <span>✓ 45 000 FCFA/an</span>
-                  <span>✓ Capital : 10 000 000 FCFA</span>
-                  <span>✓ Questionnaire médical requis</span>
-                </div>
-              </div>
-            </div>
+              ))}
+            </dl>
           </div>
+        </section>
 
-          {/* Frais Funéraires */}
-          <div className="rounded-xl border-2 border-amber-100 bg-white p-4">
-            <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                <Heart className="h-5 w-5 text-amber-500" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-gray-900">FRAIS Funéraires</span>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-semibold">Optionnel</span>
-                </div>
-                <p className="text-sm text-gray-500 mt-1">Indemnité forfaitaire pour couvrir les obsèques du magistrat et de sa famille.</p>
-                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
-                  <span>✓ 58 000 FCFA/an</span>
-                  <span>✓ Magistrat 1M · Conjoint 1M · Enfants 500K</span>
-                  <span>✓ Ascendants 750K</span>
-                </div>
-              </div>
-            </div>
+        {/* Produits */}
+        <section>
+          <div className="mb-4">
+            <h2 className="font-display text-2xl font-semibold text-navy-900">Une seule souscription, jusqu&apos;à trois garanties</h2>
+            <p className="mt-1 text-sm text-navy-400">L&apos;Épargne retraite est le socle de votre contrat. Les garanties de prévoyance vous seront proposées ensuite, librement.</p>
           </div>
-        </div>
-
-        {/* Ce qu'il faut préparer */}
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-          <p className="text-sm font-semibold text-gray-700 mb-3">📎 Ce qu&apos;il vous faut préparer</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <FileText className="h-4 w-4 text-amber-500 shrink-0" />
-              <span>CNI ou Passeport en cours de validité</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CreditCard className="h-4 w-4 text-amber-500 shrink-0" />
-              <span>RIB (si prélèvement bancaire)</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Users className="h-4 w-4 text-amber-500 shrink-0" />
-              <span>Infos bénéficiaires (nom, contact)</span>
-            </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {produits.map(p => (
+              <article key={p.titre}
+                className={`relative flex flex-col rounded-3xl border bg-white p-6 transition hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-24px_rgb(16_28_52/0.35)] ${p.accent ? "border-amber-300 ring-4 ring-amber-100" : "border-navy-100"}`}>
+                <div className="flex items-center justify-between">
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${p.accent ? "bg-gradient-to-br from-amber-300 to-amber-500 text-navy-950" : "bg-navy-50 text-navy-700"}`}>
+                    <p.icon className="h-6 w-6" />
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${p.accent ? "bg-amber-100 text-amber-800" : "bg-navy-50 text-navy-500"}`}>{p.tag}</span>
+                </div>
+                <h3 className="mt-5 font-display text-xl font-semibold text-navy-900">{p.titre}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-navy-500">{p.texte}</p>
+                <ul className="mt-5 space-y-2 border-t border-navy-50 pt-4">
+                  {p.points.map(pt => (
+                    <li key={pt} className="flex items-start gap-2 text-sm text-navy-700">
+                      <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /> {pt}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
           </div>
-        </div>
+        </section>
 
-        {/* CTA */}
-        {hasDraft ? (
-          <>
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800 text-center">
-              📋 Un brouillon est en cours — votre saisie reprendra à l&apos;étape <strong>{step + 1}/{steps.length}</strong>.
-            </div>
-            <Button
-              onClick={() => setShowIntro(false)}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white h-12 text-base font-semibold rounded-xl">
-              Reprendre ma souscription
-              <ArrowRight className="h-5 w-5 ml-2" />
-            </Button>
-            <button
-              type="button"
-              onClick={async () => { await clearDraft(); window.location.reload(); }}
-              className="w-full text-sm text-red-500 hover:text-red-700 underline">
-              Recommencer à zéro (effacer le brouillon)
-            </button>
-          </>
-        ) : (
+        {/* Parcours + préparation */}
+        <section className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+          <div className="rounded-3xl border border-navy-100 bg-white p-6">
+            <h2 className="font-display text-xl font-semibold text-navy-900">Comment ça se passe</h2>
+            <ol className="mt-5 space-y-5">
+              {[
+                ["Vous remplissez le bulletin", "En ligne, à votre rythme. Votre saisie est enregistrée automatiquement : vous pouvez reprendre plus tard."],
+                ["Un conseiller ACS prend en charge votre dossier", "Il vérifie vos informations et vous contacte directement si besoin."],
+                ["NSIA Vie émet votre police", "Vous êtes notifié par email et dans votre espace dès l'activation du contrat."],
+              ].map(([t, d], i) => (
+                <li key={t} className="relative flex gap-4">
+                  {i < 2 && <span className="absolute left-[15px] top-9 h-[calc(100%-12px)] w-px bg-navy-100" />}
+                  <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy-900 font-display text-sm font-semibold text-amber-300">{i + 1}</span>
+                  <div>
+                    <p className="font-medium text-navy-900">{t}</p>
+                    <p className="mt-0.5 text-sm text-navy-500">{d}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div className="rounded-3xl border border-amber-200 bg-gradient-to-b from-amber-50 to-white p-6">
+            <h2 className="font-display text-xl font-semibold text-navy-900">À préparer</h2>
+            <p className="mt-1 text-sm text-navy-500">Gardez ces documents à portée de main :</p>
+            <ul className="mt-5 space-y-3">
+              {[
+                [FileText, "Votre CNI ou passeport", "recto et verso, en cours de validité"],
+                [CreditCard, "Votre RIB", "pour le prélèvement des cotisations"],
+                [Users, "Vos bénéficiaires", "nom, lien de parenté et téléphone"],
+              ].map(([Icon, t, d]) => {
+                const I = Icon as typeof FileText;
+                return (
+                  <li key={t as string} className="flex items-start gap-3 rounded-2xl bg-white p-3 ring-1 ring-amber-100">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700"><I className="h-4 w-4" /></div>
+                    <div>
+                      <p className="text-sm font-medium text-navy-900">{t as string}</p>
+                      <p className="text-xs text-navy-400">{d as string}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </section>
+
+        {/* Appel à l'action */}
+        <section className="flex flex-col items-center gap-3 rounded-3xl border border-navy-100 bg-white p-6 text-center sm:p-8">
+          {hasDraft && (
+            <p className="flex items-center gap-2 rounded-full bg-navy-50 px-4 py-1.5 text-sm text-navy-700">
+              <Clock className="h-4 w-4 text-amber-600" />
+              Brouillon en cours — vous reprendrez à l&apos;étape <strong>{step + 1}/{steps.length}</strong>
+            </p>
+          )}
           <Button
             onClick={() => setShowIntro(false)}
-            className="w-full bg-amber-600 hover:bg-amber-700 text-white h-12 text-base font-semibold rounded-xl">
-            Commencer ma souscription
-            <ArrowRight className="h-5 w-5 ml-2" />
+            className="h-14 w-full max-w-md rounded-2xl bg-navy-900 text-base font-semibold text-white shadow-[0_14px_30px_-14px_rgb(16_28_52/0.8)] hover:bg-navy-800">
+            {hasDraft ? "Reprendre ma souscription" : "Commencer ma souscription"}
+            <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
-        )}
-        <p className="text-xs text-center text-gray-400">Votre saisie est sauvegardée automatiquement. Vous pouvez reprendre à tout moment.</p>
+          {hasDraft ? (
+            <button type="button" onClick={async () => { await clearDraft(); window.location.reload(); }}
+              className="text-sm text-navy-400 underline-offset-4 hover:text-red-600 hover:underline">
+              Recommencer à zéro (effacer le brouillon)
+            </button>
+          ) : (
+            <p className="flex items-center gap-1.5 text-xs text-navy-400">
+              <Lock className="h-3.5 w-3.5" /> Données chiffrées et accessibles uniquement à votre conseiller ACS
+            </p>
+          )}
+        </section>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 pb-8">
+    <div className="ma-wizard mx-auto max-w-3xl pb-32">
       {/* En-tête */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => step > 0 ? setStep(step - 1) : router.push("/client/dashboard")}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-amber-600" />
-            MAGIST&apos;ASSUR
-          </h1>
-          <p className="text-xs text-gray-500">Bulletin d&apos;adhésion — NSIA Vie Assurances</p>
-        </div>
-      </div>
-
-      {/* Encadré contractuel */}
-      <div className="border border-amber-300 rounded-xl overflow-hidden">
-        <button type="button" onClick={() => setShowEncadre(v => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-amber-50 hover:bg-amber-100 transition text-left">
-          <span className="text-sm font-semibold text-amber-800">📋 Informations contractuelles MAGIST&apos;ASSUR</span>
-          {showEncadre ? <ChevronUp className="h-4 w-4 text-amber-700 shrink-0" /> : <ChevronDown className="h-4 w-4 text-amber-700 shrink-0" />}
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <button onClick={() => setShowIntro(true)} className="inline-flex items-center gap-1.5 text-sm font-medium text-navy-500 hover:text-navy-900">
+          <ArrowLeft className="h-4 w-4" /> Magist&apos;Assur
         </button>
-        {showEncadre && (
-          <div className="px-4 py-3 bg-white space-y-2 text-xs text-gray-700">
-            <p className="italic text-gray-500">Ce formulaire couvre 3 produits : Épargne Retraite (obligatoire), Prévoyance Décès (optionnel), Frais Funéraires (optionnel). Lisez attentivement chaque section avant de signer.</p>
-            <p><strong>Épargne :</strong> Prime ≥ 25 000 FCFA · Taux 3,5%/an + participations bénéfices · Rachat dès 15% cotisations versées</p>
-            <p><strong>Prévoyance Décès :</strong> 45 000 FCFA/an → 10 000 000 FCFA capital · Pas de valeur de rachat</p>
-            <p><strong>Frais Funéraires :</strong> 58 000 FCFA/an → Magistrat 1M · Conjoint 1M · Enfants 500K · Ascendants 750K</p>
-          </div>
-        )}
+        <button type="button" onClick={() => setShowEncadre(v => !v)}
+          className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-navy-600 ring-1 ring-navy-100 hover:ring-amber-300">
+          <FileText className="h-3.5 w-3.5 text-amber-600" />
+          Conditions
+          {showEncadre ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        </button>
       </div>
 
-      {/* Brouillon */}
-      {hasDraft && (
-        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm">
-          <span className="text-blue-700">📋 Brouillon restauré — étape {step + 1}/{steps.length}</span>
-          <button onClick={clearDraft} className="text-xs text-blue-500 hover:text-red-500 underline ml-2">Effacer</button>
+      {showEncadre && (
+        <div className="mb-4 space-y-2 rounded-2xl border border-navy-100 bg-white p-4 text-xs text-navy-600">
+          <p className="italic text-navy-400">Ce bulletin couvre 3 produits : Épargne retraite (inclus), Prévoyance décès et Frais funéraires (optionnels).</p>
+          <p><strong className="text-navy-900">Épargne :</strong> prime ≥ 25 000 FCFA · taux 3,5 %/an + participations aux bénéfices · rachat dès 15 % des cotisations versées</p>
+          <p><strong className="text-navy-900">Prévoyance décès :</strong> 45 000 FCFA/an → capital de 10 000 000 FCFA · pas de valeur de rachat</p>
+          <p><strong className="text-navy-900">Frais funéraires :</strong> 58 000 FCFA/an → magistrat 1 M · conjoint 1 M · enfants 500 K · ascendants 750 K</p>
         </div>
       )}
 
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <StepIndicator current={step} steps={steps} onJump={setStep} />
+      <StepProgress current={step} steps={steps} onJump={setStep} lastSaved={lastSaved} />
+
+      {hasDraft && step > 0 && (
+        <div className="mt-4 flex items-center justify-between rounded-xl bg-navy-50 px-3 py-2 text-xs text-navy-600">
+          <span>Brouillon restauré — vous reprenez là où vous vous étiez arrêté.</span>
+          <button onClick={clearDraft} className="ml-2 font-medium text-navy-400 underline-offset-2 hover:text-red-600 hover:underline">Effacer</button>
         </div>
-        {lastSaved && (
-          <p className="shrink-0 text-[10px] text-emerald-600 flex items-center gap-1 pb-1">
-            <CheckCircle className="h-3 w-3" />
-            Sauvegardé à {lastSaved.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-          </p>
-        )}
-      </div>
+      )}
 
-      {renderStep()}
+      <div className="mt-5">{renderStep()}</div>
 
-      {/* Navigation */}
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={goBack}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Retour
-        </Button>
-        {!isLast ? (
-          <Button className="bg-amber-600 hover:bg-amber-700" onClick={goNext}>
-            {stepId === "options" && !garantieDeces && !garantieFuneraires ? "Continuer sans prévoyance" : "Suivant"}
-            <ArrowRight className="h-4 w-4 ml-1" />
+      {/* Navigation fixe */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-navy-100 bg-white/90 backdrop-blur-md lg:left-72">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Button variant="ghost" onClick={goBack} className="h-11 rounded-xl text-navy-600">
+            <ArrowLeft className="mr-1 h-4 w-4" /> Retour
           </Button>
-        ) : (
-          <Button className="bg-amber-600 hover:bg-amber-700" onClick={handleSubmit} disabled={loading}>
-            {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Soumettre la demande
-          </Button>
-        )}
+          {!isLast ? (
+            <Button onClick={goNext} className="h-11 flex-1 rounded-xl bg-navy-900 px-6 font-semibold text-white hover:bg-navy-800 sm:flex-none">
+              {stepId === "options" && !garantieDeces && !garantieFuneraires ? "Continuer sans prévoyance" : "Continuer"}
+              <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button onClick={handleSubmit} disabled={loading}
+              className="h-11 flex-1 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-6 font-semibold text-white hover:from-amber-600 hover:to-amber-700 sm:flex-none">
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+              Envoyer ma demande
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

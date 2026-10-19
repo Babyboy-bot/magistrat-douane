@@ -20,7 +20,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
     setAntecedents({ ...antecedents, [pathologie]: { ...(antecedents[pathologie] || {}), [membre]: value } });
 
   const btn = (active: boolean) =>
-    `flex-1 border rounded-lg py-1.5 text-sm transition ${active ? "bg-amber-600 text-white border-amber-600" : "border-gray-300 hover:border-amber-400"}`;
+    `flex-1 border rounded-lg py-1.5 text-sm transition ${active ? "bg-navy-900 text-white border-navy-900 shadow-[0_6px_16px_-8px_rgb(16_28_52/0.6)]" : "bg-white border-navy-200 text-navy-700 hover:border-amber-400 hover:bg-amber-50/40"}`;
 
   return (
     <div className="space-y-4">
@@ -33,13 +33,13 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
             <p><strong>NB :</strong> Si vous ignorez votre taille, poids ou tension, rendez-vous dans un établissement médical.</p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div><Label>1. Taille (cm) <span className="text-red-500">*</span></Label><Input data-field="taille_cm" type="number" min={0} value={q.taille_cm} onChange={e => s("taille_cm", e.target.value)} placeholder="ex: 175" /></div>
             <div><Label>2. Poids (kg) <span className="text-red-500">*</span></Label><Input data-field="poids_kg" type="number" min={0} value={q.poids_kg} onChange={e => s("poids_kg", e.target.value)} placeholder="ex: 70" /></div>
             <div><Label>3. Tension artérielle <span className="text-red-500">*</span></Label><Input data-field="tension_arterielle" value={q.tension_arterielle} onChange={e => s("tension_arterielle", e.target.value)} placeholder="ex: 12/8" /></div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="mb-2 block">4. Fumez-vous ?</Label>
               <div className="flex gap-3">
@@ -59,7 +59,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
               <div className="grid grid-cols-2 gap-1" data-field="alcool">
                 {[["non","Non"],["pas_du_tout","Pas du tout"],["a_l_occasion","À l'occasion"],["regulierement","Régulièrement"]].map(([v, l]) => (
                   <button key={v} type="button" onClick={() => s("alcool", v)}
-                    className={`border rounded-lg py-1.5 text-xs transition ${q.alcool === v ? "bg-amber-600 text-white border-amber-600" : "border-gray-300 hover:border-amber-400"}`}>{l}</button>
+                    className={`border rounded-lg py-1.5 text-xs transition ${q.alcool === v ? "bg-navy-900 text-white border-navy-900 shadow-[0_6px_16px_-8px_rgb(16_28_52/0.6)]" : "bg-white border-navy-200 text-navy-700 hover:border-amber-400 hover:bg-amber-50/40"}`}>{l}</button>
                 ))}
               </div>
             </div>
@@ -67,7 +67,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
 
           <div><Label>6. Vos distractions / loisirs <span className="text-red-500">*</span></Label><Input data-field="distractions" value={q.distractions} onChange={e => s("distractions", e.target.value)} /></div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="mb-2 block">7. Pratiquez-vous un sport ?</Label>
               <div className="flex gap-3">
@@ -78,7 +78,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
                 <div className="flex gap-2 mt-2">
                   {[["amateur","Amateur"],["professionnel","Professionnel"]].map(([v, l]) => (
                     <button key={v} type="button" onClick={() => s("sport_titre", v)}
-                      className={`flex-1 border rounded-lg py-1.5 text-xs ${q.sport_titre === v ? "bg-amber-600 text-white border-amber-600" : "border-gray-300"}`}>{l}</button>
+                      className={`flex-1 border rounded-lg py-1.5 text-xs transition ${q.sport_titre === v ? "bg-navy-900 text-white border-navy-900 shadow-[0_6px_16px_-8px_rgb(16_28_52/0.6)]" : "bg-white border-navy-200 text-navy-700 hover:border-amber-400 hover:bg-amber-50/40"}`}>{l}</button>
                   ))}
                 </div>
               )}
@@ -116,25 +116,25 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
               }));
               setAntecedents(next);
             }}
-            className="mt-2 text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg px-3 py-1.5 font-medium text-gray-700 transition self-start"
+            className="mt-2 text-xs bg-navy-50 hover:bg-navy-100 border border-navy-200 rounded-xl px-3 py-1.5 font-medium text-navy-700 transition self-start"
           >
-            ✗ Mettre &quot;Non&quot; partout
+            Tout répondre « Non »
           </button>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto -mx-2" data-field="antecedents">
             <table className="w-full text-xs min-w-[600px]">
               <thead>
-                <tr className="bg-gray-100">
+                <tr className="bg-navy-50">
                   <th className="text-left p-2 font-semibold w-44">Affections</th>
                   {MEMBRES_LABELS.map(m => <th key={m} className="p-1 text-center font-semibold text-[10px] leading-tight">{m}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {PATHOLOGIES.map(cat => cat.items.map((item, idx) => (
-                  <tr key={`${cat.categorie}-${item}`} className={idx === 0 ? "border-t-2 border-gray-200" : "border-t border-gray-100"}>
-                    <td className="p-1.5 text-gray-700 align-top">
-                      {idx === 0 && <span className="text-[9px] text-gray-400 block font-semibold">{cat.categorie}</span>}
+                  <tr key={`${cat.categorie}-${item}`} className={idx === 0 ? "border-t-2 border-navy-200" : "border-t border-navy-50"}>
+                    <td className="p-1.5 text-navy-700 align-top">
+                      {idx === 0 && <span className="text-[9px] text-navy-400 block font-semibold">{cat.categorie}</span>}
                       {item}
                     </td>
                     {isAutresItem(item) ? (
@@ -142,7 +142,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
                         <input
                           type="text"
                           placeholder="Précisez si applicable…"
-                          className="w-full text-xs border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                          className="w-full text-xs border border-navy-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400"
                           value={antecedents[item]?.["texte"] || ""}
                           onChange={e => setAnt(item, "texte", e.target.value)}
                         />
@@ -151,7 +151,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
                       MEMBRES_KEYS.map(mk => (
                         <td key={mk} className="p-1 text-center align-middle">
                           <select
-                            className={`text-xs border rounded px-1 py-0.5 w-12 ${!antecedents[item]?.[mk] ? "border-red-200 bg-red-50" : "border-gray-200"}`}
+                            className={`text-xs border rounded px-1 py-0.5 w-12 ${!antecedents[item]?.[mk] ? "border-red-200 bg-red-50" : "border-navy-200"}`}
                             value={antecedents[item]?.[mk] || ""}
                             onChange={e => setAnt(item, mk, e.target.value)}
                           >
@@ -167,7 +167,7 @@ export function StepQuestionnaire({ q, setQ, antecedents, setAntecedents }: Prop
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-gray-400 mt-2">Les cellules en rouge doivent être remplies (Oui ou Non).</p>
+          <p className="text-xs text-navy-400 mt-2">Les cellules en rouge doivent être remplies (Oui ou Non).</p>
         </CardContent>
       </Card>
     </div>

@@ -23,13 +23,11 @@ import { toast } from "sonner";
 import { usePaginatedUsers, useClientEmissions, useClientRequests, useUsers } from "@/hooks/use-api-data";
 import { usersApi } from "@/lib/api";
 import { EmissionFormDialog } from "@/app/agent/emissions/components/emission-form-dialog";
-import { PROFESSION_LABELS, REQUEST_TYPE_LABELS, Emission } from "@/lib/types";
+import { PROFESSION_LABELS, REQUEST_TYPE_LABELS } from "@/lib/types";
 
 const PAGE_SIZE = 15;
 type Segment = "magistrats" | "douaniers" | "autres";
 
-
-const formatCurrency = (value: number) => `${new Intl.NumberFormat("fr-FR").format(value)} FCFA`;
 
 const formatDate = (iso: string) => {
   if (!iso) return "";
@@ -70,14 +68,6 @@ export default function AgentClientsPage() {
   const { data: selectedRequests } = useClientRequests(selectedClientId ?? undefined);
   const selectedClient = useMemo(() => clients.find((c) => c.id === selectedClientId) ?? null, [clients, selectedClientId]);
   const selectedEmissions = useMemo(() => emissions ?? [], [emissions]);
-
-  const selectedStats = useMemo(() => {
-    if (!selectedClient) return null;
-    const primeTotale = selectedEmissions.reduce((s: number, e: Emission) => s + e.primeTTC, 0);
-    const primePayee = selectedEmissions.reduce((s: number, e: Emission) =>
-      s + e.paiements.reduce((ps, p) => ps + p.montantRegle, 0), 0);
-    return { primeTotale, primePayee, primeAPayer: primeTotale - primePayee };
-  }, [selectedClient, selectedEmissions]);
 
   const handleVerify = async (clientId: string) => {
     setVerifyingId(clientId);
