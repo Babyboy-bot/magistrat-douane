@@ -1,0 +1,16 @@
+# Terminaison TLS : certificat Let's Encrypt obtenu et renouvelé automatiquement.
+# DOMAIN vient du .env (ex. acs-assurance.ci). Avec DOMAIN=localhost, Caddy
+# génère un certificat local auto-signé (utile pour tester la stack de prod).
+{$DOMAIN:localhost} {
+	encode gzip
+
+	header {
+		defer
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		-Server
+	}
+
+	# Caddy écrase X-Forwarded-For avec l'IP réelle du client (non falsifiable)
+	# et pose X-Forwarded-Proto=https. WebSockets gérés nativement.
+	reverse_proxy nginx:80
+}

@@ -357,6 +357,11 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
+# Derrière Caddy (TLS) → nginx → Django : faire confiance au X-Forwarded-Proto du proxy.
+# À n'activer que si Django n'est joignable QUE via ce proxy (sinon en-tête falsifiable).
+if config('BEHIND_HTTPS_PROXY', default=False, cast=bool):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # ── Email ──
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')

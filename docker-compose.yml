@@ -36,12 +36,13 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file: .env
+    # ALLOWED_HOSTS / CSRF_TRUSTED_ORIGINS / CORS_ALLOWED_ORIGINS viennent du .env
     environment:
       DB_HOST: db
       REDIS_URL: redis://redis:6379/0
+      # Caddy redirige déjà HTTP → HTTPS ; Django ne doit pas le refaire
       SECURE_SSL_REDIRECT: "False"
-      USE_X_FORWARDED_HOST: "True"
-      ALLOWED_HOSTS: "backend,localhost,127.0.0.1,acs.localhost,192.168.1.50"
+      BEHIND_HTTPS_PROXY: "True"
       WEB_CONCURRENCY: "3"
     volumes:
       - media_files:/app/media
@@ -74,7 +75,8 @@ services:
       redis:
         condition: service_healthy
 
-  # ── Backup PostgreSQL (toutes les 24h, rétention 7 jours) ──
+  # ── Backup PostgreSQL + médias CNI/RIB (toutes les 24h, rétention 7 jours) ──
+  # ⚠ Les sauvegardes restent sur le serveur : les copier aussi hors du serveur.
   db_backup:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -85,15 +87,17 @@ services:
       PGDATABASE: ${DB_NAME:-magistrat_douane}
     volumes:
       - db_backups:/backups
+      - media_files:/media:ro
     depends_on:
       db:
         condition: service_healthy
     command: >
       sh -c "while true; do
-        FILENAME=/backups/backup_$$(date +%Y%m%d_%H%M%S).sql.gz;
-        pg_dump | gzip > $$FILENAME;
-        echo \"Backup: $$FILENAME\";
-        find /backups -name '*.sql.gz' -mtime +7 -delete;
+        STAMP=$$(date +%Y%m%d_%H%M%S);
+        pg_dump | gzip > /backups/backup_$$STAMP.sql.gz;
+        tar czf /backups/media_$$STAMP.tar.gz -C /media .;
+        echo \"Backup: base + médias $$STAMP\";
+        find /backups \\( -name '*.sql.gz' -o -name 'media_*.tar.gz' \\) -mtime +7 -delete;
         sleep 86400;
       done"
 
@@ -127,12 +131,29 @@ services:
     depends_on:
       - backend
 
-  # ── Nginx reverse proxy ──
+  # ── Caddy : seul point d'entrée public, HTTPS automatique (Let's Encrypt) ──
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - nginx
+
+  # ── Nginx reverse proxy (interne, uniquement joignable par Caddy) ──
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
-    ports:
-      - "8080:80"
+    expose:
+      - "80"
     volumes:
       - ./nginx.docker.conf:/etc/nginx/conf.d/default.conf:ro
       - static_files:/app/staticfiles:ro
@@ -147,3 +168,5 @@ volumes:
   media_files:
   static_files:
   db_backups:
+  caddy_data:
+  caddy_config:
