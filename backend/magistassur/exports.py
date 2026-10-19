@@ -5,6 +5,7 @@ Les exports Excel et PDF sont générés à partir des MÊMES sections
 """
 import io
 from datetime import date
+from xml.sax.saxutils import escape as xml_escape
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -347,7 +348,9 @@ def _pdf_rows(elements, rows, styles):
     from reportlab.lib import colors
     from reportlab.lib.units import mm
 
-    data = [[lbl, Paragraph(str(val), styles["ma_cell"])] for lbl, val in rows]
+    # Valeurs saisies par le client : échappées, sinon ReportLab interprète le
+    # balisage (<img src="/chemin/serveur"> lirait un fichier du disque).
+    data = [[lbl, Paragraph(xml_escape(str(val)), styles["ma_cell"])] for lbl, val in rows]
     t = Table(data, colWidths=[70 * mm, 100 * mm])
     style = TableStyle([
         ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
@@ -425,7 +428,7 @@ def _export_pdf(title_text, doc_title, filename, sections, num_police):
 
     elements.append(Paragraph(title_text, styles["ma_title"]))
     elements.append(Paragraph(
-        f"N° Police : <b>{num_police or 'En attente'}</b>   |   "
+        f"N° Police : <b>{xml_escape(num_police or 'En attente')}</b>   |   "
         f"Exporté le {date.today().strftime('%d/%m/%Y')}",
         styles["ma_subtitle"]
     ))

@@ -98,16 +98,22 @@ class ContratEpargneCreateSerializer(serializers.ModelSerializer):
             "pris_en_charge_par",
             "code_inspection",
             "envoye_nsia_at",
+            # Fichiers : uniquement via l'action upload-documents, qui valide
+            # taille + type réel (sinon HTML/SVG servi aux agents = XSS stocké).
+            "piece_identite",
+            "piece_identite_verso",
+            "rib_document",
         ]
+        extra_kwargs = {"client": {"required": False}}
 
-    def to_internal_value(self, data):
-        # client est assigné par perform_create, pas requis dans le payload
-        if 'client' not in data and self.context.get('request'):
-            user = self.context['request'].user
-            if user.role == 'client':
-                data = dict(data)
-                data['client'] = user.id
-        return super().to_internal_value(data)
+    def validate(self, attrs):
+        # Un client souscrit pour lui-même (forcé dans perform_create) ;
+        # un agent doit désigner le client concerné.
+        request = self.context.get("request")
+        if (self.instance is None and request and request.user.role != "client"
+                and not attrs.get("client")):
+            raise serializers.ValidationError({"client": "Ce champ est obligatoire."})
+        return super().validate(attrs)
 
     def validate_beneficiaires(self, value):
         if value:

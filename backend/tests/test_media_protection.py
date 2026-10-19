@@ -21,10 +21,17 @@ class TestProtectedMedia:
         resp = api_client.get(f"/media/{media_file}")
         assert resp.status_code == 401
 
-    def test_authenticated_gets_file(self, api_client, client_user, media_file):
-        api_client.cookies["access_token"] = str(RefreshToken.for_user(client_user).access_token)
+    def test_authenticated_gets_file(self, api_client, agent, media_file):
+        api_client.cookies["access_token"] = str(RefreshToken.for_user(agent).access_token)
         resp = api_client.get(f"/media/{media_file}")
         assert resp.status_code == 200
+        assert resp["Content-Type"] == "application/pdf"
+
+    def test_client_cannot_read_unowned_file(self, api_client, client_user, media_file):
+        """Un fichier non rattaché au client lui est refusé (anti-IDOR)."""
+        api_client.cookies["access_token"] = str(RefreshToken.for_user(client_user).access_token)
+        resp = api_client.get(f"/media/{media_file}")
+        assert resp.status_code == 404
 
     def test_inactive_user_rejected(self, api_client, client_user, media_file):
         client_user.is_active = False

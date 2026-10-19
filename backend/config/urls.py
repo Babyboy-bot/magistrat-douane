@@ -104,7 +104,15 @@ def protected_media_view(request, path):
     file_path = os.path.join(settings.MEDIA_ROOT, normalized)
     if not os.path.isfile(file_path):
         raise Http404
-    return FileResponse(open(file_path, "rb"))
+    # Type déterminé par la signature réelle, jamais par l'extension : un fichier
+    # hors PDF/JPEG/PNG n'est jamais rendu par le navigateur (anti-XSS stocké).
+    from core.file_validators import ALLOWED_TYPES_DOCUMENT, _detect_magic
+    fh = open(file_path, "rb")
+    detected = _detect_magic(fh.read(16))
+    fh.seek(0)
+    if detected in ALLOWED_TYPES_DOCUMENT:
+        return FileResponse(fh, content_type=detected)
+    return FileResponse(fh, as_attachment=True, content_type="application/octet-stream")
 
 
 urlpatterns = [
