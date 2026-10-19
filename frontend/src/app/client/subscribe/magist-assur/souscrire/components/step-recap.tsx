@@ -1,6 +1,6 @@
 "use client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, ShieldCheck, Heart, CheckCircle2, Users, CreditCard, User } from "lucide-react";
+import { Vault, ShieldCheck, Heart, CheckCircle2, Users, CreditCard, User } from "lucide-react";
 import { INDEMNITES, LIEN_LABELS, PERIODICITE_LABELS, formatCFA } from "./types";
 import type {
   IdentiteState, CorrespondantState, CotisationState, AssureState,
@@ -81,7 +81,7 @@ export function StepRecap(props: Props) {
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-amber-600" />
+            <Vault className="h-4 w-4 text-amber-600" />
             Magist&apos;Assur Épargne
           </CardTitle>
         </CardHeader>

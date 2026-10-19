@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { ArrowLeft, ArrowRight, Loader2, CheckCircle, ChevronDown, ChevronUp, TrendingUp, Shield, Heart, Clock, FileText, CreditCard, Users, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, CheckCircle, ChevronDown, ChevronUp, Vault, HeartHandshake, Heart, Clock, FileText, CreditCard, Users, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/brand";
 import { useAuthStore } from "@/stores/auth-store";
@@ -688,12 +688,12 @@ export default function SouscrirePage() {
   if (showIntro) {
     const produits = [
       {
-        icon: TrendingUp, titre: "Épargne retraite", tag: "Inclus", accent: true,
+        icon: Vault, titre: "Épargne retraite", tag: "Inclus", accent: true,
         texte: "Constituez un capital retraite complémentaire, transmis à vos bénéficiaires en cas de décès avant le terme.",
         points: ["Dès 25 000 FCFA par période", "Taux garanti 3,5 %/an + participations", "Rachat possible dès 15 % des cotisations"],
       },
       {
-        icon: Shield, titre: "Prévoyance décès", tag: "Optionnel", accent: false,
+        icon: HeartHandshake, titre: "Prévoyance décès", tag: "Optionnel", accent: false,
         texte: "Un capital versé à vos proches en cas de décès, toutes causes.",
         points: ["45 000 FCFA par an", "Capital de 10 000 000 FCFA", "Questionnaire médical simple"],
       },

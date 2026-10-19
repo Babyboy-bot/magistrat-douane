@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, FileText, Shield, Download, Eye, Clock, CheckCircle, PiggyBank, Heart } from "lucide-react";
+import { AlertCircle, FileText, Shield, Download, Eye, Clock, CheckCircle, Vault, HeartHandshake } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/brand";
@@ -171,8 +171,8 @@ export default function ClientDashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard label="Contrats Magist'Assur" value={totalContrats} icon={Shield} tone="navy"
             hint={contratsActifs > 0 ? `${contratsActifs} actif${contratsActifs > 1 ? "s" : ""}` : undefined} />
-          <StatCard label="Épargne retraite" value={epargne.length} icon={PiggyBank} tone="gold" />
-          <StatCard label="Prévoyance" value={prevoyance.length} icon={Heart} tone="rose" />
+          <StatCard label="Épargne retraite" value={epargne.length} icon={Vault} tone="gold" />
+          <StatCard label="Prévoyance" value={prevoyance.length} icon={HeartHandshake} tone="rose" />
         </div>
       )}
 
@@ -209,7 +209,7 @@ export default function ClientDashboard() {
                 return (
                   <div key={`${kind}-${c.id}`} className="flex items-start gap-3 rounded-2xl border border-navy-100 p-4 transition hover:border-amber-200 hover:shadow-[0_10px_30px_-18px_rgb(16_28_52/0.35)]">
                     <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${kind === "epargne" ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-600"}`}>
-                      {kind === "epargne" ? <PiggyBank className="h-5 w-5" /> : <Heart className="h-5 w-5" />}
+                      {kind === "epargne" ? <Vault className="h-5 w-5" /> : <HeartHandshake className="h-5 w-5" />}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">

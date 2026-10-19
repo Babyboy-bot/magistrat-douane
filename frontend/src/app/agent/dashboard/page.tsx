@@ -2,8 +2,8 @@
 
 import {
   Shield,
-  PiggyBank,
-  Heart,
+  Vault,
+  HeartHandshake,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -56,7 +56,7 @@ export default function AgentDashboard() {
 
   const DossierRow = ({ c, type }: { c: Record<string, unknown>; type: "epargne" | "prevoyance" }) => {
     const isEpargne = type === "epargne";
-    const Icon = isEpargne ? PiggyBank : Heart;
+    const Icon = isEpargne ? Vault : HeartHandshake;
     return (
       <Link href="/agent/magistassur" className="block">
         <div className="flex items-center justify-between gap-3 rounded-xl border border-navy-50 bg-navy-50/40 p-3 transition hover:border-amber-200 hover:bg-amber-50/40">
@@ -113,8 +113,8 @@ export default function AgentDashboard() {
 
       {/* Répartition Épargne / Prévoyance */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <StatCard label="Contrats Épargne" value={epargne.length} icon={PiggyBank} tone="navy" />
-        <StatCard label="Contrats Prévoyance" value={prevoyance.length} icon={Heart} tone="gold" />
+        <StatCard label="Contrats Épargne" value={epargne.length} icon={Vault} tone="navy" />
+        <StatCard label="Contrats Prévoyance" value={prevoyance.length} icon={HeartHandshake} tone="gold" />
       </div>
 
       {/* Dossiers récents */}
