@@ -2,13 +2,13 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Shield, ArrowLeft, MailCheck, MailX } from "lucide-react";
+import { ArrowLeft, MailCheck, MailX, MailWarning } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthShell } from "@/components/brand";
 import { authApi } from "@/lib/api";
 import Link from "next/link";
 
-const PRIMARY_BUTTON = "w-full h-11 bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)] text-white font-semibold";
+const PRIMARY_BUTTON = "h-11 w-full rounded-xl bg-navy-900 font-semibold text-white hover:bg-navy-800";
 
 type Status = "loading" | "success" | "error" | "missing";
 
@@ -36,67 +36,57 @@ function VerifyEmailContent() {
   }, [uid, token]);
 
   return (
-    <Card className="shadow-xl border-0">
-      <CardHeader className="space-y-1 pb-4">
-        <CardTitle className="text-2xl font-bold">Vérification de l&apos;email</CardTitle>
-        <CardDescription>Confirmation de votre adresse email</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {status === "loading" && (
-          <div className="flex items-center justify-center gap-2 py-6 text-gray-500">
-            <span className="h-5 w-5 border-2 border-gray-300 border-t-[hsl(222,47%,20%)] rounded-full animate-spin" />
-            Vérification en cours…
-          </div>
-        )}
+    <div className="space-y-4">
+      {status === "loading" && (
+        <div className="flex items-center justify-center gap-2 py-8 text-navy-500">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-navy-200 border-t-navy-800" />
+          Vérification en cours…
+        </div>
+      )}
 
-        {status === "success" && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center space-y-2">
-            <MailCheck className="h-8 w-8 text-green-600 mx-auto" />
-            <p className="text-green-800 text-sm">{message}</p>
-          </div>
-        )}
+      {status === "success" && (
+        <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center">
+          <MailCheck className="mx-auto h-8 w-8 text-emerald-600" />
+          <p className="text-sm text-emerald-800">{message}</p>
+        </div>
+      )}
 
-        {status === "error" && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center space-y-2">
-            <MailX className="h-8 w-8 text-red-500 mx-auto" />
-            <p className="text-red-700 text-sm">{message}</p>
-          </div>
-        )}
+      {status === "error" && (
+        <div className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4 text-center">
+          <MailX className="mx-auto h-8 w-8 text-red-500" />
+          <p className="text-sm text-red-700">{message}</p>
+        </div>
+      )}
 
-        {status === "missing" && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
-            <p className="text-amber-800 text-sm">
-              Ce lien de vérification est incomplet. Ouvrez le lien reçu par email.
-            </p>
-          </div>
-        )}
+      {status === "missing" && (
+        <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
+          <MailWarning className="mx-auto h-8 w-8 text-amber-700" />
+          <p className="text-sm text-amber-800">
+            Ce lien de vérification est incomplet. Ouvrez le lien reçu par email.
+          </p>
+        </div>
+      )}
 
-        <Link href="/login">
-          <Button className={PRIMARY_BUTTON}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour à la connexion
-          </Button>
-        </Link>
-      </CardContent>
-    </Card>
+      <Link href="/login">
+        <Button className={PRIMARY_BUTTON}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Retour à la connexion
+        </Button>
+      </Link>
+    </div>
   );
 }
 
 export default function VerifyEmailPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50">
-      <div className="w-full max-w-md space-y-6">
-        <div className="flex items-center gap-3 justify-center mb-6">
-          <Shield className="h-8 w-8 text-[hsl(222,47%,20%)]" />
-          <div>
-            <h1 className="text-2xl font-bold text-[hsl(222,47%,20%)]">ACS</h1>
-            <p className="text-amber-600 text-sm font-medium">Magistrat & Douane</p>
-          </div>
-        </div>
-        <Suspense fallback={null}>
-          <VerifyEmailContent />
-        </Suspense>
-      </div>
-    </div>
+    <AuthShell
+      title="Vérification de l'email"
+      heroTitle={<>Confirmation de votre <span className="text-amber-300">adresse email</span></>}
+      heroLead="Une dernière étape pour sécuriser votre compte et activer l'accès à votre espace personnel."
+    >
+      <Suspense fallback={null}>
+        <VerifyEmailContent />
+      </Suspense>
+    </AuthShell>
   );
 }

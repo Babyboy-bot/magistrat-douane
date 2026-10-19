@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PageHeader } from "@/components/brand";
 import { usePaginatedUsers, useRequests } from "@/hooks/use-api-data";
 import type { User } from "@/lib/types";
 import { agentsApi } from "@/lib/api";
@@ -222,29 +223,24 @@ export default function AdminAgentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Users className="h-6 w-6" />
-            Gestion des Agents
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Créez, modifiez et gérez les accès des agents ACS
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Rechercher un agent..."
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+      <PageHeader
+        eyebrow="Administration"
+        title="Gestion des agents"
+        description="Créez, modifiez et gérez les accès des agents ACS"
+        actions={
+          <>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-300" />
+              <Input
+                placeholder="Rechercher un agent..."
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="h-10 rounded-xl border-navy-100 bg-white pl-9"
+              />
+            </div>
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
-              <Button className="bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)]">
+              <Button className="rounded-xl bg-navy-900 font-semibold hover:bg-navy-800">
                 <Plus className="h-4 w-4 mr-1" /> Nouvel agent
               </Button>
             </DialogTrigger>
@@ -318,7 +314,7 @@ export default function AdminAgentsPage() {
 
                 <div className="space-y-2">
                   <Label>Droits d&apos;accès</Label>
-                  <div className="space-y-2 bg-gray-50 p-3 rounded-lg">
+                  <div className="space-y-2 rounded-xl bg-navy-50/60 p-3 ring-1 ring-navy-100">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox
                         checked={form.droits.gererClients}
@@ -371,7 +367,7 @@ export default function AdminAgentsPage() {
                 </div>
 
                 <Button
-                  className="w-full bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)]"
+                  className="w-full rounded-xl bg-navy-900 font-semibold hover:bg-navy-800"
                   onClick={handleCreate}
                 >
                   Créer l&apos;agent
@@ -445,7 +441,7 @@ export default function AdminAgentsPage() {
                 </div>
 
                 <Button
-                  className="w-full bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)]"
+                  className="w-full rounded-xl bg-navy-900 font-semibold hover:bg-navy-800"
                   onClick={handleUpdate}
                 >
                   Mettre à jour l&apos;agent
@@ -453,11 +449,12 @@ export default function AdminAgentsPage() {
               </div>
             </DialogContent>
           </Dialog>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {error && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
           {error}
         </div>
       )}
@@ -470,45 +467,44 @@ export default function AdminAgentsPage() {
           const pending = agentRequests.filter((r) => r.status !== "traite").length;
 
           return (
-            <Card key={a.id} className="border-0 shadow-sm">
+            <Card key={a.id} className="rounded-2xl border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)] transition hover:shadow-[0_12px_32px_-16px_rgb(16_28_52/0.25)]">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-[hsl(222,47%,20%)] flex items-center justify-center text-white font-bold text-sm">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-navy-800 text-sm font-bold text-amber-300">
                       {a.nom[0]}
                       {a.prenoms[0]}
                     </div>
                     <div>
-                      <h3 className="font-semibold">
+                      <h3 className="font-semibold text-navy-900">
                         {a.nom} {a.prenoms}
                       </h3>
                       <div className="flex gap-2 mt-0.5">
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge className="border-navy-200 bg-navy-100 text-xs text-navy-700">
                         <Shield className="h-3 w-3 mr-1" />
                         Agent
                       </Badge>
-                      <Badge 
-                        variant={a.is_active ? "default" : "destructive"} 
-                        className="text-xs"
+                      <Badge
+                        className={`text-xs ${a.is_active ? "border-emerald-200 bg-emerald-100 text-emerald-800" : "border-red-200 bg-red-100 text-red-700"}`}
                       >
-                        {a.is_active ? "✅ Actif" : "⚠️ Inactif"}
+                        {a.is_active ? "Actif" : "Inactif"}
                       </Badge>
                     </div>
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-8 w-8"
                       onClick={() => handleEdit(a)}
                     >
-                      <Edit className="h-4 w-4 text-gray-400" />
+                      <Edit className="h-4 w-4 text-navy-300 hover:text-navy-700" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`h-8 w-8 ${a.is_active ? "text-green-600 hover:text-green-700" : "text-red-600 hover:text-red-700"}`}
+                      className={`h-8 w-8 ${a.is_active ? "text-emerald-600 hover:text-emerald-700" : "text-red-600 hover:text-red-700"}`}
                       onClick={() => handleToggle(a)}
                       title={a.is_active ? "Désactiver l'agent" : "Activer l'agent"}
                     >
@@ -518,28 +514,28 @@ export default function AdminAgentsPage() {
                 </div>
 
                 <div className="mt-4 space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <Mail className="h-3.5 w-3.5" />
+                  <div className="flex items-center gap-2 text-navy-400">
+                    <Mail className="h-3.5 w-3.5 text-navy-300" />
                     {a.email}
                   </div>
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <Phone className="h-3.5 w-3.5" />
+                  <div className="flex items-center gap-2 text-navy-400">
+                    <Phone className="h-3.5 w-3.5 text-navy-300" />
                     {a.telephone}
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t flex justify-between text-sm">
+                <div className="mt-4 flex justify-between border-t border-navy-50 pt-3 text-sm">
                   <div>
-                    <span className="text-gray-400">Requêtes traitées</span>
-                    <p className="font-semibold text-green-600">{treated}</p>
+                    <span className="text-xs text-navy-400">Requêtes traitées</span>
+                    <p className="font-semibold text-emerald-700">{treated}</p>
                   </div>
                   <div>
-                    <span className="text-gray-400">En cours</span>
+                    <span className="text-xs text-navy-400">En cours</span>
                     <p className="font-semibold text-amber-600">{pending}</p>
                   </div>
                   <div>
-                    <span className="text-gray-400">Membre depuis</span>
-                    <p className="font-semibold">
+                    <span className="text-xs text-navy-400">Membre depuis</span>
+                    <p className="font-semibold text-navy-800">
                       {a.createdAt ? fmtDate(a.createdAt) : '—'}
                     </p>
                   </div>
@@ -551,17 +547,19 @@ export default function AdminAgentsPage() {
       </div>
 
       {agents.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <Users className="h-12 w-12 text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-400">Aucun agent trouvé</p>
+        <div className="py-12 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-navy-50">
+            <Users className="h-5 w-5 text-navy-300" />
+          </div>
+          <p className="text-navy-400">Aucun agent trouvé</p>
         </div>
       )}
 
       {loading && (
-        <div className="text-center text-gray-400 py-4">Chargement...</div>
+        <div className="py-4 text-center text-navy-400">Chargement...</div>
       )}
 
-      <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-gray-600">
+      <div className="mt-4 flex flex-col gap-3 text-sm text-navy-500 sm:flex-row sm:items-center sm:justify-between">
         <div>
           {totalCount > 0 ? (
             <span>

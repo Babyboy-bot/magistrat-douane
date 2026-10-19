@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/brand";
 import { toast } from "sonner";
 
 import { usePaginatedUsers, useClientEmissions, useClientRequests, useUsers } from "@/hooks/use-api-data";
@@ -86,30 +87,26 @@ export default function AgentClientsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Users className="h-6 w-6" />
-            Assurés & Prospects
-          </h1>
-          <p className="text-gray-500 mt-1">{totalCount} enregistrements</p>
-        </div>
-        <div className="flex gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input placeholder="Rechercher..." value={search} onChange={(e) => { setPage(1); setSearch(e.target.value); }} className="pl-9" />
+      <PageHeader
+        eyebrow="Espace agent"
+        title="Assurés & Prospects"
+        description={`${totalCount} enregistrement${totalCount > 1 ? "s" : ""}`}
+        actions={
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-300" />
+            <Input placeholder="Rechercher..." value={search} onChange={(e) => { setPage(1); setSearch(e.target.value); }} className="h-10 rounded-xl border-navy-100 bg-white pl-9" />
           </div>
-        </div>
-      </header>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Liste */}
-        <Card className="lg:col-span-2 border-0 shadow-sm">
+        <Card className="lg:col-span-2 rounded-2xl border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)]">
           <CardHeader>
             <div className="flex flex-col gap-3">
               <div className="flex justify-between items-center">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-blue-500" />
+                <CardTitle className="flex items-center gap-2 font-display text-base font-semibold text-navy-900">
+                  <Shield className="h-5 w-5 text-amber-600" />
                   Liste des clients
                 </CardTitle>
                 <Tabs value={segment} onValueChange={(v) => { setSegment(v as Segment); setPage(1); setSelectedClientId(null); }}>
@@ -124,43 +121,43 @@ export default function AgentClientsPage() {
           </CardHeader>
           <CardContent>
             {segment === "autres" ? (
-              <div className="flex flex-col items-center py-12 gap-2 text-gray-400">
-                <AlertTriangle className="h-10 w-10 text-amber-300" />
-                <p className="font-medium text-gray-500">Bientôt disponible</p>
-                <p className="text-sm text-center max-w-xs">La gestion des clients grand public arrive prochainement. Seuls les magistrats et douaniers sont actifs pour l&apos;instant.</p>
+              <div className="flex flex-col items-center gap-2 py-12 text-navy-400">
+                <AlertTriangle className="h-10 w-10 text-amber-400" />
+                <p className="font-medium text-navy-700">Bientôt disponible</p>
+                <p className="max-w-xs text-center text-sm">La gestion des clients grand public arrive prochainement. Seuls les magistrats et douaniers sont actifs pour l&apos;instant.</p>
               </div>
             ) : loading ? (
-              <p className="text-center text-gray-400 py-12">Chargement...</p>
+              <p className="py-12 text-center text-navy-400">Chargement...</p>
             ) : error ? (
-              <p className="text-center text-red-500 py-12">{error}</p>
+              <p className="py-12 text-center text-red-500">{error}</p>
             ) : clients.length === 0 ? (
-              <p className="text-center text-gray-400 py-12">Aucun résultat</p>
+              <p className="py-12 text-center text-navy-400">Aucun résultat</p>
             ) : (
               <div className="space-y-3">
                 {clients.map((client) => (
                   <button key={client.id} onClick={() => setSelectedClientId(client.id)}
-                    className={`w-full text-left border rounded-lg p-4 transition hover:border-blue-400 ${selectedClientId === client.id ? "border-blue-500 bg-blue-50/30" : "border-gray-200"}`}
+                    className={`w-full rounded-xl border p-4 text-left transition ${selectedClientId === client.id ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300" : "border-navy-100 hover:border-amber-300 hover:bg-amber-50/30"}`}
                   >
-                    <div className="flex justify-between items-start">
+                    <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-semibold text-gray-900">{client.nom} {client.prenoms}</p>
-                        <p className="text-sm text-gray-500">{client.profession || PROFESSION_LABELS[client.professionType]}</p>
+                        <p className="font-semibold text-navy-900">{client.nom} {client.prenoms}</p>
+                        <p className="text-sm text-navy-400">{client.profession || PROFESSION_LABELS[client.professionType]}</p>
                       </div>
-                      <Badge variant={client.verified ? "default" : "secondary"}
-                        className={client.verified ? "" : "bg-amber-100 text-amber-800 border-amber-300"}>
+                      <Badge
+                        className={client.verified ? "border-emerald-200 bg-emerald-100 text-emerald-800" : "border-amber-200 bg-amber-100 text-amber-800"}>
                         {client.verified ? "Vérifié" : "En attente"}
                       </Badge>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-500">
-                      <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {client.telephone}</span>
-                      <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {client.email}</span>
+                    <div className="mt-2 flex flex-wrap gap-4 text-sm text-navy-500">
+                      <span className="flex items-center gap-1"><Phone className="h-3 w-3 text-navy-300" /> {client.telephone}</span>
+                      <span className="flex items-center gap-1"><Mail className="h-3 w-3 text-navy-300" /> {client.email}</span>
                     </div>
                   </button>
                 ))}
               </div>
             )}
             {segment !== "autres" && (
-            <div className="flex items-center justify-between mt-4 text-sm text-gray-600">
+            <div className="mt-4 flex items-center justify-between text-sm text-navy-500">
               <span>Page {page} / {totalPages}</span>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Précédent</Button>
@@ -172,37 +169,37 @@ export default function AgentClientsPage() {
         </Card>
 
         {/* Détails */}
-        <Card className="border-0 shadow-sm">
+        <Card className="rounded-2xl border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)]">
           <CardHeader>
-            <CardTitle className="text-base">Détails</CardTitle>
+            <CardTitle className="font-display text-base font-semibold text-navy-900">Détails</CardTitle>
           </CardHeader>
           <CardContent>
             {selectedClient ? (
               <div className="space-y-4">
                 <div>
-                  <p className="font-semibold text-lg">{selectedClient.nom} {selectedClient.prenoms}</p>
-                  <p className="text-sm text-gray-500">{selectedClient.profession}</p>
+                  <p className="font-display text-lg font-semibold text-navy-900">{selectedClient.nom} {selectedClient.prenoms}</p>
+                  <p className="text-sm text-navy-400">{selectedClient.profession}</p>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
+                <div className="space-y-2 rounded-xl bg-navy-50/60 p-3 text-sm ring-1 ring-navy-100">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Catégorie</span>
-                    <Badge variant="secondary">{PROFESSION_LABELS[selectedClient.professionType]}</Badge>
+                    <span className="text-navy-400">Catégorie</span>
+                    <Badge className="border-navy-200 bg-navy-100 text-navy-700">{PROFESSION_LABELS[selectedClient.professionType]}</Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Email</span>
-                    <span className="font-medium text-xs text-right">
+                    <span className="text-navy-400">Email</span>
+                    <span className="text-right text-xs font-medium text-navy-800">
                       {selectedClient.email}
                       {selectedClient.email && (
-                        <span className={`block ${selectedClient.emailVerified ? "text-green-600" : "text-amber-600"}`}>
+                        <span className={`block ${selectedClient.emailVerified ? "text-emerald-600" : "text-amber-600"}`}>
                           {selectedClient.emailVerified ? "✓ confirmé" : "non confirmé"}
                         </span>
                       )}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Téléphone</span>
-                    <span className="font-medium">{selectedClient.telephone}</span>
+                    <span className="text-navy-400">Téléphone</span>
+                    <span className="font-medium text-navy-800">{selectedClient.telephone}</span>
                   </div>
                 </div>
 
@@ -246,15 +243,15 @@ export default function AgentClientsPage() {
 
                 {selectedEmissions.length > 0 && (
                   <div>
-                    <p className="text-sm font-semibold mb-2">Contrats ({selectedEmissions.length})</p>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                    <p className="mb-2 text-sm font-semibold text-navy-800">Contrats ({selectedEmissions.length})</p>
+                    <div className="max-h-40 space-y-2 overflow-y-auto">
                       {selectedEmissions.map((emission) => (
-                        <div key={emission.id} className="text-sm p-2 bg-gray-50 rounded">
+                        <div key={emission.id} className="rounded-lg bg-navy-50/60 p-2 text-sm ring-1 ring-navy-100">
                           <div className="flex justify-between">
-                            <span className="font-medium">{emission.risque}</span>
-                            <span className="text-xs text-gray-400">{emission.numPolice}</span>
+                            <span className="font-medium text-navy-900">{emission.risque}</span>
+                            <span className="text-xs text-navy-400">{emission.numPolice}</span>
                           </div>
-                          <p className="text-xs text-gray-500">{emission.compagnie} • Éch. {formatDate(emission.echeance)}</p>
+                          <p className="text-xs text-navy-400">{emission.compagnie} • Éch. {formatDate(emission.echeance)}</p>
                         </div>
                       ))}
                     </div>
@@ -263,15 +260,15 @@ export default function AgentClientsPage() {
 
                 {(selectedRequests ?? []).length > 0 && (
                   <div>
-                    <p className="text-sm font-semibold mb-2">Requêtes ({(selectedRequests ?? []).length})</p>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                    <p className="mb-2 text-sm font-semibold text-navy-800">Requêtes ({(selectedRequests ?? []).length})</p>
+                    <div className="max-h-40 space-y-2 overflow-y-auto">
                       {(selectedRequests ?? []).map((req) => (
-                        <div key={req.id} className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded">
+                        <div key={req.id} className="flex items-center justify-between rounded-lg bg-navy-50/60 p-2 text-sm ring-1 ring-navy-100">
                           <div>
-                            <p className="font-medium">{REQUEST_TYPE_LABELS[req.type]}</p>
-                            <p className="text-xs text-gray-400">N° {req.numero}</p>
+                            <p className="font-medium text-navy-900">{REQUEST_TYPE_LABELS[req.type]}</p>
+                            <p className="text-xs text-navy-400">N° {req.numero}</p>
                           </div>
-                          <Badge variant="secondary">{req.status}</Badge>
+                          <Badge className="border-navy-200 bg-navy-100 text-navy-700">{req.status}</Badge>
                         </div>
                       ))}
                     </div>
@@ -279,8 +276,8 @@ export default function AgentClientsPage() {
                 )}
               </div>
             ) : (
-              <div className="text-center text-gray-400 py-10">
-                <AlertTriangle className="h-6 w-6 mx-auto mb-3" />
+              <div className="py-10 text-center text-navy-400">
+                <Users className="mx-auto mb-3 h-8 w-8 text-navy-200" />
                 Sélectionnez un client pour afficher les détails.
               </div>
             )}

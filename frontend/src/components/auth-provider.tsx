@@ -27,10 +27,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Show loading spinner while initializing
   if (!initialized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-ivory">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement...</p>
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-navy-100 border-t-amber-500"></div>
+          <p className="text-sm text-navy-400">Chargement...</p>
         </div>
       </div>
     );

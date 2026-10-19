@@ -268,8 +268,8 @@ export function EmissionFormDialog({ clients, open, onOpenChange, onCreated, pre
           </div>
           {/* Aperçu commission */}
           {tauxCommission > 0 && Number(primeNetteVal) > 0 && (
-            <div className="rounded-lg bg-purple-50 border border-purple-200 px-3 py-2 text-sm">
-              <span className="text-purple-700">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+              <span className="text-amber-800">
                 Commission ACS ({tauxCommission}%) :{" "}
                 <strong>
                   {new Intl.NumberFormat("fr-FR").format(
@@ -278,7 +278,7 @@ export function EmissionFormDialog({ clients, open, onOpenChange, onCreated, pre
                 </strong>
               </span>
               {Number(primeTtcVal) > 0 && (
-                <span className="text-purple-500 ml-2 text-xs">
+                <span className="ml-2 text-xs text-amber-700/70">
                   (prime nette insur. : {new Intl.NumberFormat("fr-FR").format(Number(primeTtcVal) - Math.round(Number(primeNetteVal) * tauxCommission / 100))} FCFA)
                 </span>
               )}
@@ -294,7 +294,7 @@ export function EmissionFormDialog({ clients, open, onOpenChange, onCreated, pre
               <Input placeholder="XXXX XX XX" {...register("immatriculation")} />
             </div>
           </div>
-          <Button type="submit" className="w-full bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)]" disabled={loading}>
+          <Button type="submit" className="w-full rounded-xl bg-navy-900 font-semibold hover:bg-navy-800" disabled={loading}>
             {loading ? "Enregistrement..." : "Enregistrer l'émission"}
           </Button>
         </form>

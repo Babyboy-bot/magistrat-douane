@@ -75,26 +75,26 @@ export function NotificationsDropdown() {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "success":
-        return <Check className="h-4 w-4 text-green-500" />;
+        return <Check className="h-4 w-4 text-emerald-500" />;
       case "warning":
         return <AlertCircle className="h-4 w-4 text-amber-500" />;
       case "error":
         return <X className="h-4 w-4 text-red-500" />;
       default:
-        return <Clock className="h-4 w-4 text-blue-500" />;
+        return <Clock className="h-4 w-4 text-navy-400" />;
     }
   };
 
   const getNotificationColor = (type: string) => {
     switch (type) {
       case "success":
-        return "border-green-200 bg-green-50";
+        return "border-emerald-300 bg-emerald-50/60";
       case "warning":
-        return "border-amber-200 bg-amber-50";
+        return "border-amber-300 bg-amber-50/60";
       case "error":
-        return "border-red-200 bg-red-50";
+        return "border-red-300 bg-red-50/60";
       default:
-        return "border-blue-200 bg-blue-50";
+        return "border-navy-200 bg-navy-50/60";
     }
   };
 
@@ -134,7 +134,7 @@ export function NotificationsDropdown() {
       >
         <Bell className={cn(
           "h-5 w-5",
-          isConnected ? "text-green-500" : "text-gray-500"
+          isConnected ? "text-navy-700" : "text-navy-300"
         )} />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[10px] text-white flex items-center justify-center font-bold animate-pulse">
@@ -144,27 +144,27 @@ export function NotificationsDropdown() {
       </Button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+        <div className="absolute right-0 z-50 mt-2 w-80 rounded-2xl border border-navy-100 bg-white shadow-[0_24px_60px_-32px_rgb(16_28_52/0.4)]">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900">Notifications</h3>
+          <div className="flex items-center justify-between border-b border-navy-50 p-4">
+            <h3 className="font-display font-semibold text-navy-900">Notifications</h3>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={markAllAsRead}
-                  className="text-xs text-blue-600 hover:text-blue-700"
+                  className="text-xs text-navy-600 hover:text-amber-700"
                 >
                   Tout marquer comme lu
                 </Button>
               )}
               <div className="flex items-center gap-1">
                 <div className={cn(
-                  "w-2 h-2 rounded-full",
-                  isConnected ? "bg-green-500" : "bg-gray-400"
+                  "h-2 w-2 rounded-full",
+                  isConnected ? "bg-emerald-500" : "bg-navy-200"
                 )} />
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-navy-400">
                   {isConnected ? "Connecté" : "Déconnecté"}
                 </span>
               </div>
@@ -174,8 +174,10 @@ export function NotificationsDropdown() {
           {/* Notifications List */}
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <Bell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+              <div className="p-8 text-center text-navy-400">
+                <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-navy-50">
+                  <Bell className="h-5 w-5 text-navy-300" />
+                </div>
                 <p className="text-sm">
                   {isConnected ? "Aucune notification" : "Notifications déconnectées"}
                 </p>
@@ -185,33 +187,33 @@ export function NotificationsDropdown() {
                 <div
                   key={notification.id}
                   className={cn(
-                    "p-3 border-l-4 transition-colors hover:bg-gray-50 group",
+                    "group border-l-4 p-3 transition-colors",
                     getNotificationColor(notification.type)
                   )}
                 >
                   <div className="flex items-start gap-2">
-                    <div className="flex-shrink-0 mt-0.5">
+                    <div className="mt-0.5 shrink-0">
                       {getNotificationIcon(notification.type)}
                     </div>
                     <div
-                      className="flex-1 min-w-0 cursor-pointer"
+                      className="min-w-0 flex-1 cursor-pointer"
                       onClick={() => handleNotifClick(notification)}
                     >
-                      <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                      <p className="text-xs text-gray-600 mt-0.5">{notification.message}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p className="text-sm font-medium text-navy-900">{notification.title}</p>
+                      <p className="mt-0.5 text-xs text-navy-500">{notification.message}</p>
+                      <p className="mt-0.5 text-xs text-navy-300">
                         {formatRelativeTime(notification.created_at)}
                         {getRedirectUrl(notification, user?.role) && (
-                          <span className="ml-1 text-blue-500">→ Voir</span>
+                          <span className="ml-1 font-medium text-amber-600">→ Voir</span>
                         )}
                       </p>
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }}
-                      className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 rounded"
+                      className="shrink-0 rounded p-1 opacity-0 transition-opacity hover:bg-white group-hover:opacity-100"
                       title="Supprimer"
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-gray-400 hover:text-red-500" />
+                      <Trash2 className="h-3.5 w-3.5 text-navy-300 hover:text-red-500" />
                     </button>
                   </div>
                 </div>

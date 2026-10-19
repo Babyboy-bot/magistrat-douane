@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Shield, Search, RefreshCw, UserPlus, ClipboardCheck, Send, CheckCircle2, ChevronRight, Inbox, AlertTriangle } from "lucide-react";
+import { Search, RefreshCw, UserPlus, ClipboardCheck, Send, CheckCircle2, ChevronRight, Inbox, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { magistassurApi } from "@/lib/api";
+import { PageHeader } from "@/components/brand";
 import { useAuthStore } from "@/stores/auth-store";
 import type { ContratEpargne, ContratPrevoyance } from "@/lib/types";
 import { toast } from "sonner";
@@ -23,17 +24,17 @@ type Tab = "a_prendre" | "a_traiter" | "envoye" | "actif";
 type FiltreActif = "actifs" | "archives" | "tous";
 
 const TABS: { id: Tab; label: string; hint: string; icon: typeof Inbox; color: string }[] = [
-  { id: "a_prendre", label: "À prendre en charge", hint: "Nouvelles souscriptions, traitées par personne", icon: UserPlus, color: "orange" },
-  { id: "a_traiter", label: "À vérifier et envoyer", hint: "Mes dossiers : contrôler les pièces puis envoyer à NSIA", icon: ClipboardCheck, color: "blue" },
-  { id: "envoye", label: "Envoyés à NSIA", hint: "En attente du N° de police", icon: Send, color: "purple" },
-  { id: "actif", label: "Contrats actifs", hint: "Suivi, statuts et cotisations", icon: CheckCircle2, color: "green" },
+  { id: "a_prendre", label: "À prendre en charge", hint: "Nouvelles souscriptions, traitées par personne", icon: UserPlus, color: "gold" },
+  { id: "a_traiter", label: "À vérifier et envoyer", hint: "Mes dossiers : contrôler les pièces puis envoyer à NSIA", icon: ClipboardCheck, color: "navy" },
+  { id: "envoye", label: "Envoyés à NSIA", hint: "En attente du N° de police", icon: Send, color: "steel" },
+  { id: "actif", label: "Contrats actifs", hint: "Suivi, statuts et cotisations", icon: CheckCircle2, color: "emerald" },
 ];
 
-const TAB_STYLES: Record<string, { ring: string; text: string; bg: string }> = {
-  orange: { ring: "ring-orange-400", text: "text-orange-600", bg: "bg-orange-50" },
-  blue: { ring: "ring-blue-400", text: "text-blue-600", bg: "bg-blue-50" },
-  purple: { ring: "ring-purple-400", text: "text-purple-600", bg: "bg-purple-50" },
-  green: { ring: "ring-green-400", text: "text-green-600", bg: "bg-green-50" },
+const TAB_STYLES: Record<string, { text: string; bg: string }> = {
+  gold: { text: "text-amber-600", bg: "bg-amber-50 ring-1 ring-amber-100" },
+  navy: { text: "text-navy-700", bg: "bg-navy-50 ring-1 ring-navy-100" },
+  steel: { text: "text-navy-500", bg: "bg-navy-50 ring-1 ring-navy-100" },
+  emerald: { text: "text-emerald-700", bg: "bg-emerald-50 ring-1 ring-emerald-100" },
 };
 
 const ACTION_LABEL: Record<Tab, string> = {
@@ -180,53 +181,54 @@ export default function AgentMagistAssurPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Shield className="h-6 w-6 text-purple-600" /> MAGIST&apos;ASSUR
-          </h1>
-          <p className="text-gray-500 mt-1 text-sm">
-            Traitez chaque souscription de gauche à droite : <strong>prise en charge → envoi à NSIA → N° de police</strong>.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <div className="relative w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input placeholder="Nom du client ou N° police" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
-          </div>
-          <Button variant="outline" size="icon" onClick={load} disabled={loading} title="Actualiser">
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Espace agent"
+        title="Magist'Assur"
+        description={<>Traitez chaque souscription de gauche à droite : <strong>prise en charge → envoi à NSIA → N° de police</strong>.</>}
+        actions={
+          <>
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-300" />
+              <Input placeholder="Nom du client ou N° police" value={search} onChange={e => setSearch(e.target.value)} className="h-10 rounded-xl border-navy-100 bg-white pl-9" />
+            </div>
+            <Button variant="outline" size="icon" onClick={load} disabled={loading} title="Actualiser" className="h-10 w-10 rounded-xl border-navy-100">
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+          </>
+        }
+      />
 
       {/* Étapes = onglets */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {TABS.map((t, i) => {
           const s = TAB_STYLES[t.color];
           const active = tab === t.id;
           const Icon = t.icon;
           return (
             <button key={t.id} type="button" onClick={() => setTab(t.id)}
-              className={`relative text-left rounded-xl border bg-white p-4 shadow-sm transition hover:shadow ${active ? `ring-2 ${s.ring}` : ""}`}>
+              className={`relative rounded-2xl border bg-white p-4 text-left transition ${
+                active
+                  ? "border-amber-300 shadow-[0_12px_32px_-16px_rgb(180_138_58/0.45)] ring-2 ring-amber-400/60"
+                  : "border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)] hover:border-amber-200 hover:shadow-[0_8px_24px_-16px_rgb(16_28_52/0.25)]"
+              }`}>
               <div className="flex items-center justify-between">
-                <span className={`h-8 w-8 rounded-lg flex items-center justify-center ${s.bg}`}><Icon className={`h-4 w-4 ${s.text}`} /></span>
-                <span className={`text-2xl font-bold ${counts[t.id] > 0 ? s.text : "text-gray-300"}`}>{counts[t.id]}</span>
+                <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${s.bg}`}><Icon className={`h-4 w-4 ${s.text}`} /></span>
+                <span className={`font-display text-2xl font-semibold ${counts[t.id] > 0 ? s.text : "text-navy-100"}`}>{counts[t.id]}</span>
               </div>
-              <p className="mt-2 text-sm font-semibold text-gray-900">{i + 1}. {t.label}</p>
-              <p className="text-xs text-gray-500">{t.hint}</p>
-              {i < TABS.length - 1 && <ChevronRight className="hidden lg:block absolute -right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-300 z-10" />}
+              <p className="mt-2 text-sm font-semibold text-navy-900">{i + 1}. {t.label}</p>
+              <p className="text-xs text-navy-400">{t.hint}</p>
+              {i < TABS.length - 1 && <ChevronRight className="absolute -right-3 top-1/2 z-10 hidden h-5 w-5 -translate-y-1/2 text-amber-300 lg:block" />}
             </button>
           );
         })}
       </div>
 
-      <Card className="border-0 shadow-sm">
+      <Card className="rounded-2xl border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)]">
         <CardContent className="p-0">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-navy-50 px-4 py-3">
             <div>
-              <p className="font-semibold text-gray-900">{current.label}</p>
-              <p className="text-xs text-gray-500">{current.hint}</p>
+              <p className="font-display font-semibold text-navy-900">{current.label}</p>
+              <p className="text-xs text-navy-400">{current.hint}</p>
             </div>
             {tab === "actif" && (
               <Select value={filtreActif} onValueChange={v => setFiltreActif(v as FiltreActif)}>
@@ -239,16 +241,18 @@ export default function AgentMagistAssurPage() {
               </Select>
             )}
             {tab === "a_prendre" && parEtape.chezAutres > 0 && !isAdmin && (
-              <span className="text-xs text-gray-500">{parEtape.chezAutres} autre(s) dossier(s) en cours chez d&apos;autres agents</span>
+              <span className="text-xs text-navy-400">{parEtape.chezAutres} autre(s) dossier(s) en cours chez d&apos;autres agents</span>
             )}
           </div>
 
           {loading && items.length === 0 ? (
-            <p className="text-center text-gray-400 py-12">Chargement…</p>
+            <p className="py-12 text-center text-navy-400">Chargement…</p>
           ) : rows.length === 0 ? (
-            <div className="flex flex-col items-center py-12 gap-2 text-gray-400">
-              <Inbox className="h-10 w-10 text-gray-300" />
-              <p className="font-medium text-gray-500">{searching ? `Aucun dossier ne correspond à « ${search.trim()} »` : "Aucun dossier ici"}</p>
+            <div className="flex flex-col items-center gap-2 py-12 text-navy-400">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-navy-50">
+                <Inbox className="h-6 w-6 text-navy-300" />
+              </div>
+              <p className="font-medium text-navy-700">{searching ? `Aucun dossier ne correspond à « ${search.trim()} »` : "Aucun dossier ici"}</p>
               {!searching && <p className="text-sm">{tab === "a_prendre" ? "Toutes les souscriptions sont prises en charge." : "Rien à traiter à cette étape pour le moment."}</p>}
             </div>
           ) : (
@@ -271,24 +275,24 @@ export default function AgentMagistAssurPage() {
                     const pieces = piecesStatus(it);
                     return (
                       <TableRow key={key} className="cursor-pointer" onClick={() => setSelectedKey(key)}>
-                        <TableCell className="font-medium text-gray-900">
+                        <TableCell className="font-medium text-navy-900">
                           {it.c.clientNom}
                           {searching && (
-                            <p className="text-xs font-normal text-gray-400">
+                            <p className="text-xs font-normal text-navy-400">
                               {ETAPE_SHORT[etapeOf(it)]}
                               {!isMine(it) && it.c.prisEnChargeNom ? ` · chez ${it.c.prisEnChargeNom}` : ""}
                             </p>
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge className={it.kind === "epargne" ? "bg-purple-100 text-purple-700" : "bg-amber-100 text-amber-700"}>
+                          <Badge className={it.kind === "epargne" ? "border-navy-200 bg-navy-100 text-navy-700" : "border-amber-200 bg-amber-100 text-amber-700"}>
                             {produitLabel(it)}
                           </Badge>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {montantLabel(it)}
                           {it.kind === "epargne" && tab === "actif" && (
-                            <p className="text-xs text-gray-400">Capital {formatCFA(it.c.capitalConstitue)}</p>
+                            <p className="text-xs text-navy-400">Capital {formatCFA(it.c.capitalConstitue)}</p>
                           )}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
@@ -296,18 +300,18 @@ export default function AgentMagistAssurPage() {
                         </TableCell>
                         <TableCell>
                           {tab === "actif" ? (
-                            <Badge className={STATUT_COLORS[it.c.statut] || "bg-gray-100 text-gray-600"}>{STATUT_LABELS[it.c.statut] || it.c.statut}</Badge>
+                            <Badge className={STATUT_COLORS[it.c.statut] || "bg-navy-50 text-navy-500"}>{STATUT_LABELS[it.c.statut] || it.c.statut}</Badge>
                           ) : (
-                            <span className={`text-xs inline-flex items-center gap-1 ${pieces.ok ? "text-green-700" : "text-red-600"}`}>
+                            <span className={`inline-flex items-center gap-1 text-xs ${pieces.ok ? "text-emerald-700" : "text-red-600"}`}>
                               {pieces.ok ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
                               {pieces.label}
                             </span>
                           )}
                         </TableCell>
-                        {isAdmin && tab !== "a_prendre" && <TableCell className="text-xs text-gray-500">{it.c.prisEnChargeNom || "—"}</TableCell>}
+                        {isAdmin && tab !== "a_prendre" && <TableCell className="text-xs text-navy-400">{it.c.prisEnChargeNom || "—"}</TableCell>}
                         <TableCell className="text-right">
                           {etapeOf(it) === "a_prendre" ? (
-                            <Button size="sm" className="bg-orange-600 hover:bg-orange-700" disabled={takingKey === key}
+                            <Button size="sm" className="rounded-lg bg-amber-500 font-semibold text-navy-950 hover:bg-amber-600" disabled={takingKey === key}
                               onClick={e => { e.stopPropagation(); prendreEnCharge(it); }}>
                               {takingKey === key ? "…" : ACTION_LABEL.a_prendre}
                             </Button>

@@ -8,7 +8,8 @@ import { emissionsApi } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { PageHeader } from "@/components/brand";
+import { ArrowLeft, Loader2, FileWarning } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const formatCurrency = (value: number) =>
@@ -33,17 +34,20 @@ export default function EmissionDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-navy-300" />
       </div>
     );
   }
 
   if (error || !emission) {
     return (
-      <div className="text-center py-20 space-y-3">
-        <p className="text-gray-500">Émission introuvable.</p>
-        <Button variant="outline" onClick={() => router.push("/agent/emissions")}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Retour aux émissions
+      <div className="space-y-3 py-20 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-navy-50">
+          <FileWarning className="h-5 w-5 text-navy-300" />
+        </div>
+        <p className="text-navy-400">Émission introuvable.</p>
+        <Button variant="outline" className="rounded-xl border-navy-200" onClick={() => router.push("/agent/emissions")}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Retour aux émissions
         </Button>
       </div>
     );
@@ -52,93 +56,78 @@ export default function EmissionDetailPage() {
   const totalPaid = emission.paiements.reduce((sum, p) => sum + p.montantRegle, 0);
   const solde = emission.primeTTC - totalPaid;
 
+  const Row = ({ label, value }: { label: string; value: React.ReactNode }) => (
+    <div className="flex justify-between gap-4">
+      <span className="text-navy-400">{label}</span>
+      <span className="text-right font-medium text-navy-900">{value}</span>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-500">Émission #{emission.numPolice}</p>
-          <h1 className="text-2xl font-bold">{emission.clientNom}</h1>
-          <p className="text-gray-500">{emission.compagnie}</p>
-        </div>
-        <Link href="/agent/emissions" className="text-sm text-primary hover:underline flex items-center gap-1">
-          <ArrowLeft className="h-4 w-4" /> Retour aux émissions
-        </Link>
-      </div>
+      <PageHeader
+        eyebrow={`Émission #${emission.numPolice}`}
+        title={emission.clientNom}
+        description={emission.compagnie}
+        actions={
+          <Link href="/agent/emissions">
+            <Button variant="outline" className="rounded-xl border-navy-200">
+              <ArrowLeft className="mr-1.5 h-4 w-4" /> Retour aux émissions
+            </Button>
+          </Link>
+        }
+      />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        <Card className="rounded-2xl border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)]">
           <CardHeader>
-            <CardTitle>Informations contrat</CardTitle>
+            <CardTitle className="font-display text-base font-semibold text-navy-900">Informations contrat</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Risque</span>
-              <span>{emission.risque}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Situation</span>
-              <Badge variant="secondary">{emission.situation}</Badge>
+            <Row label="Risque" value={emission.risque} />
+            <div className="flex justify-between gap-4">
+              <span className="text-navy-400">Situation</span>
+              <Badge className="border-navy-200 bg-navy-100 text-navy-700">{emission.situation}</Badge>
             </div>
             <Separator />
-            <div className="flex justify-between">
-              <span className="text-gray-500">Prime nette</span>
-              <span>{formatCurrency(emission.primeNette)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Prime TTC</span>
-              <span className="font-semibold">{formatCurrency(emission.primeTTC)}</span>
-            </div>
+            <Row label="Prime nette" value={formatCurrency(emission.primeNette)} />
+            <Row label="Prime TTC" value={<span className="font-semibold">{formatCurrency(emission.primeTTC)}</span>} />
             <Separator />
-            <div className="flex justify-between">
-              <span className="text-gray-500">Effet</span>
-              <span>{emission.effet}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Échéance</span>
-              <span>{emission.echeance}</span>
-            </div>
+            <Row label="Effet" value={emission.effet} />
+            <Row label="Échéance" value={emission.echeance} />
             {emission.marque && emission.marque !== "-" && (
               <>
                 <Separator />
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Marque</span>
-                  <span>{emission.marque}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Immatriculation</span>
-                  <span>{emission.immatriculation}</span>
-                </div>
+                <Row label="Marque" value={emission.marque} />
+                <Row label="Immatriculation" value={emission.immatriculation} />
               </>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)]">
           <CardHeader>
-            <CardTitle>Suivi financier</CardTitle>
+            <CardTitle className="font-display text-base font-semibold text-navy-900">Suivi financier</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Total payé</span>
-              <span className="text-green-600 font-medium">{formatCurrency(totalPaid)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Solde restant</span>
-              <span className={solde > 0 ? "text-red-600 font-semibold" : "text-green-600 font-semibold"}>
+            <Row label="Total payé" value={<span className="text-emerald-700">{formatCurrency(totalPaid)}</span>} />
+            <div className="flex justify-between gap-4">
+              <span className="text-navy-400">Solde restant</span>
+              <span className={solde > 0 ? "font-semibold text-red-600" : "font-semibold text-emerald-700"}>
                 {formatCurrency(Math.max(solde, 0))}
               </span>
             </div>
             <Separator />
             <div className="space-y-2">
-              <p className="text-gray-500 font-medium">Paiements</p>
+              <p className="font-medium text-navy-400">Paiements</p>
               {emission.paiements.length === 0 ? (
-                <p className="text-xs text-gray-400">Aucun paiement enregistré.</p>
+                <p className="text-xs text-navy-300">Aucun paiement enregistré.</p>
               ) : (
                 <ul className="space-y-2">
                   {emission.paiements.map((p) => (
                     <li key={p.id} className="flex justify-between">
-                      <span>{p.dateReglement} — {p.reference}</span>
-                      <span className="text-green-600">{formatCurrency(p.montantRegle)}</span>
+                      <span className="text-navy-700">{p.dateReglement} — {p.reference}</span>
+                      <span className="font-medium text-emerald-700">{formatCurrency(p.montantRegle)}</span>
                     </li>
                   ))}
                 </ul>

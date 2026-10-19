@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuthStore } from "@/stores/auth-store";
 import { authApi } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/brand";
 import { PROFESSION_LABELS } from "@/lib/types";
 import { toast } from "sonner";
 import { profileSchema, passwordSchema, type ProfileValues, type PasswordValues } from "@/lib/validations";
@@ -102,43 +103,44 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Mon Profil</h1>
-        <p className="text-gray-500 mt-1">Gérez vos informations personnelles</p>
-      </div>
+      <PageHeader
+        eyebrow="Mon espace"
+        title="Mon profil"
+        description="Gérez vos informations personnelles"
+      />
 
       {/* Photo */}
-      <Card className="border-0 shadow-sm">
+      <Card className="rounded-2xl border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)]">
         <CardContent className="pt-6">
           <div className="flex items-center gap-4">
             <div className="relative">
-              <Avatar className="h-20 w-20">
+              <Avatar className="h-20 w-20 ring-2 ring-amber-300/50">
                 {user?.photo && <AvatarImage src={user.photo} alt="Photo de profil" className="object-cover" />}
-                <AvatarFallback className="bg-[hsl(222,47%,20%)] text-white text-xl font-bold">
+                <AvatarFallback className="bg-navy-800 text-amber-300 text-xl font-bold">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <button
                 type="button"
                 onClick={() => photoInputRef.current?.click()}
-                className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-amber-400 flex items-center justify-center text-white shadow-lg hover:bg-amber-500 transition"
+                className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-amber-500 flex items-center justify-center text-navy-950 shadow-lg hover:bg-amber-600 transition"
               >
                 <Camera className="h-3.5 w-3.5" />
               </button>
               <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
             </div>
             <div>
-              <p className="font-semibold text-lg">{user?.nom} {user?.prenoms}</p>
-              <p className="text-sm text-gray-500">{user?.profession}</p>
+              <p className="font-display font-semibold text-lg text-navy-900">{user?.nom} {user?.prenoms}</p>
+              <p className="text-sm text-navy-400">{user?.profession}</p>
               <div className="flex items-center gap-2 mt-1">
-                <Badge variant="secondary" className="text-xs">{user?.professionType ? PROFESSION_LABELS[user.professionType] : ""}</Badge>
+                <Badge className="border-navy-200 bg-navy-100 text-xs text-navy-700">{user?.professionType ? PROFESSION_LABELS[user.professionType] : ""}</Badge>
                 {user?.verified ? (
-                  <Badge className="text-xs bg-green-100 text-green-700">Vérifié</Badge>
+                  <Badge className="border-emerald-200 bg-emerald-100 text-xs text-emerald-800">Vérifié</Badge>
                 ) : (
-                  <Badge className="text-xs bg-amber-100 text-amber-700">En attente de vérification</Badge>
+                  <Badge className="border-amber-200 bg-amber-100 text-xs text-amber-800">En attente de vérification</Badge>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mt-1">Membre depuis {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "—"}</p>
+              <p className="mt-1 text-xs text-navy-300">Membre depuis {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "—"}</p>
             </div>
           </div>
         </CardContent>
@@ -146,32 +148,32 @@ export default function ProfilePage() {
 
       {/* Email */}
       {user?.email && (
-        <Card className="border-0 shadow-sm">
+        <Card className="rounded-2xl border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)]">
           <CardContent className="pt-6 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <Mail className="h-4 w-4 text-gray-400 shrink-0" />
-                <span className="font-medium text-sm truncate">{user.email}</span>
+                <Mail className="h-4 w-4 shrink-0 text-navy-300" />
+                <span className="truncate text-sm font-medium text-navy-900">{user.email}</span>
               </div>
               {user.emailVerified ? (
-                <Badge className="text-xs bg-green-100 text-green-700">
-                  <CheckCircle2 className="h-3 w-3 mr-1" /> Email confirmé
+                <Badge className="border-emerald-200 bg-emerald-100 text-xs text-emerald-800">
+                  <CheckCircle2 className="mr-1 h-3 w-3" /> Email confirmé
                 </Badge>
               ) : (
-                <Badge className="text-xs bg-amber-100 text-amber-700">
-                  <AlertTriangle className="h-3 w-3 mr-1" /> Email non confirmé
+                <Badge className="border-amber-200 bg-amber-100 text-xs text-amber-800">
+                  <AlertTriangle className="mr-1 h-3 w-3" /> Email non confirmé
                 </Badge>
               )}
             </div>
             {!user.emailVerified && (
-              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 space-y-2">
+              <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 <p>
                   Confirmez votre adresse pour recevoir les informations importantes sur vos contrats
                   et pouvoir récupérer votre compte en cas d&apos;oubli du mot de passe.
                 </p>
                 <Button type="button" size="sm" variant="outline" onClick={handleResend} disabled={resending}
-                  className="border-amber-300 bg-white hover:bg-amber-100">
-                  {resending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Mail className="h-3.5 w-3.5 mr-1" />}
+                  className="rounded-lg border-amber-300 bg-white hover:bg-amber-100">
+                  {resending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Mail className="mr-1 h-3.5 w-3.5" />}
                   Renvoyer l&apos;email de confirmation
                 </Button>
               </div>
@@ -181,9 +183,9 @@ export default function ProfilePage() {
       )}
 
       {/* Personal info */}
-      <Card className="border-0 shadow-sm">
+      <Card className="rounded-2xl border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)]">
         <CardHeader>
-          <CardTitle className="text-lg">Informations personnelles</CardTitle>
+          <CardTitle className="font-display text-lg font-semibold text-navy-900">Informations personnelles</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSaveProfile} className="space-y-4">
@@ -205,8 +207,8 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-1.5">
               <Label>Catégorie</Label>
-              <Input value={user?.professionType ? PROFESSION_LABELS[user.professionType] : ""} disabled className="bg-gray-50" />
-              <p className="text-xs text-gray-400">La catégorie est définie lors de l&apos;inscription et ne peut être modifiée ici.</p>
+              <Input value={user?.professionType ? PROFESSION_LABELS[user.professionType] : ""} disabled className="bg-navy-50/60" />
+              <p className="text-xs text-navy-400">La catégorie est définie lors de l&apos;inscription et ne peut être modifiée ici.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -219,8 +221,8 @@ export default function ProfilePage() {
                 <Input {...profileForm.register("telephone2")} placeholder="Optionnel" />
               </div>
             </div>
-            <Button type="submit" className="bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)]">
-              <Save className="h-4 w-4 mr-2" />
+            <Button type="submit" className="rounded-xl bg-navy-900 font-semibold hover:bg-navy-800">
+              <Save className="mr-2 h-4 w-4" />
               Enregistrer les modifications
             </Button>
           </form>
@@ -228,9 +230,9 @@ export default function ProfilePage() {
       </Card>
 
       {/* Password */}
-      <Card className="border-0 shadow-sm">
+      <Card className="rounded-2xl border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)]">
         <CardHeader>
-          <CardTitle className="text-lg">Modifier le mot de passe</CardTitle>
+          <CardTitle className="font-display text-lg font-semibold text-navy-900">Modifier le mot de passe</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={onChangePassword} className="space-y-4">
@@ -245,7 +247,7 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-300 hover:text-navy-700"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -272,7 +274,7 @@ export default function ProfilePage() {
                 <FieldError message={passwordForm.formState.errors.confirm?.message} />
               </div>
             </div>
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="outline" className="rounded-xl border-navy-200">
               Changer le mot de passe
             </Button>
           </form>

@@ -8,13 +8,15 @@ import {
   CheckCircle,
   AlertCircle,
   FileText,
+  ArrowRight,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader, StatCard } from "@/components/brand";
 import { useEffect, useState } from "react";
 import { magistassurApi } from "@/lib/api";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 export default function AgentDashboard() {
   const [epargne, setEpargne] = useState<Record<string, unknown>[]>([]);
@@ -38,182 +40,107 @@ export default function AgentDashboard() {
   const autres = [...epargne, ...prevoyance].filter((c) => (c as Record<string, unknown>).numPolice && (c as Record<string, unknown>).statut !== "en_cours").length;
 
   const statutBadge = (statut: string, hasPolice?: boolean) => {
-    if (!hasPolice) return <Badge className="bg-orange-100 text-orange-800">En attente</Badge>;
+    if (!hasPolice) return <Badge className="bg-amber-100 text-amber-800 border-amber-200">En attente</Badge>;
     switch (statut) {
-      case "en_cours": return <Badge className="bg-green-100 text-green-800">En cours</Badge>;
-      case "rachete": return <Badge className="bg-orange-100 text-orange-800">Racheté</Badge>;
-      case "arrive_terme": return <Badge className="bg-blue-100 text-blue-800">Arrivé à terme</Badge>;
-      case "suspendu": return <Badge className="bg-yellow-100 text-yellow-800">Suspendu</Badge>;
-      case "sinistre": return <Badge className="bg-red-100 text-red-800">Sinistre</Badge>;
-      case "expire": return <Badge className="bg-gray-100 text-gray-600">Expiré</Badge>;
-      case "resilie": return <Badge className="bg-red-100 text-red-800">Résilié</Badge>;
-      case "cloture": return <Badge className="bg-gray-100 text-gray-800">Clôturé</Badge>;
-      default: return <Badge className="bg-gray-100 text-gray-800">{statut}</Badge>;
+      case "en_cours": return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">En cours</Badge>;
+      case "rachete": return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Racheté</Badge>;
+      case "arrive_terme": return <Badge className="bg-navy-100 text-navy-700 border-navy-200">Arrivé à terme</Badge>;
+      case "suspendu": return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Suspendu</Badge>;
+      case "sinistre": return <Badge className="bg-red-100 text-red-800 border-red-200">Sinistre</Badge>;
+      case "expire": return <Badge className="bg-navy-50 text-navy-500 border-navy-100">Expiré</Badge>;
+      case "resilie": return <Badge className="bg-red-100 text-red-800 border-red-200">Résilié</Badge>;
+      case "cloture": return <Badge className="bg-navy-100 text-navy-700 border-navy-200">Clôturé</Badge>;
+      default: return <Badge className="bg-navy-100 text-navy-700 border-navy-200">{statut}</Badge>;
     }
+  };
+
+  const DossierRow = ({ c, type }: { c: Record<string, unknown>; type: "epargne" | "prevoyance" }) => {
+    const isEpargne = type === "epargne";
+    const Icon = isEpargne ? PiggyBank : Heart;
+    return (
+      <Link href="/agent/magistassur" className="block">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-navy-50 bg-navy-50/40 p-3 transition hover:border-amber-200 hover:bg-amber-50/40">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+              isEpargne ? "bg-navy-800 text-amber-300" : "bg-amber-500 text-white",
+            )}>
+              <Icon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-navy-900">
+                {isEpargne ? "Épargne" : "Prévoyance"} — {(c.numPolice as string) || `#${c.id}`}
+              </p>
+              <p className="text-xs text-navy-400">{(c.clientNom as string) || "Client"}</p>
+            </div>
+          </div>
+          {statutBadge(c.statut as string, Boolean(c.numPolice))}
+        </div>
+      </Link>
+    );
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
-          <p className="text-gray-500 mt-1">Vue d&apos;ensemble Magist&apos;Assur</p>
-        </div>
-        <Link href="/agent/magistassur">
-          <Button className="bg-purple-600 hover:bg-purple-700">
-            <Shield className="h-4 w-4 mr-1" /> Gérer Magist&apos;Assur
-          </Button>
-        </Link>
-      </div>
+      <PageHeader
+        eyebrow="Espace agent"
+        title="Tableau de bord"
+        description="Vue d'ensemble des dossiers Magist'Assur"
+        actions={
+          <Link href="/agent/magistassur">
+            <Button className="rounded-xl bg-navy-900 font-semibold text-white hover:bg-navy-800">
+              <Shield className="mr-1.5 h-4 w-4" /> Gérer Magist&apos;Assur
+            </Button>
+          </Link>
+        }
+      />
 
-      {/* Stats grid */}
+      {/* Statistiques */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="border-0 shadow-sm">
-              <CardContent className="pt-6">
-                <div className="h-16 animate-pulse bg-gray-100 rounded" />
-              </CardContent>
-            </Card>
+            <div key={i} className="h-28 animate-pulse rounded-2xl border border-navy-100 bg-white" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 font-medium">Total dossiers</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1">{totalContrats}</p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-purple-50 flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 font-medium">En attente</p>
-                  <p className="text-3xl font-bold text-amber-600 mt-1">{enAttente}</p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-amber-50 flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-amber-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 font-medium">Contrats actifs</p>
-                  <p className="text-3xl font-bold text-green-600 mt-1">{actifs}</p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-green-50 flex items-center justify-center">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 font-medium">Autres statuts</p>
-                  <p className="text-3xl font-bold text-gray-500 mt-1">{autres}</p>
-                </div>
-                <div className="h-12 w-12 rounded-xl bg-gray-100 flex items-center justify-center">
-                  <AlertCircle className="h-6 w-6 text-gray-500" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Total dossiers" value={totalContrats} icon={Shield} tone="navy" />
+          <StatCard label="En attente" value={enAttente} icon={Clock} tone="gold" hint="Police non attribuée" />
+          <StatCard label="Contrats actifs" value={actifs} icon={CheckCircle} tone="emerald" />
+          <StatCard label="Autres statuts" value={autres} icon={AlertCircle} tone="rose" />
         </div>
       )}
 
       {/* Répartition Épargne / Prévoyance */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 font-medium">Contrats Épargne</p>
-                <p className="text-3xl font-bold text-blue-600 mt-1">{epargne.length}</p>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center">
-                <PiggyBank className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 font-medium">Contrats Prévoyance</p>
-                <p className="text-3xl font-bold text-rose-600 mt-1">{prevoyance.length}</p>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-rose-50 flex items-center justify-center">
-                <Heart className="h-6 w-6 text-rose-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <StatCard label="Contrats Épargne" value={epargne.length} icon={PiggyBank} tone="navy" />
+        <StatCard label="Contrats Prévoyance" value={prevoyance.length} icon={Heart} tone="gold" />
       </div>
 
       {/* Dossiers récents */}
       {!loading && (
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg">Dossiers récents</CardTitle>
+        <div className="rounded-2xl border border-navy-100 bg-white shadow-[0_1px_2px_rgb(16_28_52/0.04)]">
+          <div className="flex items-center justify-between border-b border-navy-50 px-5 py-4">
+            <h3 className="font-display text-lg font-semibold text-navy-900">Dossiers récents</h3>
             <Link href="/agent/magistassur">
-              <Button variant="ghost" size="sm" className="text-xs">Voir tout</Button>
+              <Button variant="ghost" size="sm" className="text-xs text-navy-600 hover:text-amber-700">
+                Voir tout <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
             </Link>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {epargne.slice(0, 3).map((c) => (
-              <div key={c.id as string} className="flex items-center justify-between p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-9 w-9 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
-                    <PiggyBank className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">Épargne — {c.numPolice as string || `#${c.id}`}</p>
-                    <p className="text-xs text-gray-500">{c.clientNom as string || "Client"}</p>
-                  </div>
-                </div>
-                {statutBadge(c.statut as string, Boolean(c.numPolice))}
-              </div>
-            ))}
-            {prevoyance.slice(0, 3).map((c) => (
-              <div key={c.id as string} className="flex items-center justify-between p-3 rounded-lg bg-rose-50 hover:bg-rose-100 transition">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-9 w-9 rounded-lg bg-rose-600 flex items-center justify-center shrink-0">
-                    <Heart className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">Prévoyance — {c.numPolice as string || `#${c.id}`}</p>
-                    <p className="text-xs text-gray-500">{c.clientNom as string || "Client"}</p>
-                  </div>
-                </div>
-                {statutBadge(c.statut as string, Boolean(c.numPolice))}
-              </div>
-            ))}
+          </div>
+          <div className="space-y-2 p-4">
+            {epargne.slice(0, 3).map((c) => <DossierRow key={c.id as string} c={c} type="epargne" />)}
+            {prevoyance.slice(0, 3).map((c) => <DossierRow key={c.id as string} c={c} type="prevoyance" />)}
             {totalContrats === 0 && (
-              <div className="text-center py-6">
-                <FileText className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">Aucun dossier Magist&apos;Assur pour le moment</p>
+              <div className="py-10 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-navy-50">
+                  <FileText className="h-5 w-5 text-navy-300" />
+                </div>
+                <p className="text-sm text-navy-400">Aucun dossier Magist&apos;Assur pour le moment</p>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

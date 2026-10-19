@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
-import { Shield, RefreshCw, Download } from "lucide-react";
+import { RefreshCw, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/brand";
 import { useAuditLogs } from "@/hooks/use-api-data";
 import { auditLogsApi } from "@/lib/api";
 import { format } from "date-fns";
@@ -90,11 +91,11 @@ export default function AdminAuditPage() {
     }
 
     if (Object.keys(metadata || {}).length === 0) {
-      return <span className="text-gray-400">–</span>;
+      return <span className="text-navy-300">–</span>;
     }
 
     return (
-      <pre className="bg-gray-50 rounded px-2 py-1 text-[11px] leading-snug overflow-x-auto">
+      <pre className="overflow-x-auto rounded-lg bg-navy-50/60 px-2 py-1 text-[11px] leading-snug ring-1 ring-navy-100">
         {JSON.stringify(metadata, null, 2)}
       </pre>
     );
@@ -102,42 +103,38 @@ export default function AdminAuditPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Shield className="h-6 w-6 text-red-500" />
-            Journal d&apos;audit
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Historique des actions sensibles réalisées par les administrateurs et agents.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <select
-            value={actionFilter}
-            onChange={(e) => handleFilterChange(e.target.value)}
-            className="border border-gray-200 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {ACTION_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-          <Button variant="outline" onClick={refetch} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Actualiser
-          </Button>
-          <a href={auditLogsApi.exportCsvUrl(actionFilter || undefined)} download="audit_logs.csv">
-            <Button variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
+      <PageHeader
+        eyebrow="Administration"
+        title="Journal d'audit"
+        description="Historique des actions sensibles réalisées par les administrateurs et agents."
+        actions={
+          <>
+            <select
+              value={actionFilter}
+              onChange={(e) => handleFilterChange(e.target.value)}
+              className="h-10 rounded-xl border border-navy-100 bg-white px-3 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              {ACTION_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <Button variant="outline" onClick={refetch} disabled={loading} className="h-10 rounded-xl border-navy-100">
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              Actualiser
             </Button>
-          </a>
-        </div>
-      </div>
+            <a href={auditLogsApi.exportCsvUrl(actionFilter || undefined)} download="audit_logs.csv">
+              <Button variant="outline" className="h-10 rounded-xl border-navy-100">
+                <Download className="mr-2 h-4 w-4" />
+                Export CSV
+              </Button>
+            </a>
+          </>
+        }
+      />
 
-      <Card>
+      <Card className="rounded-2xl border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)]">
         <CardHeader>
-          <CardTitle>Dernières entrées</CardTitle>
+          <CardTitle className="font-display text-base font-semibold text-navy-900">Dernières entrées</CardTitle>
         </CardHeader>
         <CardContent>
           {error && (
@@ -146,7 +143,7 @@ export default function AdminAuditPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 border-b">
+                <tr className="border-b border-navy-100 text-left text-navy-400">
                   <th className="py-3 pr-4">Date</th>
                   <th className="py-3 pr-4">Action</th>
                   <th className="py-3 pr-4">Effectuée par</th>
@@ -158,43 +155,43 @@ export default function AdminAuditPage() {
               <tbody>
                 {rows.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-gray-400">
+                    <td colSpan={6} className="py-6 text-center text-navy-300">
                       Aucune entrée d&apos;audit disponible.
                     </td>
                   </tr>
                 )}
                 {rows.map((log) => (
                   <tr key={log.id} className="border-b last:border-0">
-                    <td className="py-3 pr-4 text-gray-600">
+                    <td className="py-3 pr-4 text-navy-500">
                       {format(new Date(log.createdAt), "dd MMM yyyy HH:mm", { locale: fr })}
                     </td>
                     <td className="py-3 pr-4">
                       <Badge
                         variant="secondary"
                         className={`capitalize ${
-                          log.action === "login" ? "bg-green-100 text-green-800" :
+                          log.action === "login" ? "bg-emerald-100 text-emerald-800" :
                           log.action === "login_failed" ? "bg-red-100 text-red-800" :
-                          log.action === "logout" ? "bg-gray-100 text-gray-700" : ""
+                          log.action === "logout" ? "bg-navy-100 text-navy-600" : ""
                         }`}
                       >
                         {log.action.replace(/_/g, " ")}
                       </Badge>
                     </td>
-                    <td className="py-3 pr-4 text-gray-700">
+                    <td className="py-3 pr-4 text-navy-600">
                       {log.performedBy ?? "Système"}
                     </td>
-                    <td className="py-3 pr-4 text-gray-700">{log.targetUser}</td>
-                    <td className="py-3 pr-4 text-gray-500 text-xs font-mono">
+                    <td className="py-3 pr-4 text-navy-600">{log.targetUser}</td>
+                    <td className="py-3 pr-4 text-navy-400 text-xs font-mono">
                       {log.ipAddress ?? "—"}
                     </td>
-                    <td className="py-3 text-gray-600 text-xs">
+                    <td className="py-3 text-navy-500 text-xs">
                       {renderMetadata(log.action, log.metadata)}
                     </td>
                   </tr>
                 ))}
                 {loading && (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-gray-400">
+                    <td colSpan={6} className="py-6 text-center text-navy-300">
                       Chargement...
                     </td>
                   </tr>
@@ -203,7 +200,7 @@ export default function AdminAuditPage() {
             </table>
           </div>
 
-          <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+          <div className="mt-4 flex items-center justify-between text-sm text-navy-400">
             <div>
               {totalCount > 0 ? (
                 <span>

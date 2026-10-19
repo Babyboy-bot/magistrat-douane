@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, Eye, EyeOff, UserPlus, LogIn } from "lucide-react";
+import { Eye, EyeOff, UserPlus, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthShell } from "@/components/brand";
 import { useAuthStore } from "@/stores/auth-store";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -53,144 +53,82 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[hsl(222,47%,15%)] text-white flex-col justify-between p-12">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="h-10 w-10 text-amber-400" />
-            <h1 className="text-3xl font-bold tracking-tight">ACS</h1>
-          </div>
-          <p className="text-amber-400 font-medium text-lg">Magistrat & Douane</p>
+    <AuthShell
+      title="Connexion"
+      description="Accédez à votre espace personnel sécurisé"
+    >
+      <form onSubmit={handleLogin} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="identifier">Email ou numéro de téléphone</Label>
+          <Input
+            id="identifier"
+            type="text"
+            placeholder="Votre email ou numéro de téléphone"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            className="h-11"
+            autoComplete="username"
+          />
         </div>
 
-        <div className="space-y-8">
-          <h2 className="text-4xl font-bold leading-tight">
-            Votre plateforme<br />
-            d&apos;assurance<br />
-            <span className="text-amber-400">sécurisée</span>
-          </h2>
-          <p className="text-white/70 text-lg max-w-md">
-            Gérez vos contrats, souscrivez en ligne et suivez vos demandes
-            en toute simplicité depuis votre espace personnel.
-          </p>
-          <div className="flex gap-8 text-sm text-white/50">
-            <div>
-              <p className="text-2xl font-bold text-white">500+</p>
-              <p>Contrats gérés</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">14</p>
-              <p>Compagnies partenaires</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">24/7</p>
-              <p>Accès en ligne</p>
-            </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">Mot de passe</Label>
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Votre mot de passe"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-11 pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-700"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
         </div>
 
-        <p className="text-white/30 text-sm">
-          © {new Date().getFullYear()} ACS — Assurances Conseils & Services. Tous droits réservés.
+        <div className="flex justify-end">
+          <Link
+            href="/reset-password"
+            className="text-sm font-medium text-navy-700 hover:text-amber-700 hover:underline"
+          >
+            Mot de passe oublié ?
+          </Link>
+        </div>
+
+        <Button
+          type="submit"
+          className="h-11 w-full rounded-xl bg-navy-900 font-semibold text-white hover:bg-navy-800"
+          disabled={loading}
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Connexion...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <LogIn className="h-4 w-4" />
+              Se connecter
+            </span>
+          )}
+        </Button>
+      </form>
+
+      <div className="mt-6 border-t border-navy-50 pt-5 text-center">
+        <p className="text-sm text-navy-500">
+          Pas encore de compte ?{" "}
+          <Link href="/register" className="font-semibold text-navy-800 hover:text-amber-700 hover:underline">
+            <UserPlus className="mr-1 inline h-3.5 w-3.5" />
+            S&apos;inscrire
+          </Link>
         </p>
       </div>
-
-      {/* Right panel - Login form */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-gray-50">
-        <div className="w-full max-w-md space-y-6">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-3 justify-center mb-8">
-            <Shield className="h-8 w-8 text-[hsl(222,47%,20%)]" />
-            <div>
-              <h1 className="text-2xl font-bold text-[hsl(222,47%,20%)]">ACS</h1>
-              <p className="text-amber-600 text-sm font-medium">Magistrat & Douane</p>
-            </div>
-          </div>
-
-          <Card className="shadow-xl border-0">
-            <CardHeader className="space-y-1 pb-4">
-              <CardTitle className="text-2xl font-bold">Connexion</CardTitle>
-              <CardDescription>
-                Accédez à votre espace personnel sécurisé
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="identifier">Email ou numéro de téléphone</Label>
-                  <Input
-                    id="identifier"
-                    type="text"
-                    placeholder="Votre email ou numéro de téléphone"
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                    className="h-11"
-                    autoComplete="username"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Mot de passe</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Votre mot de passe"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-11 pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Link
-                    href="/reset-password"
-                    className="text-sm text-[hsl(222,47%,20%)] hover:underline font-medium"
-                  >
-                    Mot de passe oublié ?
-                  </Link>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full h-11 bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)] text-white font-semibold"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <span className="flex items-center gap-2">
-                      <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Connexion...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <LogIn className="h-4 w-4" />
-                      Se connecter
-                    </span>
-                  )}
-                </Button>
-              </form>
-
-              <div className="mt-6 text-center">
-                <p className="text-sm text-gray-500">
-                  Pas encore de compte ?{" "}
-                  <Link href="/register" className="text-[hsl(222,47%,20%)] hover:underline font-semibold">
-                    <UserPlus className="h-3.5 w-3.5 inline mr-1" />
-                    S&apos;inscrire
-                  </Link>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

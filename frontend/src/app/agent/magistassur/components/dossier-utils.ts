@@ -23,14 +23,14 @@ export const STATUT_LABELS: Record<string, string> = {
 };
 
 export const STATUT_COLORS: Record<string, string> = {
-  en_cours: "bg-green-100 text-green-700",
-  suspendu: "bg-yellow-100 text-yellow-700",
-  sinistre: "bg-red-100 text-red-700",
-  rachete: "bg-orange-100 text-orange-700",
-  arrive_terme: "bg-blue-100 text-blue-700",
-  expire: "bg-gray-100 text-gray-600",
-  resilie: "bg-red-100 text-red-700",
-  cloture: "bg-slate-200 text-slate-700",
+  en_cours: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  suspendu: "bg-amber-100 text-amber-800 border-amber-200",
+  sinistre: "bg-red-100 text-red-800 border-red-200",
+  rachete: "bg-amber-100 text-amber-800 border-amber-200",
+  arrive_terme: "bg-navy-100 text-navy-700 border-navy-200",
+  expire: "bg-navy-50 text-navy-500 border-navy-100",
+  resilie: "bg-red-100 text-red-800 border-red-200",
+  cloture: "bg-navy-100 text-navy-700 border-navy-200",
 };
 
 export const PERIODICITE_COURTE: Record<string, string> = {

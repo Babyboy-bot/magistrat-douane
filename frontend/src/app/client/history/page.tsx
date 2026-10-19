@@ -84,26 +84,26 @@ export default function HistoryPage() {
 
   const statusIcon = (status: string) => {
     switch (status) {
-      case "en_attente": return <Clock className="h-4 w-4 text-yellow-500" />;
-      case "en_cours": return <AlertCircle className="h-4 w-4 text-blue-500" />;
-      case "devis_envoye": return <FileText className="h-4 w-4 text-purple-500" />;
-      case "en_revision": return <RefreshCw className="h-4 w-4 text-orange-500" />;
+      case "en_attente": return <Clock className="h-4 w-4 text-amber-500" />;
+      case "en_cours": return <AlertCircle className="h-4 w-4 text-navy-500" />;
+      case "devis_envoye": return <FileText className="h-4 w-4 text-amber-600" />;
+      case "en_revision": return <RefreshCw className="h-4 w-4 text-amber-500" />;
       case "valide": return <CheckCheck className="h-4 w-4 text-emerald-500" />;
       case "refuse": return <XCircle className="h-4 w-4 text-red-500" />;
-      case "traite": return <CheckCircle className="h-4 w-4 text-green-500" />;
-      default: return <Clock className="h-4 w-4 text-gray-400" />;
+      case "traite": return <CheckCircle className="h-4 w-4 text-emerald-500" />;
+      default: return <Clock className="h-4 w-4 text-navy-300" />;
     }
   };
 
   const statusColor = (status: string) => {
     switch (status) {
-      case "en_attente": return "bg-yellow-100 text-yellow-800";
-      case "en_cours": return "bg-blue-100 text-blue-800";
-      case "devis_envoye": return "bg-purple-100 text-purple-800";
-      case "en_revision": return "bg-orange-100 text-orange-800";
+      case "en_attente": return "bg-amber-100 text-amber-800";
+      case "en_cours": return "bg-navy-100 text-navy-700";
+      case "devis_envoye": return "bg-amber-100 text-amber-800";
+      case "en_revision": return "bg-amber-100 text-amber-800";
       case "valide": return "bg-emerald-100 text-emerald-800";
       case "refuse": return "bg-red-100 text-red-800";
-      case "traite": return "bg-green-100 text-green-800";
+      case "traite": return "bg-emerald-100 text-emerald-800";
       default: return "bg-navy-50 text-navy-700";
     }
   };
@@ -253,7 +253,7 @@ export default function HistoryPage() {
               {/* Actions cotation — devis reçu */}
               {COTATION_TYPES.includes(r.type) && r.status === "devis_envoye" && (
                 <div className="mt-3 pt-3 border-t">
-                  <p className="text-xs text-purple-700 font-medium mb-2">Votre devis est disponible ci-dessous. Quelle est votre décision ?</p>
+                  <p className="mb-2 text-xs font-medium text-amber-700">Votre devis est disponible ci-dessous. Quelle est votre décision ?</p>
                   <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => setCotationAction({ id: r.id, action: "valider" })}

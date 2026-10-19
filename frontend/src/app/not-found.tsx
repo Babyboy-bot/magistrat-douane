@@ -1,27 +1,27 @@
 import Link from "next/link";
-import { Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BrandMark } from "@/components/brand";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center space-y-6 max-w-md px-6">
-        <div className="flex items-center gap-3 justify-center">
-          <Shield className="h-10 w-10 text-[hsl(222,47%,20%)]" />
-          <div>
-            <h1 className="text-2xl font-bold text-[hsl(222,47%,20%)]">ACS</h1>
-            <p className="text-amber-600 text-xs font-medium">Magistrat & Douane</p>
+    <div className="flex min-h-screen items-center justify-center bg-ivory">
+      <div className="max-w-md space-y-8 px-6 text-center">
+        <div className="flex items-center justify-center gap-3">
+          <BrandMark />
+          <div className="text-left">
+            <h1 className="font-display text-2xl font-semibold text-navy-900">ACS</h1>
+            <p className="text-xs font-medium text-amber-700">Magistrat &amp; Douane</p>
           </div>
         </div>
         <div>
-          <p className="text-7xl font-bold text-gray-200">404</p>
-          <h2 className="text-xl font-semibold text-gray-700 mt-4">Page introuvable</h2>
-          <p className="text-gray-500 mt-2">
+          <p className="font-display text-7xl font-semibold text-navy-100">404</p>
+          <h2 className="mt-4 font-display text-xl font-semibold text-navy-800">Page introuvable</h2>
+          <p className="mt-2 text-sm text-navy-400">
             La page que vous recherchez n&apos;existe pas ou a été déplacée.
           </p>
         </div>
         <Link href="/login">
-          <Button className="bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)] text-white">
+          <Button className="rounded-xl bg-navy-900 font-semibold text-white hover:bg-navy-800">
             Retour à l&apos;accueil
           </Button>
         </Link>

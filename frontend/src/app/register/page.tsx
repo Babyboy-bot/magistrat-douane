@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthShell } from "@/components/brand";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -106,50 +106,13 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[hsl(222,47%,15%)] text-white flex-col justify-between p-12">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="h-10 w-10 text-amber-400" />
-            <h1 className="text-3xl font-bold tracking-tight">ACS</h1>
-          </div>
-          <p className="text-amber-400 font-medium text-lg">Magistrat & Douane</p>
-        </div>
-        <div className="space-y-6">
-          <h2 className="text-4xl font-bold leading-tight">
-            Créez votre<br />
-            compte en<br />
-            <span className="text-amber-400">quelques minutes</span>
-          </h2>
-          <p className="text-white/70 text-lg max-w-md">
-            Rejoignez notre plateforme et bénéficiez d&apos;un accès complet
-            à la gestion de vos contrats d&apos;assurance.
-          </p>
-        </div>
-        <p className="text-white/30 text-sm">
-          © {new Date().getFullYear()} ACS — Assurances Conseils & Services
-        </p>
-      </div>
-
-      {/* Right panel */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-gray-50">
-        <div className="w-full max-w-md space-y-6">
-          <div className="lg:hidden flex items-center gap-3 justify-center mb-6">
-            <Shield className="h-8 w-8 text-[hsl(222,47%,20%)]" />
-            <div>
-              <h1 className="text-2xl font-bold text-[hsl(222,47%,20%)]">ACS</h1>
-              <p className="text-amber-600 text-sm font-medium">Magistrat & Douane</p>
-            </div>
-          </div>
-
-          <Card className="shadow-xl border-0">
-            <CardHeader className="space-y-1 pb-4">
-              <CardTitle className="text-2xl font-bold">Inscription</CardTitle>
-              <CardDescription>Créez votre compte pour accéder à la plateforme</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-3">
+    <AuthShell
+      title="Inscription"
+      description="Créez votre compte pour accéder à la plateforme"
+      heroTitle={<>Créez votre compte <span className="text-amber-300">en quelques minutes</span></>}
+      heroLead="Rejoignez la plateforme réservée aux magistrats et douaniers et gérez vos contrats d'assurance en ligne."
+    >
+      <form onSubmit={handleSubmit} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="nom">Nom *</Label>
@@ -201,8 +164,9 @@ export default function RegisterPage() {
                 </div>
 
                 {(form.professionType === "magistrat" || form.professionType === "douanier") && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <p className="text-xs text-amber-800">
+                  <div className="flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                    <p className="text-xs leading-relaxed text-amber-800">
                       <strong>Note :</strong> En tant que {form.professionType === "magistrat" ? "magistrat" : "douanier"}, votre compte devra être vérifié par un agent ACS. Aucun accès ne sera actif tant que votre identité professionnelle n&apos;aura pas été validée (sous 24h ouvrées).
                     </p>
                   </div>
@@ -247,7 +211,7 @@ export default function RegisterPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-700"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -268,7 +232,7 @@ export default function RegisterPage() {
 
                 <Button
                   type="submit"
-                  className="w-full h-11 bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)] text-white font-semibold mt-2"
+                  className="mt-2 h-11 w-full rounded-xl bg-navy-900 font-semibold text-white hover:bg-navy-800"
                   disabled={loading}
                 >
                   {loading ? (
@@ -282,19 +246,15 @@ export default function RegisterPage() {
                 </Button>
               </form>
 
-              <div className="mt-4 text-center">
+              <div className="mt-5 border-t border-navy-50 pt-4 text-center">
                 <Link
                   href="/login"
-                  className="text-sm text-gray-500 hover:text-[hsl(222,47%,20%)] inline-flex items-center gap-1"
+                  className="inline-flex items-center gap-1 text-sm text-navy-500 hover:text-navy-800"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Retour à la connexion
                 </Link>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

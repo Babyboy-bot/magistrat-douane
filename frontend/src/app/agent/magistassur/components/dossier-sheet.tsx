@@ -32,8 +32,8 @@ const STEPS = ["Pris en charge", "Envoyé à NSIA", "N° police attribué"];
 function Field({ label, value }: { label: string; value?: ReactNode }) {
   return (
     <div>
-      <p className="text-xs text-gray-400">{label}</p>
-      <p className="text-sm font-medium text-gray-800 break-words">{value || "—"}</p>
+      <p className="text-xs text-navy-400">{label}</p>
+      <p className="text-sm font-medium text-navy-900 break-words">{value || "—"}</p>
     </div>
   );
 }
@@ -41,8 +41,8 @@ function Field({ label, value }: { label: string; value?: ReactNode }) {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-2">
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{title}</h3>
-      <div className="bg-white border rounded-lg p-3">{children}</div>
+      <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">{title}</h3>
+      <div className="rounded-xl border border-navy-100 bg-white p-3 shadow-[0_1px_2px_rgb(16_28_52/0.04)]">{children}</div>
     </section>
   );
 }
@@ -50,11 +50,11 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function DocLink({ href, label, icon }: { href?: string; label: string; icon: ReactNode }) {
   return href ? (
     <a href={href} target="_blank" rel="noopener noreferrer"
-      className="flex items-center gap-1.5 text-xs bg-white border border-green-200 text-green-700 hover:bg-green-50 rounded-lg px-3 py-1.5 font-medium">
+      className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50">
       <CheckCircle2 className="h-3.5 w-3.5" />{icon}{label}
     </a>
   ) : (
-    <span className="flex items-center gap-1.5 text-xs bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-1.5">
+    <span className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-600">
       <AlertTriangle className="h-3.5 w-3.5" />{label} manquant(e)
     </span>
   );
@@ -146,13 +146,13 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
         </div>
         {item.kind === "prevoyance" && (
           <div className="col-span-2">
-            <Label className="text-xs">Date d&apos;effet <span className="text-gray-400">(échéance calculée à +1 an)</span></Label>
+            <Label className="text-xs">Date d&apos;effet <span className="text-navy-400">(échéance calculée à +1 an)</span></Label>
             <Input type="date" className="h-9 mt-1" value={police.dateEffet}
               onChange={e => setPolice(p => ({ ...p, dateEffet: e.target.value }))} />
           </div>
         )}
       </div>
-      <Button className="w-full bg-green-600 hover:bg-green-700" disabled={busy === "police"} onClick={activer}>
+      <Button className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={busy === "police"} onClick={activer}>
         {busy === "police" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
         Activer le contrat
       </Button>
@@ -161,17 +161,17 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
 
   const exportButtons = (
     <div className="flex gap-2">
-      <Button size="sm" variant="outline" className="flex-1" disabled={busy === "export-excel"} onClick={() => exporter("excel")}>
-        <FileSpreadsheet className="h-4 w-4 mr-1 text-green-600" /> Excel NSIA
+      <Button size="sm" variant="outline" className="flex-1 border-navy-100" disabled={busy === "export-excel"} onClick={() => exporter("excel")}>
+        <FileSpreadsheet className="h-4 w-4 mr-1 text-emerald-600" /> Excel NSIA
       </Button>
-      <Button size="sm" variant="outline" className="flex-1" disabled={busy === "export-pdf"} onClick={() => exporter("pdf")}>
+      <Button size="sm" variant="outline" className="flex-1 border-navy-100" disabled={busy === "export-pdf"} onClick={() => exporter("pdf")}>
         <FileDown className="h-4 w-4 mr-1 text-red-600" /> PDF NSIA
       </Button>
     </div>
   );
 
   const libererLink = isMine && !c.numPolice && !c.envoyeNsiaAt && (
-    <button className="text-xs text-gray-500 hover:text-red-600 underline" disabled={busy === "liberer"} onClick={liberer}>
+    <button className="text-xs text-navy-400 underline hover:text-red-600" disabled={busy === "liberer"} onClick={liberer}>
       Libérer ce dossier (le rendre aux autres agents)
     </button>
   );
@@ -179,28 +179,28 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
   const renderAction = () => {
     if (takenByOther && !isAdmin) {
       return (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-          <UserCheck className="h-4 w-4 inline mr-1" /> Ce dossier est en cours de traitement par <strong>{c.prisEnChargeNom}</strong>. Consultation seule.
+        <div className="rounded-xl border border-navy-200 bg-navy-50 p-4 text-sm text-navy-700">
+          <UserCheck className="mr-1 inline h-4 w-4" /> Ce dossier est en cours de traitement par <strong>{c.prisEnChargeNom}</strong>. Consultation seule.
         </div>
       );
     }
     switch (etape) {
       case "a_prendre":
         return (
-          <div className="rounded-xl border-2 border-orange-300 bg-orange-50 p-4 space-y-3">
-            <p className="font-semibold text-orange-900">Étape 1 — Prendre le dossier en charge</p>
-            <p className="text-sm text-orange-800">Personne ne traite encore ce dossier. En le prenant en charge, il passe à votre nom et les autres agents ne peuvent plus le modifier.</p>
-            <Button className="w-full bg-orange-600 hover:bg-orange-700" disabled={busy === "prendre"} onClick={prendre}>
-              {busy === "prendre" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserCheck className="h-4 w-4 mr-2" />}
+          <div className="space-y-3 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4">
+            <p className="font-semibold text-amber-900">Étape 1 — Prendre le dossier en charge</p>
+            <p className="text-sm text-amber-800">Personne ne traite encore ce dossier. En le prenant en charge, il passe à votre nom et les autres agents ne peuvent plus le modifier.</p>
+            <Button className="w-full rounded-xl bg-amber-500 font-semibold text-navy-950 hover:bg-amber-600" disabled={busy === "prendre"} onClick={prendre}>
+              {busy === "prendre" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserCheck className="mr-2 h-4 w-4" />}
               Prendre en charge
             </Button>
           </div>
         );
       case "a_traiter":
         return (
-          <div className="rounded-xl border-2 border-blue-300 bg-blue-50 p-4 space-y-3">
-            <p className="font-semibold text-blue-900">Étape 2 — Vérifier les pièces et envoyer à NSIA</p>
-            <ol className="text-sm text-blue-800 list-decimal ml-5 space-y-0.5">
+          <div className="space-y-3 rounded-2xl border-2 border-navy-300 bg-navy-50 p-4">
+            <p className="font-semibold text-navy-900">Étape 2 — Vérifier les pièces et envoyer à NSIA</p>
+            <ol className="ml-5 list-decimal space-y-0.5 text-sm text-navy-700">
               <li>Ouvrez et contrôlez les pièces ci-dessous.</li>
               <li>Téléchargez le dossier (Excel ou PDF) et transmettez-le à NSIA.</li>
               <li>Confirmez l&apos;envoi.</li>
@@ -213,53 +213,53 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
                   <DocLink href={item.c.ribDocumentUrl} label="RIB" icon={<CreditCard className="h-3.5 w-3.5" />} />
                 </>
               ) : item.c.questionnaireMedical ? (
-                <span className="text-xs bg-green-50 border border-green-200 text-green-700 rounded-lg px-3 py-1.5"><CheckCircle2 className="h-3.5 w-3.5 inline mr-1" />Questionnaire médical rempli</span>
+                <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700"><CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />Questionnaire médical rempli</span>
               ) : (
-                <span className="text-xs bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-1.5"><AlertTriangle className="h-3.5 w-3.5 inline mr-1" />Questionnaire médical manquant</span>
+                <span className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-600"><AlertTriangle className="mr-1 inline h-3.5 w-3.5" />Questionnaire médical manquant</span>
               )}
             </div>
             {exportButtons}
-            <label className="flex items-start gap-2 text-sm text-blue-900 cursor-pointer">
+            <label className="flex cursor-pointer items-start gap-2 text-sm text-navy-800">
               <Checkbox checked={verifie} onCheckedChange={v => setVerifie(!!v)} className="mt-0.5" />
               J&apos;ai vérifié les pièces et transmis le dossier à NSIA.
             </label>
-            <Button className="w-full bg-blue-600 hover:bg-blue-700" disabled={!verifie || busy === "envoyer"} onClick={envoyer}>
-              {busy === "envoyer" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+            <Button className="w-full rounded-xl bg-navy-800 font-semibold hover:bg-navy-700" disabled={!verifie || busy === "envoyer"} onClick={envoyer}>
+              {busy === "envoyer" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
               Confirmer l&apos;envoi à NSIA
             </Button>
             <div className="flex items-center justify-between pt-1">
-              <button className="text-xs text-blue-700 underline" onClick={() => setShowPolice(v => !v)}>
+              <button className="text-xs text-navy-600 underline" onClick={() => setShowPolice(v => !v)}>
                 {showPolice ? "Masquer" : "J'ai déjà reçu le N° de police"}
               </button>
               {libererLink}
             </div>
-            {showPolice && <div className="border-t border-blue-200 pt-3">{policeForm}</div>}
+            {showPolice && <div className="border-t border-navy-200 pt-3">{policeForm}</div>}
           </div>
         );
       case "envoye":
         return (
-          <div className="rounded-xl border-2 border-purple-300 bg-purple-50 p-4 space-y-3">
-            <p className="font-semibold text-purple-900">Étape 3 — Saisir le N° de police reçu de NSIA</p>
-            <p className="text-sm text-purple-800">Dossier envoyé à NSIA le <strong>{formatDate(c.envoyeNsiaAt)}</strong>. Dès réception du numéro, saisissez-le : le contrat sera activé et le client notifié.</p>
+          <div className="space-y-3 rounded-2xl border-2 border-navy-300 bg-navy-50 p-4">
+            <p className="font-semibold text-navy-900">Étape 3 — Saisir le N° de police reçu de NSIA</p>
+            <p className="text-sm text-navy-700">Dossier envoyé à NSIA le <strong>{formatDate(c.envoyeNsiaAt)}</strong>. Dès réception du numéro, saisissez-le : le contrat sera activé et le client notifié.</p>
             {policeForm}
             <div className="flex items-center justify-between pt-1">
-              <button className="text-xs text-purple-700 underline" onClick={() => exporter("pdf")}>Re-télécharger le PDF</button>
+              <button className="text-xs text-navy-600 underline" onClick={() => exporter("pdf")}>Re-télécharger le PDF</button>
               {libererLink}
             </div>
           </div>
         );
       default:
         return (
-          <div className="rounded-xl border-2 border-green-300 bg-green-50 p-4 space-y-3">
+          <div className="space-y-3 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4">
             <div className="flex items-center justify-between">
-              <p className="font-semibold text-green-900">Contrat actif — police n° {c.numPolice}</p>
-              <Badge className={STATUT_COLORS[c.statut] || "bg-gray-100 text-gray-600"}>{STATUT_LABELS[c.statut] || c.statut}</Badge>
+              <p className="font-semibold text-emerald-900">Contrat actif — police n° {c.numPolice}</p>
+              <Badge className={STATUT_COLORS[c.statut] || "bg-navy-50 text-navy-500"}>{STATUT_LABELS[c.statut] || c.statut}</Badge>
             </div>
             {item.kind === "epargne" && (
-              <p className="text-sm text-green-800">Capital constitué : <strong>{formatCFA(item.c.capitalConstitue)}</strong> · {item.c.cotisations.length} cotisation(s) encaissée(s)</p>
+              <p className="text-sm text-emerald-800">Capital constitué : <strong>{formatCFA(item.c.capitalConstitue)}</strong> · {item.c.cotisations.length} cotisation(s) encaissée(s)</p>
             )}
             {c.statut === "cloture" ? (
-              <p className="text-sm text-slate-600 flex items-center gap-1"><LockIcon className="h-4 w-4" /> Contrat clôturé — aucune modification possible.</p>
+              <p className="flex items-center gap-1 text-sm text-navy-500"><LockIcon className="h-4 w-4" /> Contrat clôturé — aucune modification possible.</p>
             ) : (
               <div className="flex gap-2">
                 <Select value={statut || c.statut} onValueChange={setStatut}>
@@ -271,7 +271,7 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
                     ).map(s => <SelectItem key={s} value={s}>{STATUT_LABELS[s]}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button variant="outline" className="h-9" disabled={busy === "statut" || !statut || statut === c.statut} onClick={appliquerStatut}>
+                <Button variant="outline" className="h-9 border-navy-200" disabled={busy === "statut" || !statut || statut === c.statut} onClick={appliquerStatut}>
                   Changer le statut
                 </Button>
               </div>
@@ -284,19 +284,19 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
   return (
     <Sheet open onOpenChange={o => !o && onClose()}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 gap-0">
-        <SheetHeader className="border-b bg-gray-50">
-          <SheetTitle className="text-lg">{c.clientNom}</SheetTitle>
-          <SheetDescription>
+        <SheetHeader className="border-b border-navy-100 bg-navy-50/50">
+          <SheetTitle className="font-display text-lg font-semibold text-navy-900">{c.clientNom}</SheetTitle>
+          <SheetDescription className="text-navy-400">
             {produitLabel(item)} · {montantLabel(item)} · souscrit le {formatDate(c.createdAt)}
           </SheetDescription>
           <div className="flex items-center gap-1 pt-2">
             {STEPS.map((s, i) => (
-              <div key={s} className="flex items-center gap-1 flex-1">
+              <div key={s} className="flex flex-1 items-center gap-1">
                 {i < stepsDone
-                  ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-                  : <Circle className={`h-4 w-4 shrink-0 ${i === stepsDone ? "text-amber-500" : "text-gray-300"}`} />}
-                <span className={`text-xs ${i < stepsDone ? "text-green-700" : i === stepsDone ? "text-amber-700 font-semibold" : "text-gray-400"}`}>{s}</span>
-                {i < STEPS.length - 1 && <div className={`h-px flex-1 ${i < stepsDone ? "bg-green-400" : "bg-gray-200"}`} />}
+                  ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  : <Circle className={`h-4 w-4 shrink-0 ${i === stepsDone ? "text-amber-500" : "text-navy-200"}`} />}
+                <span className={`text-xs ${i < stepsDone ? "text-emerald-700" : i === stepsDone ? "font-semibold text-amber-700" : "text-navy-300"}`}>{s}</span>
+                {i < STEPS.length - 1 && <div className={`h-px flex-1 ${i < stepsDone ? "bg-emerald-400" : "bg-navy-100"}`} />}
               </div>
             ))}
           </div>
@@ -311,7 +311,7 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
                 {[...item.c.cotisations].reverse().map(co => (
                   <div key={co.id} className="flex justify-between py-1.5">
                     <span>Échéance {formatDate(co.dateEcheance)}</span>
-                    <span className="text-gray-500">payée le {formatDate(co.datePaiement)}</span>
+                    <span className="text-navy-400">payée le {formatDate(co.datePaiement)}</span>
                     <span className="font-medium">{formatCFA(co.montant)}</span>
                   </div>
                 ))}
@@ -358,8 +358,8 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
                     {item.c.correspondants.map((co, i) => (
                       <div key={i} className="flex flex-wrap gap-x-4 py-1.5">
                         <span className="font-medium">{co.nom} {co.prenom}</span>
-                        <span className="text-gray-500">{co.telephone}</span>
-                        <span className="text-gray-500">{co.email}</span>
+                        <span className="text-navy-400">{co.telephone}</span>
+                        <span className="text-navy-400">{co.email}</span>
                       </div>
                     ))}
                   </div>
@@ -371,7 +371,7 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
                     {item.c.beneficiaires.map((b, i) => (
                       <div key={i} className="flex justify-between py-1.5">
                         <span className="font-medium">{b.conjointCorps ? "Conjoint(e)" : b.enfantsNes ? "Enfants nés ou à naître" : b.nom}</span>
-                        <span className="text-gray-500">{b.enQualiteDe}</span>
+                        <span className="text-navy-400">{b.enQualiteDe}</span>
                         {!b.conjointCorps && !b.enfantsNes && <span className="text-amber-700 font-medium">{b.tauxRepartition} %</span>}
                       </div>
                     ))}
@@ -395,8 +395,8 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
                   <div className="divide-y text-sm">
                     {item.c.assuresAssocies.map((a, i) => (
                       <div key={i} className="flex justify-between gap-2 py-1.5">
-                        <span className="font-medium">{a.nom || "—"} <span className="text-gray-400">({a.lienParente})</span></span>
-                        <span className="text-gray-500 text-xs">
+                        <span className="font-medium">{a.nom || "—"} <span className="text-navy-300">({a.lienParente})</span></span>
+                        <span className="text-navy-400 text-xs">
                           né(e) le {formatDate(a.dateNaissance)}{a.contact ? ` · ${a.contact}` : ""}
                         </span>
                         <span className="text-amber-700 font-medium shrink-0">{formatCFA(a.montantIndemnite)}</span>
@@ -411,7 +411,7 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
                     {item.c.beneficiaires.map((b, i) => (
                       <div key={i} className="flex justify-between py-1.5">
                         <span className="font-medium">{b.conjointCorps ? "Conjoint(e)" : b.enfantsNes ? "Enfants nés ou à naître" : b.nom}</span>
-                        <span className="text-gray-500">{b.enQualiteDe}</span>
+                        <span className="text-navy-400">{b.enQualiteDe}</span>
                       </div>
                     ))}
                   </div>
