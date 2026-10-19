@@ -134,22 +134,15 @@ class TestMeView:
 
 
 @pytest.mark.django_db
-class TestAgentCreateClientView:
-    def test_agent_creates_preverified_client(self, api_client, agent):
-        force_login(api_client, agent)
-        resp = api_client.post("/api/auth/users/create/", {
-            "nom": "NewClient", "prenoms": "ACS",
-            "telephone": "0700112233",
-            "password": "SecurePass123!",
-        }, format="json")
-        assert resp.status_code == 201
-        user = User.objects.get(telephone="0700112233")
-        assert user.role == "client"
+class TestNoStaffClientCreation:
+    """Les clients s'inscrivent eux-mêmes : aucune création de compte client par le staff."""
 
-    def test_client_cannot_create_client(self, api_client, client_user):
-        force_login(api_client, client_user)
+    @pytest.mark.parametrize("who", ["agent", "admin_user"])
+    def test_route_removed(self, api_client, request, who):
+        force_login(api_client, request.getfixturevalue(who))
         resp = api_client.post("/api/auth/users/create/", {
             "nom": "X", "prenoms": "Y",
-            "telephone": "0700999888", "password": "SecurePass123!",
+            "telephone": "0700112233", "password": "SecurePass123!",
         }, format="json")
-        assert resp.status_code == 403
+        assert resp.status_code in (404, 405)
+        assert not User.objects.filter(telephone="0700112233").exists()

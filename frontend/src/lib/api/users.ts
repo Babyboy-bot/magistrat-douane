@@ -72,14 +72,6 @@ export const usersApi = {
     return res.results;
   },
 
-  async create(data: { nom: string; prenoms: string; email: string; telephone: string; telephone2?: string; password: string }): Promise<User> {
-    const raw = await apiFetch<Record<string, unknown>>("/api/auth/users/create/", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-    return mapUser(raw);
-  },
-
   async update(id: number, data: Partial<{ nom: string; prenoms: string; email: string; telephone: string; telephone2: string; is_active: boolean; password?: string }>): Promise<User> {
     const raw = await apiFetch<Record<string, unknown>>(`/api/auth/users/${id}/`, {
       method: "PATCH",
@@ -107,14 +99,6 @@ export const usersApi = {
       method: "POST",
       body: JSON.stringify({ user_id: id }),
     });
-  },
-
-  async createClient(data: { nom: string; prenoms: string; email: string; telephone: string; telephone2?: string; password: string }): Promise<User> {
-    const raw = await apiFetch<Record<string, unknown>>("/api/auth/users/create/", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-    return mapUser(raw);
   },
 };
 

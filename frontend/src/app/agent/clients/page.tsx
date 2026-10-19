@@ -4,7 +4,6 @@ import { useMemo, useState, useEffect } from "react";
 import {
   Users,
   Search,
-  Plus,
   Phone,
   Mail,
   Shield,
@@ -18,8 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
@@ -27,13 +24,10 @@ import { usePaginatedUsers, useClientEmissions, useClientRequests, useUsers } fr
 import { usersApi } from "@/lib/api";
 import { EmissionFormDialog } from "@/app/agent/emissions/components/emission-form-dialog";
 import { PROFESSION_LABELS, REQUEST_TYPE_LABELS, Emission } from "@/lib/types";
-import { useAuthStore } from "@/stores/auth-store";
 
 const PAGE_SIZE = 15;
 type Segment = "magistrats" | "douaniers" | "autres";
 
-
-const initialFormState = { nom: "", prenoms: "", email: "", telephone: "", telephone2: "" };
 
 const formatCurrency = (value: number) => `${new Intl.NumberFormat("fr-FR").format(value)} FCFA`;
 
@@ -48,13 +42,9 @@ export default function AgentClientsPage() {
   const [segment, setSegment] = useState<Segment>("magistrats");
   const [search, setSearch] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [form, setForm] = useState(initialFormState);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [showEmission, setShowEmission] = useState(false);
-  const user = useAuthStore((state) => state.user);
   const { data: allUsers } = useUsers();
-  const canCreate = user?.role === "admin";
 
   const professionType = segment === "magistrats" ? "magistrat" : segment === "douaniers" ? "douanier" : segment === "autres" ? "autre" : undefined;
 
@@ -89,22 +79,6 @@ export default function AgentClientsPage() {
     return { primeTotale, primePayee, primeAPayer: primeTotale - primePayee };
   }, [selectedClient, selectedEmissions]);
 
-  const handleCreateClient = async () => {
-    if (!form.nom || !form.prenoms || !form.email || !form.telephone) {
-      toast.error("Veuillez remplir les champs obligatoires");
-      return;
-    }
-    try {
-      await usersApi.createClient({ nom: form.nom, prenoms: form.prenoms, email: form.email, telephone: form.telephone, telephone2: form.telephone2, password: "Temp@1234" });
-      toast.success("Client créé avec succès");
-      setForm(initialFormState);
-      setShowAddDialog(false);
-      refetch();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erreur lors de la création");
-    }
-  };
-
   const handleVerify = async (clientId: string) => {
     setVerifyingId(clientId);
     try {
@@ -135,30 +109,6 @@ export default function AgentClientsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input placeholder="Rechercher..." value={search} onChange={(e) => { setPage(1); setSearch(e.target.value); }} className="pl-9" />
           </div>
-          {canCreate && (
-            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-              <DialogTrigger asChild>
-                <Button className="bg-[hsl(222,47%,20%)] hover:bg-[hsl(222,47%,25%)]">
-                  <Plus className="h-4 w-4 mr-2" /> Ajouter
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Ajouter un client</DialogTitle></DialogHeader>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Nom *</Label><Input value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} /></div>
-                    <div><Label>Prénoms *</Label><Input value={form.prenoms} onChange={(e) => setForm({ ...form, prenoms: e.target.value })} /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Téléphone *</Label><Input value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} /></div>
-                    <div><Label>Téléphone 2</Label><Input value={form.telephone2} onChange={(e) => setForm({ ...form, telephone2: e.target.value })} /></div>
-                  </div>
-                  <div><Label>Email *</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-                  <Button onClick={handleCreateClient} className="w-full">Enregistrer</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          )}
         </div>
       </header>
 
@@ -251,7 +201,14 @@ export default function AgentClientsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Email</span>
-                    <span className="font-medium text-xs">{selectedClient.email}</span>
+                    <span className="font-medium text-xs text-right">
+                      {selectedClient.email}
+                      {selectedClient.email && (
+                        <span className={`block ${selectedClient.emailVerified ? "text-green-600" : "text-amber-600"}`}>
+                          {selectedClient.emailVerified ? "✓ confirmé" : "non confirmé"}
+                        </span>
+                      )}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Téléphone</span>

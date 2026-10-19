@@ -18,6 +18,7 @@ export function mapUser(u: Record<string, unknown>): User {
     telephone: u.telephone as string,
     telephone2: (u.telephone2 as string) || "",
     email: (u.email as string) || "",
+    emailVerified: Boolean(u.email_verified),
     photo: normalizeMediaUrl(u.photo as string),
     role: u.role as User["role"],
     verified: Boolean(u.verified),
@@ -110,5 +111,10 @@ export const authApi = {
       body: JSON.stringify({ uid, token }),
     });
     return raw as { message: string };
+  },
+
+  async resendVerificationEmail(): Promise<{ detail: string }> {
+    const raw = await apiFetch<Record<string, unknown>>("/api/auth/verify-email/resend/", { method: "POST" });
+    return raw as { detail: string };
   },
 };

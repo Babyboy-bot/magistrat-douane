@@ -4,6 +4,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+from accounts.tokens import email_verification_token
 
 User = get_user_model()
 
@@ -59,8 +60,74 @@ class TestPhoneFormat:
 class TestEmailVerification:
     def _link(self, user):
         uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = default_token_generator.make_token(user)
+        token = email_verification_token.make_token(user)
         return {"uid": uid, "token": token}
+
+    def test_old_link_invalid_after_email_change(self, api_client):
+        user = User.objects.create_user(
+            email="first@test.ci", password="TestPass123!",
+            nom="C", prenoms="User", telephone="0702030413",
+        )
+        old_link = self._link(user)
+        user.email = "second@test.ci"
+        user.save()
+        resp = api_client.post("/api/auth/verify-email/", old_link, format="json")
+        assert resp.status_code == 400
+        user.refresh_from_db()
+        assert user.email_verified is False
+
+    def test_password_reset_token_rejected(self, api_client):
+        user = User.objects.create_user(
+            email="reset.tok@test.ci", password="TestPass123!",
+            nom="R", prenoms="User", telephone="0702030414",
+        )
+        resp = api_client.post("/api/auth/verify-email/", {
+            "uid": urlsafe_base64_encode(force_bytes(user.pk)),
+            "token": default_token_generator.make_token(user),
+        }, format="json")
+        assert resp.status_code == 400
+
+    def test_link_single_use(self, api_client):
+        user = User.objects.create_user(
+            email="once@test.ci", password="TestPass123!",
+            nom="O", prenoms="User", telephone="0702030415",
+        )
+        link = self._link(user)
+        assert api_client.post("/api/auth/verify-email/", link, format="json").status_code == 200
+        assert api_client.post("/api/auth/verify-email/", link, format="json").status_code == 400
+
+    def test_resend_requires_auth(self, api_client):
+        assert api_client.post("/api/auth/verify-email/resend/").status_code in (401, 403)
+
+    def test_resend_sends_email(self, api_client, client_user, settings):
+        from django.core import mail
+        from django.core.cache import cache
+        cache.clear()
+        settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+        api_client.force_authenticate(user=client_user)
+        resp = api_client.post("/api/auth/verify-email/resend/")
+        assert resp.status_code == 200
+        assert len(mail.outbox) == 1
+        assert "/verify-email?uid=" in mail.outbox[0].body
+
+    def test_resend_already_verified_no_email(self, api_client, client_user, settings):
+        from django.core import mail
+        from django.core.cache import cache
+        cache.clear()
+        settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+        client_user.email_verified = True
+        client_user.save()
+        api_client.force_authenticate(user=client_user)
+        assert api_client.post("/api/auth/verify-email/resend/").status_code == 200
+        assert mail.outbox == []
+
+    def test_resend_throttled(self, api_client, client_user):
+        from django.core.cache import cache
+        cache.clear()
+        api_client.force_authenticate(user=client_user)
+        codes = [api_client.post("/api/auth/verify-email/resend/").status_code for _ in range(4)]
+        assert codes[:3] == [200, 200, 200]
+        assert codes[3] == 429
 
     def test_register_marks_email_unverified(self, api_client):
         resp = api_client.post("/api/auth/register/", {

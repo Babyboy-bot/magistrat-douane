@@ -34,6 +34,7 @@ export interface User {
   telephone: string;
   telephone2?: string;
   email: string;
+  emailVerified: boolean;
   photo?: string;
   role: UserRole;
   verified: boolean;

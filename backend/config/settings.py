@@ -199,6 +199,7 @@ REST_FRAMEWORK = {
         'anon': '60/minute' if not DEBUG else '500/minute',
         'user': '120/minute' if not DEBUG else '1000/minute',
         'login': '10/minute' if not DEBUG else '50/minute',
+        'resend_verification': '3/hour',
     },
     # 1 proxy (nginx) devant Django — lit le vrai IP client dans X-Forwarded-For
     # Sans ça, tous les users partagent le même bucket de rate limit (IP nginx interne)

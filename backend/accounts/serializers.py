@@ -225,41 +225,6 @@ class VerifyUserSerializer(serializers.Serializer):
     action = serializers.ChoiceField(choices=["verify", "reject"])
 
 
-class AgentCreateClientSerializer(serializers.ModelSerializer):
-    """Agent creates a pre-verified client. Password is required and communicated to the client."""
-    password = serializers.CharField(write_only=True, required=True, min_length=8)
-
-    class Meta:
-        model = User
-        fields = [
-            "email", "password", "nom", "prenoms", "profession",
-            "profession_type", "telephone", "telephone2",
-        ]
-
-    def validate_email(self, value):
-        return validate_unique_email(value)
-
-    def validate_telephone(self, value):
-        return validate_unique_phone(value)
-
-    def validate_telephone2(self, value):
-        return validate_unique_phone(value)
-
-    def validate_password(self, value):
-        validate_password(value)
-        return value
-
-    def create(self, validated_data):
-        password = validated_data.pop("password")
-        user = User.objects.create_user(
-            password=password,
-            role="client",
-            verified=True,
-            **validated_data,
-        )
-        return user
-
-
 class AdminCreateAgentSerializer(serializers.ModelSerializer):
     """Admin creates an agent account."""
     password = serializers.CharField(write_only=True, min_length=8)

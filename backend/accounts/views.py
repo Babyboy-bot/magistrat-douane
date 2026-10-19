@@ -27,11 +27,11 @@ from .serializers import (
     VerifyUserSerializer,
     ChangePasswordSerializer,
     PasswordResetConfirmSerializer,
-    AgentCreateClientSerializer,
     AdminCreateAgentSerializer,
     UserAuditLogSerializer,
 )
-from .throttles import LoginRateThrottle
+from .throttles import LoginRateThrottle, ResendVerificationThrottle
+from .tokens import email_verification_token
 from .audit import (
     log_login_success,
     log_login_failed,
@@ -172,7 +172,7 @@ def _send_email_verification(user):
     if not user.email:
         return
     uid = urlsafe_base64_encode(force_bytes(user.pk))
-    token = default_token_generator.make_token(user)
+    token = email_verification_token.make_token(user)
     verify_url = f"{conf.FRONTEND_URL}/verify-email?uid={uid}&token={token}"
     try:
         from notifications.emails import send_verification_email
@@ -486,29 +486,26 @@ class VerifyEmailView(APIView):
             user = User.objects.get(pk=force_str(urlsafe_base64_decode(serializer.validated_data["uid"])))
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
             user = None
-        if not user or not default_token_generator.check_token(user, serializer.validated_data["token"]):
+        if not user or not email_verification_token.check_token(user, serializer.validated_data["token"]):
             return Response({"detail": "Lien de vérification invalide ou expiré."}, status=status.HTTP_400_BAD_REQUEST)
-        if not user.email_verified:
-            user.email_verified = True
-            user.save(update_fields=["email_verified"])
+        user.email_verified = True
+        user.save(update_fields=["email_verified"])
         return Response({"detail": "Adresse email confirmée avec succès."})
 
 
-class AgentCreateClientView(generics.CreateAPIView):
-    """Agent creates a pre-verified client."""
-    serializer_class = AgentCreateClientSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAgentOrAdmin]
+class ResendVerificationEmailView(APIView):
+    """Renvoie le lien de vérification à l'utilisateur connecté (3/heure max)."""
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ResendVerificationThrottle]
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        user.verified_by = request.user
-        user.verified_at = timezone.now()
-        user.save(update_fields=["verified_by", "verified_at"])
-        log_register(user, get_client_ip(request))
-        log_user_action(request.user, user, "creation", {"role": user.role})
-        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+    def post(self, request):
+        user = request.user
+        if not user.email:
+            return Response({"detail": "Aucune adresse email sur votre compte."}, status=status.HTTP_400_BAD_REQUEST)
+        if user.email_verified:
+            return Response({"detail": "Adresse email déjà confirmée."})
+        _send_email_verification(user)
+        return Response({"detail": f"Un nouveau lien a été envoyé à {user.email}."})
 
 
 class AdminCreateAgentView(generics.CreateAPIView):

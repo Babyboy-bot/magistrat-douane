@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Camera, Save, Eye, EyeOff } from "lucide-react";
+import { Camera, Save, Eye, EyeOff, Mail, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,24 @@ function FieldError({ message }: { message?: string }) {
 export default function ProfilePage() {
   const { user, updateProfile, patchUser } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
+  const [resending, setResending] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    authApi.me().then(patchUser).catch(() => {});
+  }, [patchUser]);
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      const res = await authApi.resendVerificationEmail();
+      toast.success(res.detail);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Envoi impossible, réessayez plus tard");
+    } finally {
+      setResending(false);
+    }
+  };
 
   const profileForm = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -126,6 +143,42 @@ export default function ProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Email */}
+      {user?.email && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="pt-6 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Mail className="h-4 w-4 text-gray-400 shrink-0" />
+                <span className="font-medium text-sm truncate">{user.email}</span>
+              </div>
+              {user.emailVerified ? (
+                <Badge className="text-xs bg-green-100 text-green-700">
+                  <CheckCircle2 className="h-3 w-3 mr-1" /> Email confirmé
+                </Badge>
+              ) : (
+                <Badge className="text-xs bg-amber-100 text-amber-700">
+                  <AlertTriangle className="h-3 w-3 mr-1" /> Email non confirmé
+                </Badge>
+              )}
+            </div>
+            {!user.emailVerified && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 space-y-2">
+                <p>
+                  Confirmez votre adresse pour recevoir les informations importantes sur vos contrats
+                  et pouvoir récupérer votre compte en cas d&apos;oubli du mot de passe.
+                </p>
+                <Button type="button" size="sm" variant="outline" onClick={handleResend} disabled={resending}
+                  className="border-amber-300 bg-white hover:bg-amber-100">
+                  {resending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Mail className="h-3.5 w-3.5 mr-1" />}
+                  Renvoyer l&apos;email de confirmation
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Personal info */}
       <Card className="border-0 shadow-sm">
