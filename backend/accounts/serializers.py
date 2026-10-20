@@ -1,4 +1,5 @@
 import re
+import threading
 
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
@@ -105,23 +106,47 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "profession_type", "telephone", "telephone2",
         ]
         extra_kwargs = {
-            'email': {'required': False, 'allow_blank': True},
+            # Unicité vérifiée dans validate() avec un message neutre (anti-énumération)
+            'email': {'required': False, 'allow_blank': True, 'validators': []},
             'telephone': {'required': True},
             'profession': {'required': False, 'allow_blank': True},
             'profession_type': {'required': True},
         }
 
+    COMPTE_EXISTANT = (
+        "Un compte existe déjà avec ces coordonnées. Connectez-vous, "
+        "ou utilisez « Mot de passe oublié » si vous ne vous en souvenez plus."
+    )
+
     def validate_telephone(self, value):
-        phone = validate_unique_phone(value)
+        phone = normalize_phone(value)
         if not phone:
             raise serializers.ValidationError("Le numéro de téléphone est obligatoire.")
-        return phone
+        return validate_phone_format(phone)
 
     def validate_telephone2(self, value):
-        return validate_unique_phone(value)
+        phone = normalize_phone(value)
+        return validate_phone_format(phone) if phone else phone
 
     def validate_email(self, value):
-        return validate_unique_email(value)
+        return value or None
+
+    def validate(self, attrs):
+        """Ne révèle jamais lequel de l'email ou du téléphone est déjà pris :
+        message unique, et le titulaire du compte existant est prévenu par email."""
+        phones = [p for p in (attrs.get("telephone"), attrs.get("telephone2")) if p]
+        cond = Q(telephone__in=phones) | Q(telephone2__in=phones) if phones else Q(pk__in=[])
+        if attrs.get("email"):
+            cond |= Q(email__iexact=attrs["email"])
+        existants = list(User.objects.filter(cond))
+        if existants:
+            from notifications.emails import send_signup_attempt_email
+            # En arrière-plan : un envoi SMTP synchrone rallongerait la réponse
+            # et trahirait l'existence du compte par le temps de réponse.
+            for u in existants:
+                threading.Thread(target=send_signup_attempt_email, args=(u,), daemon=True).start()
+            raise serializers.ValidationError({"detail": self.COMPTE_EXISTANT})
+        return attrs
 
     def validate_password(self, value):
         validate_password(value)

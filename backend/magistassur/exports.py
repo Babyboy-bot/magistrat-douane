@@ -12,6 +12,8 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 from django.http import HttpResponse
 
+from core.spreadsheet import neutraliser_formules
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -300,6 +302,7 @@ def _export_excel(title_text, sheet_title, filename, sections, num_police):
             r = _xl_row(ws, lbl, val, r, alt)
         r += 1
 
+    neutraliser_formules(ws)
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)

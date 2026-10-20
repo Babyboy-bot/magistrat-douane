@@ -22,6 +22,19 @@ def csrf_token_view(request):
     return JsonResponse({"csrftoken": token})
 
 
+@require_GET
+def health_view(request):
+    """Sonde de santé (nginx / supervision) : 200 si la base répond, 503 sinon.
+    Ne révèle aucune information interne."""
+    from django.db import connection
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+    except Exception:
+        return JsonResponse({"status": "error"}, status=503)
+    return JsonResponse({"status": "ok"})
+
+
 def _media_access_allowed(user, path: str) -> bool:
     """Contrôle d'accès par fichier : chaque média doit être rattaché à un objet
     dont l'utilisateur est propriétaire. Sans ça, n'importe quel compte
@@ -118,6 +131,7 @@ def protected_media_view(request, path):
 urlpatterns = [
     path("acs-backoffice/", admin.site.urls),
     path("api/csrf/", csrf_token_view, name="csrf_token"),
+    path("api/health/", health_view, name="health"),
     path("api/auth/", include("accounts.urls")),
     path("api/", include("core.urls")),
     path("api/", include("magistassur.urls")),

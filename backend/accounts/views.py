@@ -400,15 +400,16 @@ class AuditLogCsvExportView(APIView):
         response.write("\ufeff")  # BOM pour Excel
         writer = csv.writer(response)
         writer.writerow(["Date", "Action", "Effectué par", "Cible", "IP", "Détails"])
+        from core.spreadsheet import csv_safe
         for entry in qs:
-            writer.writerow([
+            writer.writerow([csv_safe(v) for v in (
                 entry.created_at.strftime("%d/%m/%Y %H:%M"),
                 entry.get_action_display(),
                 entry.performed_by.full_name if entry.performed_by else "Système",
                 entry.target_user.full_name if entry.target_user_id else "—",
                 entry.ip_address or "—",
                 json.dumps(entry.metadata, ensure_ascii=False) if entry.metadata else "",
-            ])
+            )])
         return response
 
 

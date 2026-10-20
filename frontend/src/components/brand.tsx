@@ -175,7 +175,7 @@ export function FileDrop({
 
   if (file) {
     return (
-      <div data-field={dataField} className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
+      <div data-field={dataField} className="flex w-full min-w-0 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 sm:gap-3">
         <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-emerald-100 bg-white flex items-center justify-center">
           {preview
             // eslint-disable-next-line @next/next/no-img-element
@@ -187,12 +187,12 @@ export function FileDrop({
           <p className="truncate text-sm text-navy-900">{file.name}</p>
           <p className="text-xs text-navy-400">{formatSize(file.size)}</p>
         </div>
-        <label className="cursor-pointer rounded-lg p-2 text-navy-500 hover:bg-white hover:text-navy-800" title="Remplacer">
+        <label className="shrink-0 cursor-pointer rounded-lg p-2 text-navy-500 hover:bg-white hover:text-navy-800" title="Remplacer">
           <RefreshCw className="h-4 w-4" />
           <input type="file" accept={accept} className="hidden" onChange={e => pick(e.target.files?.[0])} />
         </label>
         <button type="button" onClick={() => onChange?.(null)} title="Retirer"
-          className="rounded-lg p-2 text-navy-400 hover:bg-white hover:text-red-600">
+          className="shrink-0 rounded-lg p-2 text-navy-400 hover:bg-white hover:text-red-600">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -206,7 +206,7 @@ export function FileDrop({
       onDragLeave={() => setDragging(false)}
       onDrop={e => { e.preventDefault(); setDragging(false); pick(e.dataTransfer.files?.[0]); }}
       className={cn(
-        "flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed p-4 transition",
+        "flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed p-4 transition",
         dragging ? "border-amber-500 bg-amber-50" : "border-navy-200 bg-navy-50/40 hover:border-amber-400 hover:bg-amber-50/50",
       )}
     >

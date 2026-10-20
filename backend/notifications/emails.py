@@ -55,7 +55,7 @@ def send_welcome_email(user):
     <h2 style="color:#f59e0b;margin:0">ACS — Assurances Conseils &amp; Services</h2>
   </div>
   <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
-    <p>Bonjour M./Mme <strong>{nom_complet}</strong>,</p>
+    <p>Bonjour M./Mme <strong>{escape(nom_complet)}</strong>,</p>
     <p>Bienvenue sur la plateforme <strong>ACS — Assurances Conseils &amp; Services</strong>.</p>
     <p>Votre compte a bien été créé. Vous pouvez dès à présent vous connecter à votre espace
        personnel pour gérer vos contrats et effectuer vos demandes en ligne.</p>
@@ -93,11 +93,11 @@ def send_request_acknowledgment(client_request):
     <h2 style="color:#f59e0b;margin:0">ACS — Assurances Conseils &amp; Services</h2>
   </div>
   <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
-    <p>Bonjour M./Mme <strong>{nom_complet}</strong>,</p>
+    <p>Bonjour M./Mme <strong>{escape(nom_complet)}</strong>,</p>
     <p>Nous vous remercions d'avoir contacté ACS et d'avoir soumis une demande de
-       <strong>{type_display}</strong>.</p>
+       <strong>{escape(type_display)}</strong>.</p>
     <p>Nous confirmons que votre demande a bien été reçue sous le numéro
-       <strong style="color:#1e3a5f">{numero}</strong>
+       <strong style="color:#1e3a5f">{escape(numero)}</strong>
        et est en cours de traitement par notre équipe.</p>
     <p>Pour toute question : <strong>{_acs_contact()}</strong></p>
     <br>
@@ -132,9 +132,9 @@ def send_request_treated(client_request):
     <h2 style="color:#f59e0b;margin:0">ACS — Assurances Conseils &amp; Services</h2>
   </div>
   <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
-    <p>Bonjour M./Mme <strong>{nom_complet}</strong>,</p>
+    <p>Bonjour M./Mme <strong>{escape(nom_complet)}</strong>,</p>
     <p>Nous avons le plaisir de vous informer que votre requête
-       <strong style="color:#1e3a5f">{numero}</strong> a été traitée.</p>
+       <strong style="color:#1e3a5f">{escape(numero)}</strong> a été traitée.</p>
     <p>Veuillez vous connecter à votre <strong>espace personnel</strong> pour
        télécharger les documents afférents.</p>
     <p>Pour toute question : <strong>{_acs_contact()}</strong></p>
@@ -174,23 +174,23 @@ def send_new_request_alert_to_agents(client_request):
     <table style="border-collapse:collapse;width:100%;margin:16px 0">
       <tr style="background:#f9fafb">
         <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Client</td>
-        <td style="padding:10px;border:1px solid #e5e7eb">{nom_client}</td>
+        <td style="padding:10px;border:1px solid #e5e7eb">{escape(nom_client)}</td>
       </tr>
       <tr>
         <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Type</td>
-        <td style="padding:10px;border:1px solid #e5e7eb">{type_display}</td>
+        <td style="padding:10px;border:1px solid #e5e7eb">{escape(type_display)}</td>
       </tr>
       <tr style="background:#f9fafb">
         <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Numéro</td>
-        <td style="padding:10px;border:1px solid #e5e7eb"><strong style="color:#1e3a5f">{numero}</strong></td>
+        <td style="padding:10px;border:1px solid #e5e7eb"><strong style="color:#1e3a5f">{escape(numero)}</strong></td>
       </tr>
       <tr>
         <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Téléphone</td>
-        <td style="padding:10px;border:1px solid #e5e7eb">{client.telephone or 'N/A'}</td>
+        <td style="padding:10px;border:1px solid #e5e7eb">{escape(client.telephone or 'N/A')}</td>
       </tr>
       <tr style="background:#f9fafb">
         <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Email</td>
-        <td style="padding:10px;border:1px solid #e5e7eb">{client.email or 'N/A'}</td>
+        <td style="padding:10px;border:1px solid #e5e7eb">{escape(client.email or 'N/A')}</td>
       </tr>
     </table>
     <p>Veuillez traiter cette demande depuis votre <strong>espace agent</strong>.</p>
@@ -234,12 +234,12 @@ def send_livrable_notification(request_obj, document_obj):
     <h2 style="color:#f59e0b;margin:0">ACS — Document disponible</h2>
   </div>
   <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
-    <p>Bonjour M./Mme <strong>{nom_client}</strong>,</p>
+    <p>Bonjour M./Mme <strong>{escape(nom_client)}</strong>,</p>
     <p>Un nouveau document a été déposé sur votre requête
-       <strong style="color:#1e3a5f">{numero}</strong> ({type_display}) :</p>
+       <strong style="color:#1e3a5f">{escape(numero)}</strong> ({escape(type_display)}) :</p>
     <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin:16px 0;text-align:center">
       <span style="font-size:24px">📄</span>
-      <p style="font-weight:bold;color:#166534;margin:8px 0 0">{doc_nom}</p>
+      <p style="font-weight:bold;color:#166534;margin:8px 0 0">{escape(doc_nom)}</p>
     </div>
     <p>Connectez-vous à votre <strong>espace client</strong> pour le télécharger
        dans la section <em>Mes Documents</em>.</p>
@@ -331,6 +331,55 @@ def send_critical_notification_email(user, title: str, message: str):
   </div>
 </body></html>"""
     _send(f"ACS — {title}", body_txt, body_html, user.email)
+
+
+# ── Tentative d'inscription avec des coordonnées déjà utilisées ──────────────
+
+def send_signup_attempt_email(user):
+    """Prévient le titulaire qu'une inscription a été tentée avec son email ou son
+    téléphone (l'API ne révèle pas l'existence du compte au demandeur)."""
+    if not user.email:
+        return
+    nom_complet = f"{user.nom} {user.prenoms}"
+    base = getattr(settings, 'FRONTEND_URL', '').rstrip('/')
+    login_url, reset_url = f"{base}/login", f"{base}/reset-password"
+    subject = "ACS — Tentative d'inscription avec vos coordonnées"
+    body_txt = (
+        f"Bonjour M./Mme {nom_complet},\n\n"
+        "Quelqu'un vient d'essayer de créer un compte sur la plateforme ACS avec votre "
+        "adresse email ou votre numéro de téléphone. Vous avez déjà un compte : aucun "
+        "nouveau compte n'a été créé.\n\n"
+        f"S'il s'agit de vous, connectez-vous : {login_url}\n"
+        f"Mot de passe oublié ? {reset_url}\n\n"
+        "Si vous n'êtes pas à l'origine de cette tentative, vous pouvez ignorer cet email.\n\n"
+        f"Pour toute question, contactez-nous au : {_acs_contact()}\n\n"
+        "Cordialement,\nL'équipe ACS"
+    )
+    body_html = f"""
+<html><body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:auto">
+  <div style="background:#1e3a5f;padding:20px;border-radius:8px 8px 0 0">
+    <h2 style="color:#f59e0b;margin:0">ACS — Tentative d'inscription</h2>
+  </div>
+  <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
+    <p>Bonjour M./Mme <strong>{escape(nom_complet)}</strong>,</p>
+    <p>Quelqu'un vient d'essayer de créer un compte sur la plateforme ACS avec votre adresse
+       email ou votre numéro de téléphone. Vous avez déjà un compte : <strong>aucun nouveau
+       compte n'a été créé</strong>.</p>
+    <p style="text-align:center;margin:24px 0">
+      <a href="{escape(login_url)}" style="background:#1e3a5f;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none">
+        Me connecter
+      </a>
+    </p>
+    <p style="font-size:13px">Mot de passe oublié ?
+       <a href="{escape(reset_url)}" style="color:#1e3a5f">Le réinitialiser</a></p>
+    <p style="color:#6b7280;font-size:13px">Si vous n'êtes pas à l'origine de cette tentative,
+       vous pouvez ignorer cet email.</p>
+    <p style="color:#6b7280;font-size:13px">Besoin d'aide ? {_acs_contact()}</p>
+    <br>
+    <p>Cordialement,<br><strong>L'équipe ACS</strong></p>
+  </div>
+</body></html>"""
+    _send(subject, body_txt, body_html, user.email)
 
 
 # ── Vérification d'email (inscription / changement d'adresse) ────────────────

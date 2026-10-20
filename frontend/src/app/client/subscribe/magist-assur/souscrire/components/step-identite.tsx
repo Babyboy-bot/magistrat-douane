@@ -127,7 +127,7 @@ export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFil
             <p className="text-sm font-semibold text-navy-900">Pièce d&apos;identité</p>
             <p className="text-xs text-navy-500">Copie lisible, recto et verso, d&apos;une pièce officielle en cours de validité.</p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FileDrop label="Recto" required file={pieceIdentiteFile} onChange={setPieceIdentiteFile} />
             <FileDrop label="Verso" required file={pieceIdentiteVersoFile} onChange={setPieceIdentiteVersoFile} />
           </div>

@@ -25,6 +25,7 @@ from core.models import Emission, Paiement
 from core.permissions import IsAgentOrAdmin
 from core.serializers import EmissionSerializer, PaiementSerializer
 from core.services import create_emission, create_paiement
+from core.spreadsheet import neutraliser_formules
 
 
 class EmissionPagination(PageNumberPagination):
@@ -326,6 +327,7 @@ def export_emissions(request):
         max_len = max((len(str(c.value)) for c in col if c.value), default=0)
         ws.column_dimensions[get_column_letter(col[0].column)].width = max_len + 2
 
+    neutraliser_formules(ws)
     output = BytesIO()
     wb.save(output)
     output.seek(0)

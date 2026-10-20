@@ -7,6 +7,7 @@ import { BrandMark } from "@/components/brand";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
 import { magistassurApi } from "@/lib/api";
+import { DRAFT_KEY_PREFIX, FILES_DB_NAME } from "@/lib/draft-storage";
 import { toast } from "sonner";
 
 import { StepIdentite } from "./components/step-identite";
@@ -26,10 +27,11 @@ import type {
 
 // Le brouillon et les fichiers sont scopés par utilisateur : sur un poste
 // partagé, le compte B ne doit jamais voir les données du compte A.
-const DRAFT_KEY_LEGACY = "magistassur_unifie_draft";
-const draftKeyFor = (uid: string | number) => `magistassur_unifie_draft_${uid}`;
+// Par sécurité, le questionnaire médical et le RIB (n° et document) ne sont
+// jamais conservés dans le brouillon ; le tout est purgé à la déconnexion.
+const DRAFT_KEY_LEGACY = DRAFT_KEY_PREFIX;
+const draftKeyFor = (uid: string | number) => `${DRAFT_KEY_PREFIX}_${uid}`;
 const fileKeyFor = (uid: string | number, name: string) => `${uid}:${name}`;
-const FILES_DB_NAME = "magistassur_files";
 const FILES_STORE_NAME = "files";
 
 // IndexedDB helpers
@@ -214,14 +216,8 @@ export default function SouscrirePage() {
     }
   }, [fileKey]);
 
-  const handleSetRibFile = useCallback(async (file: File | null) => {
-    setRibFile(file);
-    if (file) {
-      await saveFileToIndexedDB(fileKey("rib"), file);
-    } else {
-      await deleteFileFromIndexedDB(fileKey("rib"));
-    }
-  }, [fileKey]);
+  // Le RIB reste en mémoire uniquement (jamais écrit dans le navigateur).
+  const handleSetRibFile = useCallback((file: File | null) => setRibFile(file), []);
 
   /* ── État Épargne ── */
   const [id, setId] = useState<IdentiteState>(emptyId());
@@ -286,7 +282,7 @@ export default function SouscrirePage() {
         if (d.prevCorresp) setPrevCorresp(p => ({ ...p, ...d.prevCorresp }));
         if (d.assureIdem !== undefined) setAssureIdem(d.assureIdem);
         if (d.assure) setAssure(d.assure);
-        if (d.cot) setCot({ ...d.cot, numero_compte: d.cot.numero_compte || "CI" });
+        if (d.cot) setCot({ ...d.cot, numero_compte: "CI" });
         if (d.benefConjoint_e !== undefined) setBenefConjoint_e(d.benefConjoint_e);
         if (d.benefEnfants_e !== undefined) setBenefEnfants_e(d.benefEnfants_e);
         if (d.autresBenef_e) setAutresBenef_e(d.autresBenef_e);
@@ -297,18 +293,18 @@ export default function SouscrirePage() {
         if (d.benefConjoint_p !== undefined) setBenefConjoint_p(d.benefConjoint_p);
         if (d.benefEnfants_p !== undefined) setBenefEnfants_p(d.benefEnfants_p);
         if (d.autresBenef_p) setAutresBenef_p(d.autresBenef_p);
-        if (d.q) setQ(d.q);
-        if (d.antecedents) setAntecedents(d.antecedents);
         if (d.step !== undefined) setStep(d.step);
         setHasDraft(true);
-        toast.info("Brouillon restauré — vous pouvez reprendre votre saisie.");
+        toast.info("Brouillon restauré. Par sécurité, le questionnaire médical et le RIB ne sont pas conservés : pensez à les ressaisir.");
+        // Anciens brouillons : le RIB a pu être stocké, on l'efface.
+        deleteFileFromIndexedDB(fileKey("rib")).catch(() => {});
+        deleteFileFromIndexedDB("rib").catch(() => {});
         // Restaurer les fichiers depuis IndexedDB (clé scopée, repli sur
         // l'ancienne clé globale pour les brouillons existants)
-        ["pieceIdentite", "pieceIdentiteVerso", "rib"].forEach(async (name) => {
+        ["pieceIdentite", "pieceIdentiteVerso"].forEach(async (name) => {
           const setters: Record<string, (f: File | null) => void> = {
             pieceIdentite: setPieceIdentiteFile,
             pieceIdentiteVerso: setPieceIdentiteVersoFile,
-            rib: setRibFile,
           };
           let f = await getFileFromIndexedDB(fileKey(name));
           if (!f) {
@@ -339,14 +335,15 @@ export default function SouscrirePage() {
   useEffect(() => {
     if (!user) return;
     const draft = {
-      step, id, corresp1, corresp2, prevCorrespIdem, prevCorresp, assureIdem, assure, cot,
+      step, id, corresp1, corresp2, prevCorrespIdem, prevCorresp, assureIdem, assure,
+      cot: { ...cot, numero_compte: "CI" },
       benefConjoint_e, benefEnfants_e, autresBenef_e, consentementDonnees,
       garantieDeces, garantieFuneraires,
-      assuresAssocies, benefConjoint_p, benefEnfants_p, autresBenef_p, q, antecedents,
+      assuresAssocies, benefConjoint_p, benefEnfants_p, autresBenef_p,
     };
     localStorage.setItem(draftKeyFor(user.id), JSON.stringify(draft));
     setLastSaved(new Date());
-  }, [step, id, corresp1, corresp2, prevCorrespIdem, prevCorresp, assureIdem, assure, cot, benefConjoint_e, benefEnfants_e, autresBenef_e, consentementDonnees, garantieDeces, garantieFuneraires, assuresAssocies, benefConjoint_p, benefEnfants_p, autresBenef_p, q, antecedents, user]);
+  }, [step, id, corresp1, corresp2, prevCorrespIdem, prevCorresp, assureIdem, assure, cot, benefConjoint_e, benefEnfants_e, autresBenef_e, consentementDonnees, garantieDeces, garantieFuneraires, assuresAssocies, benefConjoint_p, benefEnfants_p, autresBenef_p, user]);
 
   useEffect(() => {
     if (!id.date_naissance) return;

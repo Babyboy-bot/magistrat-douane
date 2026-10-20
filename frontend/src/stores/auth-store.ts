@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { User } from "@/lib/types";
 import { authApi } from "@/lib/api";
+import { purgeMagistassurDrafts } from "@/lib/draft-storage";
 
 interface AuthState {
   user: User | null;
@@ -38,6 +39,7 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         authApi.logout().catch(() => {});
+        purgeMagistassurDrafts();
         set({ user: null, isAuthenticated: false });
       },
 

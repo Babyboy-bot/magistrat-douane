@@ -112,7 +112,8 @@ services:
       DB_HOST: db
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
-    command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    # Planning défini dans settings.CELERY_BEAT_SCHEDULE (scheduler par défaut).
+    command: celery -A config beat --loglevel=info --schedule /tmp/celerybeat-schedule
     depends_on:
       db:
         condition: service_healthy
