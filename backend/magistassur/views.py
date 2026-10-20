@@ -9,10 +9,11 @@ from rest_framework.response import Response
 from django.db.models import Q
 from core.file_validators import validate_upload
 from core.permissions import IsAgentOrAdmin
+from accounts.audit import get_client_ip, log_user_action
 from .services import (
     assigner_police_epargne, changer_statut_epargne, ajouter_cotisation_epargne,
     assigner_police_prevoyance, changer_statut_prevoyance, marquer_envoye_nsia,
-    marquer_requete_en_cours, creer_requete_contrat,
+    marquer_requete_en_cours, creer_requete_contrat, est_responsable,
 )
 from .exports import (
     export_epargne_excel, export_epargne_pdf,
@@ -113,14 +114,49 @@ def _notify_prise_en_charge(contrat, agent, contrat_type, produit):
     )
 
 
-def _envoye_nsia_response(contrat, user, serializer_class):
-    try:
-        marquer_envoye_nsia(contrat, user)
-    except PermissionError as e:
-        return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
-    except ValueError as e:
-        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    return Response(serializer_class(contrat).data)
+def _exiger_responsable(user, contrat):
+    if not est_responsable(user, contrat):
+        raise PermissionDenied("Action réservée à l'agent en charge du dossier.")
+
+
+def _journaliser(request, contrat, action, produit, **extra):
+    """Trace toute consultation / export d'un dossier par le personnel ACS."""
+    if request.user.role in ("agent", "admin"):
+        log_user_action(
+            request.user, contrat.client, action,
+            metadata={"produit": produit, "contrat_id": contrat.id, **extra},
+            ip=get_client_ip(request),
+        )
+
+
+class _ContratMixin:
+    """Réponses sérialisées avec le contexte de requête (masquage des données de santé)."""
+    produit = ""
+    read_serializer = None
+
+    def _out(self, contrat, **kwargs):
+        return Response(self.read_serializer(contrat, context=self.get_serializer_context()).data, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        response = super().retrieve(request, *args, **kwargs)
+        _journaliser(request, self.get_object(), "dossier_consultation", self.produit)
+        return response
+
+    def _export(self, request, exporter, fmt):
+        contrat = self.get_object()
+        _exiger_responsable(request.user, contrat)
+        _journaliser(request, contrat, "dossier_export", self.produit, format=fmt)
+        return exporter(contrat)
+
+    def _envoye_nsia(self, request):
+        contrat = self.get_object()
+        try:
+            marquer_envoye_nsia(contrat, request.user)
+        except PermissionError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return self._out(contrat)
 
 
 class MagistassurPagination(PageNumberPagination):
@@ -137,9 +173,11 @@ def _check_magistassur_eligibility(user):
         raise PermissionDenied("Votre compte doit être vérifié par un agent ACS pour souscrire à Magist-Assur.")
 
 
-class ContratEpargneViewSet(viewsets.ModelViewSet):
+class ContratEpargneViewSet(_ContratMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAgentOrAdmin]
     pagination_class = MagistassurPagination
+    produit = "epargne"
+    read_serializer = ContratEpargneSerializer
 
     def get_permissions(self):
         if self.action in ("create", "upload_documents"):
@@ -237,7 +275,7 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
             contrat.save(update_fields=["pris_en_charge_par"])
         if nouveau:
             _notify_prise_en_charge(contrat, request.user, "epargne", "épargne")
-        return Response(ContratEpargneSerializer(contrat).data)
+        return self._out(contrat)
 
     @action(detail=True, methods=["post"], url_path="liberer",
             permission_classes=[IsAuthenticated])
@@ -254,12 +292,12 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Vous ne pouvez libérer que vos propres contrats."}, status=status.HTTP_403_FORBIDDEN)
         contrat.pris_en_charge_par = None
         contrat.save(update_fields=["pris_en_charge_par"])
-        return Response(ContratEpargneSerializer(contrat).data)
+        return self._out(contrat)
 
     @action(detail=True, methods=["post"], url_path="envoye-nsia")
     def envoye_nsia(self, request, pk=None):
         """Marque le dossier comme transmis à NSIA."""
-        return _envoye_nsia_response(self.get_object(), request.user, ContratEpargneSerializer)
+        return self._envoye_nsia(request)
 
     @action(detail=True, methods=["post"], url_path="upload-documents",
             permission_classes=[IsAuthenticated])
@@ -272,6 +310,8 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
                 except ValidationError as e:
                     return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         contrat = self.get_object()
+        if request.user.role in ("agent", "admin"):
+            _exiger_responsable(request.user, contrat)
         if contrat.statut == "cloture":
             return Response({"detail": "Impossible de modifier les documents d'un contrat clôturé."}, status=status.HTTP_400_BAD_REQUEST)
         if "piece_identite" in request.FILES:
@@ -281,7 +321,7 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         if "rib_document" in request.FILES:
             contrat.rib_document = request.FILES["rib_document"]
         contrat.save()
-        return Response(ContratEpargneSerializer(contrat).data)
+        return self._out(contrat)
 
     @action(detail=True, methods=["post"], url_path="assign-police",
             permission_classes=[IsAuthenticated])
@@ -293,6 +333,7 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         if not num_police:
             return Response({"detail": "Le numéro de police est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
         contrat = self.get_object()
+        _exiger_responsable(request.user, contrat)
         try:
             assigner_police_epargne(
                 contrat,
@@ -312,7 +353,7 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
             "success",
             email=True,
         )
-        return Response(ContratEpargneSerializer(contrat).data)
+        return self._out(contrat)
 
     @action(detail=True, methods=["post"], url_path="change-statut",
             permission_classes=[IsAuthenticated])
@@ -322,6 +363,7 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
         nouveau_statut = (request.data.get("statut") or "").strip()
         contrat = self.get_object()
+        _exiger_responsable(request.user, contrat)
         try:
             changer_statut_epargne(contrat, nouveau_statut)
         except ValueError as e:
@@ -333,29 +375,22 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
             "info",
             email=nouveau_statut in STATUTS_CRITIQUES,
         )
-        return Response(ContratEpargneSerializer(contrat).data)
+        return self._out(contrat)
 
-    @action(detail=True, methods=["get"], url_path="export-excel",
-            permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=["get"], url_path="export-excel")
     def export_excel(self, request, pk=None):
         """Exporte le contrat épargne en Excel (NSIA)."""
-        if request.user.role not in ("agent", "admin"):
-            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
-        contrat = self.get_object()
-        return export_epargne_excel(contrat)
+        return self._export(request, export_epargne_excel, "excel")
 
-    @action(detail=True, methods=["get"], url_path="export-pdf",
-            permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=["get"], url_path="export-pdf")
     def export_pdf(self, request, pk=None):
         """Exporte le contrat épargne en PDF (NSIA)."""
-        if request.user.role not in ("agent", "admin"):
-            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
-        contrat = self.get_object()
-        return export_epargne_pdf(contrat)
+        return self._export(request, export_epargne_pdf, "pdf")
 
     @action(detail=True, methods=["post"], url_path="cotisation")
     def ajouter_cotisation(self, request, pk=None):
         contrat = self.get_object()
+        _exiger_responsable(request.user, contrat)
         try:
             cotisation = ajouter_cotisation_epargne(contrat, request.data)
         except ValueError as e:
@@ -364,9 +399,11 @@ class ContratEpargneViewSet(viewsets.ModelViewSet):
         return Response(CotisationEpargneSerializer(cotisation).data, status=status.HTTP_201_CREATED)
 
 
-class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
+class ContratPrevoyanceViewSet(_ContratMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAgentOrAdmin]
     pagination_class = MagistassurPagination
+    produit = "prevoyance"
+    read_serializer = ContratPrevoyanceSerializer
 
     def get_permissions(self):
         if self.action in ("create", "questionnaire_medical"):
@@ -468,7 +505,7 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
             contrat.save(update_fields=["pris_en_charge_par"])
         if nouveau:
             _notify_prise_en_charge(contrat, request.user, "prevoyance", "prévoyance")
-        return Response(ContratPrevoyanceSerializer(contrat).data)
+        return self._out(contrat)
 
     @action(detail=True, methods=["post"], url_path="liberer",
             permission_classes=[IsAuthenticated])
@@ -485,12 +522,12 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Vous ne pouvez libérer que vos propres contrats."}, status=status.HTTP_403_FORBIDDEN)
         contrat.pris_en_charge_par = None
         contrat.save(update_fields=["pris_en_charge_par"])
-        return Response(ContratPrevoyanceSerializer(contrat).data)
+        return self._out(contrat)
 
     @action(detail=True, methods=["post"], url_path="envoye-nsia")
     def envoye_nsia(self, request, pk=None):
         """Marque le dossier comme transmis à NSIA."""
-        return _envoye_nsia_response(self.get_object(), request.user, ContratPrevoyanceSerializer)
+        return self._envoye_nsia(request)
 
     @action(detail=True, methods=["post"], url_path="assign-police",
             permission_classes=[IsAuthenticated])
@@ -502,6 +539,7 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
         if not num_police:
             return Response({"detail": "Le numéro de police est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
         contrat = self.get_object()
+        _exiger_responsable(request.user, contrat)
         try:
             assigner_police_prevoyance(
                 contrat,
@@ -523,7 +561,7 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
             contrat_type="prevoyance",
             email=True,
         )
-        return Response(ContratPrevoyanceSerializer(contrat).data)
+        return self._out(contrat)
 
     @action(detail=True, methods=["post"], url_path="change-statut",
             permission_classes=[IsAuthenticated])
@@ -533,6 +571,7 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
         nouveau_statut = (request.data.get("statut") or "").strip()
         contrat = self.get_object()
+        _exiger_responsable(request.user, contrat)
         try:
             changer_statut_prevoyance(contrat, nouveau_statut)
         except ValueError as e:
@@ -545,29 +584,23 @@ class ContratPrevoyanceViewSet(viewsets.ModelViewSet):
             contrat_type="prevoyance",
             email=nouveau_statut in STATUTS_CRITIQUES,
         )
-        return Response(ContratPrevoyanceSerializer(contrat).data)
+        return self._out(contrat)
 
-    @action(detail=True, methods=["get"], url_path="export-excel",
-            permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=["get"], url_path="export-excel")
     def export_excel(self, request, pk=None):
         """Exporte le contrat prévoyance en Excel (NSIA)."""
-        if request.user.role not in ("agent", "admin"):
-            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
-        contrat = self.get_object()
-        return export_prevoyance_excel(contrat)
+        return self._export(request, export_prevoyance_excel, "excel")
 
-    @action(detail=True, methods=["get"], url_path="export-pdf",
-            permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=["get"], url_path="export-pdf")
     def export_pdf(self, request, pk=None):
         """Exporte le contrat prévoyance en PDF (NSIA)."""
-        if request.user.role not in ("agent", "admin"):
-            return Response({"detail": "Action réservée aux agents."}, status=status.HTTP_403_FORBIDDEN)
-        contrat = self.get_object()
-        return export_prevoyance_pdf(contrat)
+        return self._export(request, export_prevoyance_pdf, "pdf")
 
     @action(detail=True, methods=["post", "put", "patch"], url_path="questionnaire")
     def questionnaire_medical(self, request, pk=None):
         contrat = self.get_object()
+        if request.user.role in ("agent", "admin"):
+            _exiger_responsable(request.user, contrat)
         instance = getattr(contrat, "questionnaire_medical", None)
         if instance:
             serializer = QuestionnaireMedicalSerializer(instance, data=request.data, partial=True)

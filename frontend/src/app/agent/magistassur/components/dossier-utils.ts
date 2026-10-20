@@ -64,7 +64,7 @@ export function produitLabel(it: Item): string {
 /** Contrôle des pièces : épargne = CNI recto/verso + RIB ; prévoyance = questionnaire médical. */
 export function piecesStatus(it: Item): { ok: boolean; label: string } {
   if (it.kind === "prevoyance") {
-    return it.c.questionnaireMedical
+    return it.c.questionnaireRempli
       ? { ok: true, label: "Questionnaire ✓" }
       : { ok: false, label: "Questionnaire manquant" };
   }

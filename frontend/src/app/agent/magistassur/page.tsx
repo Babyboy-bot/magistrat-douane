@@ -90,7 +90,7 @@ export default function AgentMagistAssurPage() {
     ...prevoyances.map(c => ({ kind: "prevoyance" as const, c })),
   ], [epargnes, prevoyances]);
 
-  const isMine = (it: Item) => isAdmin || it.c.prisEnChargeId === userId || it.c.agentId === userId;
+  const isMine = (it: Item) => isAdmin || it.c.prisEnChargeId === userId;
 
   // Répartition des dossiers par étape. « À prendre » est commun à tous les agents ;
   // les étapes suivantes ne montrent que les dossiers de l'agent connecté (tous pour un admin).

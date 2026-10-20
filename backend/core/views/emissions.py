@@ -180,6 +180,11 @@ class PaiementCreateView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         data = dict(serializer.validated_data)
         emission = data.pop("emission")
+        if request.user.role == "agent" and emission.agent_id != request.user.id:
+            return Response(
+                {"detail": "Vous ne pouvez enregistrer un paiement que sur vos propres émissions."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         try:
             paiement = create_paiement(
                 validated_data=data,

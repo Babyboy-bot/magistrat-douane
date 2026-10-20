@@ -82,11 +82,17 @@ def traiter_requete_magist(contrat, agent) -> None:
         )
 
 
+def est_responsable(user, contrat) -> bool:
+    """Seuls l'admin et l'agent qui a le dossier en charge peuvent agir dessus
+    (police, statut, cotisations, exports, données médicales)."""
+    return user.role == "admin" or contrat.pris_en_charge_par_id == user.id
+
+
 def marquer_envoye_nsia(contrat, agent) -> None:
     """Marque le dossier comme transmis à NSIA (en attente du N° de police)."""
     if contrat.num_police:
         raise ValueError("Ce contrat a déjà un numéro de police.")
-    if agent.role != "admin" and contrat.pris_en_charge_par_id != agent.id:
+    if not est_responsable(agent, contrat):
         raise PermissionError("Prenez le dossier en charge avant de l'envoyer à NSIA.")
     contrat.envoye_nsia_at = timezone.now()
     contrat.save(update_fields=["envoye_nsia_at"])

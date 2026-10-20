@@ -23,7 +23,12 @@ const ACTION_OPTIONS = [
   { value: "deactivation", label: "Désactivation" },
   { value: "role_change", label: "Changement de rôle" },
   { value: "password_reset", label: "Mot de passe" },
+  { value: "dossier_consultation", label: "Consultation dossier" },
+  { value: "dossier_export", label: "Export dossier" },
 ];
+const ACTION_LABELS: Record<string, string> = Object.fromEntries(
+  ACTION_OPTIONS.filter((o) => o.value).map((o) => [o.value, o.label]),
+);
 
 export default function AdminAuditPage() {
   const [page, setPage] = useState(1);
@@ -72,6 +77,12 @@ export default function AdminAuditPage() {
           <span className="font-semibold mx-1">{formatState(metadata.to)}</span>
         </span>
       );
+    }
+
+    if (action.startsWith("dossier_") && metadata.produit) {
+      const produit = metadata.produit === "epargne" ? "Épargne" : "Prévoyance";
+      const fmt = metadata.format ? ` · ${String(metadata.format).toUpperCase()}` : "";
+      return <span>{produit} n° {String(metadata.contrat_id)}{fmt}</span>;
     }
 
     if (action === "creation" && metadata.role) {
@@ -168,13 +179,15 @@ export default function AdminAuditPage() {
                     <td className="py-3 pr-4">
                       <Badge
                         variant="secondary"
-                        className={`capitalize ${
+                        className={
                           log.action === "login" ? "bg-emerald-100 text-emerald-800" :
                           log.action === "login_failed" ? "bg-red-100 text-red-800" :
-                          log.action === "logout" ? "bg-navy-100 text-navy-600" : ""
-                        }`}
+                          log.action === "logout" ? "bg-navy-100 text-navy-600" :
+                          log.action === "dossier_export" ? "bg-amber-100 text-amber-800" :
+                          log.action === "dossier_consultation" ? "bg-navy-50 text-navy-700" : ""
+                        }
                       >
-                        {log.action.replace(/_/g, " ")}
+                        {ACTION_LABELS[log.action] ?? log.action.replace(/_/g, " ")}
                       </Badge>
                     </td>
                     <td className="py-3 pr-4 text-navy-600">

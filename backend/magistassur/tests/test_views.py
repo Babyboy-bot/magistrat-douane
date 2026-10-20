@@ -18,7 +18,7 @@ def force_login(api_client, user):
 @pytest.fixture
 def contrat_epargne(db, client_user, agent):
     return ContratEpargne.objects.create(
-        client=client_user, agent=agent,
+        client=client_user, agent=agent, pris_en_charge_par=agent,
         duree_annees=10, periodicite="mensuelle",
         date_premiere_cotisation="2025-01-01", date_effet="2025-01-01",
         montant_cotisation=25000, capital_constitue=0,
@@ -28,7 +28,7 @@ def contrat_epargne(db, client_user, agent):
 @pytest.fixture
 def contrat_prevoyance(db, client_user, agent):
     return ContratPrevoyance.objects.create(
-        client=client_user, agent=agent,
+        client=client_user, agent=agent, pris_en_charge_par=agent,
         garantie_prevoyance_deces=True,
         garantie_frais_funeraires=False,
     )
@@ -245,7 +245,7 @@ class TestEpargneAssignPolice:
         assigner_police_epargne(c1, "POL-DUP-001", "", agent)
         # Créer un 2e contrat et tenter d'assigner la même police
         c2 = ContratEpargne.objects.create(
-            client=client_user, agent=agent,
+            client=client_user, agent=agent, pris_en_charge_par=agent,
             duree_annees=10, periodicite="mensuelle",
             montant_cotisation=25000,
         )
@@ -540,7 +540,7 @@ class TestPrevoyanceAssignPolice:
         assigner_police_prevoyance(c1, "POL-PRV-DUP-001", "", agent, "2025-01-01")
         # Créer un 2e contrat et tenter d'assigner la même police
         c2 = ContratPrevoyance.objects.create(
-            client=client_user, agent=agent,
+            client=client_user, agent=agent, pris_en_charge_par=agent,
             garantie_prevoyance_deces=True,
         )
         force_login(api_client, agent)

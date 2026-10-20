@@ -194,6 +194,21 @@ class ContratPrevoyanceSerializer(serializers.ModelSerializer):
             return obj.pris_en_charge_par.telephone or None
         return None
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["questionnaire_medical_rempli"] = data.get("questionnaire_medical") is not None
+        # Données de santé : visibles par le client titulaire, l'admin et l'agent
+        # en charge uniquement. Sans requête (contexte inconnu) → masquées.
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        autorise = bool(user and user.is_authenticated) and (
+            user.role != "agent" or instance.pris_en_charge_par_id == user.id
+        )
+        if not autorise:
+            data["questionnaire_medical"] = None
+        data["questionnaire_masque"] = not autorise
+        return data
+
 
 class ContratPrevoyanceCreateSerializer(serializers.ModelSerializer):
     assures_associes = AssureAssocieSerializer(many=True, required=False)

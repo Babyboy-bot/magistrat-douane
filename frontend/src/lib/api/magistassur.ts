@@ -130,6 +130,8 @@ function mapContratPrevoyance(r: Record<string, unknown>): ContratPrevoyance {
           };
         })()
       : undefined,
+    questionnaireRempli: Boolean(r.questionnaire_medical_rempli ?? r.questionnaire_medical),
+    questionnaireMasque: Boolean(r.questionnaire_masque),
     createdAt: (r.created_at as string) || "",
     prisEnChargeNom: (r.pris_en_charge_nom as string) || undefined,
     prisEnChargeTelephone: (r.pris_en_charge_telephone as string) || undefined,

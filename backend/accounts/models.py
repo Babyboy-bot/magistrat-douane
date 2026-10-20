@@ -350,6 +350,10 @@ class UserAuditLog(models.Model):
 
         ("logout", "Déconnexion"),
 
+        ("dossier_consultation", "Consultation d'un dossier Magist-Assur"),
+
+        ("dossier_export", "Export d'un dossier Magist-Assur"),
+
     )
 
 

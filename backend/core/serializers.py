@@ -58,7 +58,14 @@ class EmissionSerializer(serializers.ModelSerializer):
             "taux_commission", "montant_commission",
             "situation", "paiements", "total_paye", "solde", "created_at",
         ]
-        read_only_fields = ["id", "taux_commission", "montant_commission", "created_at"]
+        read_only_fields = ["id", "agent", "taux_commission", "montant_commission", "created_at"]
+
+    def validate_client(self, value):
+        if self.instance is not None and value != self.instance.client:
+            raise serializers.ValidationError("Le client d'une émission ne peut pas être modifié.")
+        if value is not None and value.role not in ("client", "prospect"):
+            raise serializers.ValidationError("Une émission doit être rattachée à un client.")
+        return value
 
     def validate(self, attrs):
         effet = attrs.get("effet")

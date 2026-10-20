@@ -81,7 +81,8 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
   const etape = etapeOf(item);
   const stepsDone = { a_prendre: 0, a_traiter: 1, envoye: 2, actif: 3, archive: 3 }[etape];
   const isMine = isAdmin || c.prisEnChargeId === userId;
-  const takenByOther = !!c.prisEnChargeId && c.prisEnChargeId !== userId && !c.numPolice;
+  // Le serveur réserve toute action (police, statut, exports…) à l'agent en charge.
+  const lectureSeule = !isMine && etape !== "a_prendre";
 
   const run = async (name: string, fn: () => Promise<unknown>, success: string) => {
     setBusy(name);
@@ -177,10 +178,14 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
   );
 
   const renderAction = () => {
-    if (takenByOther && !isAdmin) {
+    if (lectureSeule) {
       return (
         <div className="rounded-xl border border-navy-200 bg-navy-50 p-4 text-sm text-navy-700">
-          <UserCheck className="mr-1 inline h-4 w-4" /> Ce dossier est en cours de traitement par <strong>{c.prisEnChargeNom}</strong>. Consultation seule.
+          <UserCheck className="mr-1 inline h-4 w-4" />
+          {c.prisEnChargeNom
+            ? <>Ce dossier est suivi par <strong>{c.prisEnChargeNom}</strong>.</>
+            : <>Ce dossier n&apos;est suivi par aucun agent.</>}
+          {" "}Consultation seule : les actions, exports et données médicales sont réservés à l&apos;agent en charge.
         </div>
       );
     }
@@ -212,7 +217,7 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
                   <DocLink href={item.c.pieceIdentiteVersoUrl} label="CNI verso" icon={<FileText className="h-3.5 w-3.5" />} />
                   <DocLink href={item.c.ribDocumentUrl} label="RIB" icon={<CreditCard className="h-3.5 w-3.5" />} />
                 </>
-              ) : item.c.questionnaireMedical ? (
+              ) : item.c.questionnaireRempli ? (
                 <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700"><CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />Questionnaire médical rempli</span>
               ) : (
                 <span className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-600"><AlertTriangle className="mr-1 inline h-3.5 w-3.5" />Questionnaire médical manquant</span>
@@ -427,12 +432,18 @@ export function DossierSheet({ item, userId, isAdmin, onClose, onChanged }: Prop
                     <Field label="Alcool" value={{ non: "Non", pas_du_tout: "Pas du tout", a_l_occasion: "À l'occasion", regulierement: "Régulièrement" }[item.c.questionnaireMedical.alcool] || item.c.questionnaireMedical.alcool} />
                     <Field label="Antécédents « Oui »" value={String(Object.values(item.c.questionnaireMedical.antecedents || {}).flatMap(r => Object.values(r)).filter(v => v === "Oui").length)} />
                   </div>
+                ) : item.c.questionnaireMasque ? (
+                  <p className="flex items-center gap-1.5 text-sm text-navy-500">
+                    <LockIcon className="h-4 w-4" />
+                    {item.c.questionnaireRempli ? "Rempli — " : "Non rempli — "}
+                    contenu visible uniquement par l&apos;agent en charge du dossier.
+                  </p>
                 ) : <p className="text-sm text-red-600">Non rempli</p>}
               </Section>
             </>
           )}
 
-          {(etape === "actif" || etape === "archive") && (
+          {isMine && (etape === "actif" || etape === "archive") && (
             <Section title="Exports NSIA">{exportButtons}</Section>
           )}
         </div>

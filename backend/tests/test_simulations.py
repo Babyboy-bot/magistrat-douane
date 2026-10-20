@@ -203,8 +203,10 @@ class TestSimulationSouscriptionPrevoyance:
         assert contrat.questionnaire_medical.taille_cm == 175
         assert contrat.questionnaire_medical.sport is True
 
-        # 4. Agent assigne police avec date d'effet
+        # 4. Agent prend le dossier en charge puis assigne la police avec date d'effet
         api_client.force_authenticate(user=agent)
+        resp = api_client.post(f"/api/magistassur/prevoyance/{contrat_id}/prise-en-charge/")
+        assert resp.status_code == 200
         resp = api_client.post(f"/api/magistassur/prevoyance/{contrat_id}/assign-police/", {
             "num_police": "POL-SIM-PRV-001",
             "code_inspection": "INSP-PRV-001",

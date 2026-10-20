@@ -367,6 +367,10 @@ export interface ContratPrevoyance {
   assuresAssocies: AssureAssocie[];
   beneficiaires: BeneficiairePrevoyance[];
   questionnaireMedical?: QuestionnaireMedical;
+  /** Rempli ou non — connu même quand le contenu est masqué. */
+  questionnaireRempli: boolean;
+  /** Contenu réservé à l'agent en charge du dossier (et à l'admin). */
+  questionnaireMasque: boolean;
   createdAt: string;
   // Champs souscripteur
   civilite?: string;

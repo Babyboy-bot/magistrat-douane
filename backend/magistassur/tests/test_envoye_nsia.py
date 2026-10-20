@@ -122,6 +122,8 @@ class TestLiberer:
 @pytest.mark.django_db
 class TestCotisation:
     def test_date_paiement_et_reference_enregistrees(self, api_client, agent, epargne):
+        epargne.pris_en_charge_par = agent
+        epargne.save(update_fields=["pris_en_charge_par"])
         assigner_police_epargne(epargne, "POL-COT-1", "", agent)
         api_client.force_authenticate(user=agent)
         resp = api_client.post(f"/api/magistassur/epargne/{epargne.id}/cotisation/", {
@@ -134,6 +136,8 @@ class TestCotisation:
         assert resp.data["statut"] == "payee"
 
     def test_date_paiement_par_defaut_aujourdhui(self, api_client, agent, epargne):
+        epargne.pris_en_charge_par = agent
+        epargne.save(update_fields=["pris_en_charge_par"])
         assigner_police_epargne(epargne, "POL-COT-2", "", agent)
         api_client.force_authenticate(user=agent)
         resp = api_client.post(f"/api/magistassur/epargne/{epargne.id}/cotisation/", {
