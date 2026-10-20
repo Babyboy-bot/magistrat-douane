@@ -29,6 +29,7 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     AdminCreateAgentSerializer,
     UserAuditLogSerializer,
+    normalize_phone,
 )
 from .throttles import LoginRateThrottle, ResendVerificationThrottle
 from .tokens import email_verification_token
@@ -108,11 +109,17 @@ class CookieLoginView(APIView):
         if "@" in identifier:
             user = User.objects.filter(email__iexact=identifier).first()
         else:
-            # Normaliser le numéro (supprimer espaces, tirets, points, parenthèses)
-            phone = re.sub(r'[\s\-\.\(\)\+]', '', identifier)
-            user = User.objects.filter(telephone=phone).first()
-            if not user:
-                user = User.objects.filter(telephone2=phone).first()
+            # Mêmes variantes qu'à l'inscription : « +225 07… » et « 00225… »
+            # doivent correspondre au numéro local stocké (« 07… »).
+            phone = normalize_phone(identifier)
+            variants = {phone}
+            if phone.startswith("00225"):
+                variants.add(phone[5:])
+            elif phone.startswith("225") and len(phone) >= 13:
+                variants.add(phone[3:])
+            user = User.objects.filter(
+                Q(telephone__in=variants) | Q(telephone2__in=variants)
+            ).first()
         
         if not user or not user.check_password(serializer.validated_data["password"]):
             log_login_failed(identifier, ip)
@@ -205,6 +212,15 @@ def _notify_agents_pending_verification(user):
                 })
             except Exception:
                 pass
+        # Email aux agents : la notif in-app ne suffit pas si personne n'est connecté.
+        from core.services import _dispatch
+        from notifications.tasks import send_pending_verification_alert_async
+        from notifications.emails import send_pending_verification_alert_to_agents
+        _dispatch(
+            send_pending_verification_alert_async,
+            lambda: send_pending_verification_alert_to_agents(user),
+            user.id,
+        )
     except Exception:
         pass
 
@@ -428,8 +444,13 @@ class ResetPasswordView(APIView):
         identifier = serializer.validated_data["identifier"].strip()
         user = User.objects.filter(email__iexact=identifier, is_active=True).first()
         if not user:
-            normalized = re.sub(r'[\s\-\.\(\)\+]', '', identifier)
-            user = User.objects.filter(telephone=normalized, is_active=True).first()
+            normalized = normalize_phone(identifier)
+            variants = {normalized}
+            if normalized.startswith("00225"):
+                variants.add(normalized[5:])
+            elif normalized.startswith("225") and len(normalized) >= 13:
+                variants.add(normalized[3:])
+            user = User.objects.filter(telephone__in=variants, is_active=True).first()
         if user and user.email:
             # Le mot de passe n'est PAS modifié ici : un lien signé à usage unique
             # est envoyé par email. Sans ça, n'importe qui pouvait forcer la

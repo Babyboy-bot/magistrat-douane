@@ -100,7 +100,7 @@ const _doRefresh = async (): Promise<boolean> => {
   }
 };
 
-const refreshOnce = (): Promise<boolean> => {
+export const refreshOnce = (): Promise<boolean> => {
   if (!_refreshPromise) _refreshPromise = _doRefresh();
   return _refreshPromise;
 };

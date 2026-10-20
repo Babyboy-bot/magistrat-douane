@@ -46,6 +46,31 @@ def send_request_treated_async(self, request_id: int):
         raise self.retry(exc=exc)
 
 
+@app.task(bind=True, max_retries=3, default_retry_delay=30, name="notifications.send_pending_verification_alert")
+def send_pending_verification_alert_async(self, user_id: int):
+    """Alerte les agents qu'un compte attend leur vérification (async)."""
+    try:
+        from django.contrib.auth import get_user_model
+        from notifications.emails import send_pending_verification_alert_to_agents
+        user = get_user_model().objects.get(pk=user_id)
+        send_pending_verification_alert_to_agents(user)
+    except Exception as exc:
+        raise self.retry(exc=exc)
+
+
+@app.task(bind=True, max_retries=3, default_retry_delay=30, name="notifications.send_new_dossier_alert")
+def send_new_dossier_alert_async(self, contrat_id: int, contrat_type: str = "epargne"):
+    """Alerte les agents d'un nouveau dossier Magist-Assur (async)."""
+    try:
+        from magistassur.models import ContratEpargne, ContratPrevoyance
+        from notifications.emails import send_new_dossier_alert_to_agents
+        model = ContratEpargne if contrat_type == "epargne" else ContratPrevoyance
+        contrat = model.objects.select_related("client").get(pk=contrat_id)
+        send_new_dossier_alert_to_agents(contrat, contrat_type)
+    except Exception as exc:
+        raise self.retry(exc=exc)
+
+
 @app.task(name="notifications.send_echeance_reminders")
 def send_echeance_reminders():
     """

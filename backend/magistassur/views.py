@@ -89,6 +89,21 @@ def _notify_agents_epargne(contrat, title, message, contrat_type="epargne"):
     except Exception:
         pass
 
+
+def _email_agents_new_dossier(contrat, contrat_type):
+    """Email aux agents pour un nouveau dossier (Celery si dispo, sinon synchrone)."""
+    try:
+        from core.services import _dispatch
+        from notifications.tasks import send_new_dossier_alert_async
+        from notifications.emails import send_new_dossier_alert_to_agents
+        _dispatch(
+            send_new_dossier_alert_async,
+            lambda: send_new_dossier_alert_to_agents(contrat, contrat_type),
+            contrat.id, contrat_type,
+        )
+    except Exception:
+        pass
+
 from .serializers import (
     ContratEpargneSerializer, ContratEpargneCreateSerializer,
     ContratPrevoyanceSerializer, ContratPrevoyanceCreateSerializer,
@@ -229,6 +244,7 @@ class ContratEpargneViewSet(_ContratMixin, viewsets.ModelViewSet):
                 "Nouvelle souscription Magist-Assur",
                 f"{contrat.client.full_name} a soumis un dossier épargne Magist-Assur.",
             )
+            _email_agents_new_dossier(contrat, "epargne")
         creer_requete_contrat(contrat, "Épargne", {
             "montant_cotisation": str(contrat.montant_cotisation or ""),
             "periodicite": contrat.periodicite,
@@ -458,6 +474,7 @@ class ContratPrevoyanceViewSet(_ContratMixin, viewsets.ModelViewSet):
                 f"{contrat.client.full_name} a soumis un dossier prévoyance Magist-Assur.",
                 contrat_type="prevoyance",
             )
+            _email_agents_new_dossier(contrat, "prevoyance")
         creer_requete_contrat(contrat, "Prévoyance", {
             "garanties": [
                 *(["Décès"] if contrat.garantie_prevoyance_deces else []),

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { refreshOnce } from "@/lib/api/client";
 
 function getWsBase(): string {
   if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
@@ -145,9 +146,16 @@ const STORAGE_KEY = (uid: string) => `read_notif_ids_${uid}`;
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
-async function fetchNotificationsApi(): Promise<AppNotification[]> {
+/** null = session définitivement expirée (401 même après tentative de refresh) */
+async function fetchNotificationsApi(): Promise<AppNotification[] | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/notifications/`, { credentials: "include" });
+    const doFetch = () => fetch(`${API_BASE}/api/notifications/`, { credentials: "include" });
+    let res = await doFetch();
+    if (res.status === 401) {
+      const refreshed = await refreshOnce();
+      if (refreshed) res = await doFetch();
+      else return null;
+    }
     if (!res.ok) return [];
     const data = await res.json() as Record<string, unknown>[];
     return data.map((n) => ({
@@ -369,10 +377,24 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Session morte : arrêter les boucles puis déconnecter proprement
+  const handleAuthExpired = useCallback(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    disconnect();
+    import("@/stores/auth-store").then(({ useAuthStore }) => {
+      useAuthStore.getState().logout();
+      const publicPaths = ["/login", "/register", "/reset-password"];
+      if (!publicPaths.some((p) => window.location.pathname.startsWith(p))) {
+        window.location.href = "/login";
+      }
+    });
+  }, [disconnect]);
+
   const syncFromApi = useCallback(() => {
     if (!userId || !mountedRef.current) return;
     fetchNotificationsApi().then((fetched) => {
       if (!mountedRef.current) return;
+      if (fetched === null) { handleAuthExpired(); return; }
       const unread = fetched.filter((n) => !n.read_at && !readIdsRef.current.has(n.id));
       setNotifications((prev) => {
         const existingIds = new Set(prev.map((n) => n.id));
@@ -385,7 +407,7 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
         return next;
       });
     });
-  }, [userId]);
+  }, [userId, handleAuthExpired]);
 
   useEffect(() => {
     if (userId) readIdsRef.current = loadReadIds(userId);
@@ -397,6 +419,7 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
       _loadedUsers.add(userId);
       fetchNotificationsApi().then((fetched) => {
         if (!mountedRef.current) return;
+        if (fetched === null) { handleAuthExpired(); return; }
         const unread = fetched.filter((n) => !n.read_at && !readIdsRef.current.has(n.id));
         const slice = unread.slice(0, 50);
         _notifCache.set(userId, slice);
@@ -426,7 +449,7 @@ export function useWebSocket(userId?: string): UseWebSocketReturn {
       mountedRef.current = false;
       disconnect();
     };
-  }, [userId, connect, disconnect, syncFromApi]);
+  }, [userId, connect, disconnect, syncFromApi, handleAuthExpired]);
 
   const markAsRead = useCallback((id: string) => {
     if (userId) {

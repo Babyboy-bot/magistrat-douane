@@ -67,6 +67,23 @@ class TestLoginView:
         }, format="json")
         assert resp.status_code in (400, 401, 403)
 
+    @pytest.mark.parametrize("identifier", [
+        "0702030407",
+        "+225 07 02 03 04 07",
+        "002250702030407",
+    ])
+    def test_login_with_phone_variants(self, api_client, db, identifier):
+        """Le login accepte le numéro local ou avec indicatif +225 / 00225."""
+        User.objects.create_user(
+            email="phone@test.ci", password="TestPass123!",
+            nom="Phone", prenoms="User", role="client",
+            is_active=True, telephone="0702030407",
+        )
+        resp = api_client.post("/api/auth/login/", {
+            "identifier": identifier, "password": "TestPass123!",
+        }, format="json")
+        assert resp.status_code == 200
+
 
 @pytest.mark.django_db
 class TestVerifyUserView:

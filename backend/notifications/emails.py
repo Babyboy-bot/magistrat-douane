@@ -382,6 +382,117 @@ def send_signup_attempt_email(user):
     _send(subject, body_txt, body_html, user.email)
 
 
+def _agent_recipients():
+    """Tous les agents et admins actifs ayant une adresse email."""
+    return User.objects.filter(
+        role__in=("agent", "admin"), is_active=True,
+    ).exclude(email="").exclude(email__isnull=True)
+
+
+# ── Alerte agents : compte professionnel en attente de vérification ──────────
+
+def send_pending_verification_alert_to_agents(user):
+    """Un magistrat/douanier vient de s'inscrire : son compte doit être vérifié
+    par un agent avant activation."""
+    nom_complet = f"{user.nom} {user.prenoms}"
+    try:
+        profession = user.get_profession_type_display()
+    except Exception:
+        profession = user.profession_type or "Professionnel"
+    subject = "Nouveau compte à vérifier — ACS"
+    body_txt = (
+        f"Un nouveau compte professionnel attend votre vérification.\n\n"
+        f"Nom        : {nom_complet}\n"
+        f"Catégorie  : {profession}\n"
+        f"Téléphone  : {user.telephone or 'N/A'}\n"
+        f"Email      : {user.email or 'N/A'}\n\n"
+        "Le compte restera inactif tant que son identité professionnelle n'aura pas "
+        "été validée. Rendez-vous dans « Assurés / Prospects » de votre espace agent.\n\n"
+        "Cordialement,\nSystème ACS"
+    )
+    body_html = f"""
+<html><body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:auto">
+  <div style="background:#1e3a5f;padding:20px;border-radius:8px 8px 0 0">
+    <h2 style="color:#f59e0b;margin:0">ACS — Compte à vérifier</h2>
+  </div>
+  <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
+    <p>Un nouveau compte professionnel attend votre <strong>vérification</strong>.</p>
+    <table style="border-collapse:collapse;width:100%;margin:16px 0">
+      <tr style="background:#f9fafb">
+        <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Nom</td>
+        <td style="padding:10px;border:1px solid #e5e7eb">{escape(nom_complet)}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Catégorie</td>
+        <td style="padding:10px;border:1px solid #e5e7eb">{escape(str(profession))}</td>
+      </tr>
+      <tr style="background:#f9fafb">
+        <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Téléphone</td>
+        <td style="padding:10px;border:1px solid #e5e7eb">{escape(user.telephone or 'N/A')}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Email</td>
+        <td style="padding:10px;border:1px solid #e5e7eb">{escape(user.email or 'N/A')}</td>
+      </tr>
+    </table>
+    <p>Le compte restera inactif tant que son identité professionnelle n'aura pas été
+       validée. Rendez-vous dans <strong>« Assurés / Prospects »</strong>.</p>
+    <br>
+    <p>Cordialement,<br><strong>Système ACS</strong></p>
+  </div>
+</body></html>"""
+    for agent in _agent_recipients():
+        _send(subject, body_txt, body_html, agent.email)
+
+
+# ── Alerte agents : nouveau dossier Magist-Assur soumis ──────────────────────
+
+def send_new_dossier_alert_to_agents(contrat, contrat_type="epargne"):
+    """Un client vient de soumettre un dossier Magist-Assur : alerte les agents
+    pour une prise en charge rapide."""
+    client = contrat.client
+    nom_client = f"{client.nom} {client.prenoms}"
+    produit = "Épargne" if contrat_type == "epargne" else "Prévoyance"
+    subject = f"Nouvelle souscription Magist-Assur {produit} — ACS"
+    body_txt = (
+        f"Un nouveau dossier Magist-Assur {produit} vient d'être soumis.\n\n"
+        f"Client     : {nom_client}\n"
+        f"Produit    : Magist-Assur {produit}\n"
+        f"Téléphone  : {client.telephone or 'N/A'}\n\n"
+        "Prenez le dossier en charge depuis votre espace agent (onglet Magist-Assur).\n\n"
+        "Cordialement,\nSystème ACS"
+    )
+    body_html = f"""
+<html><body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:auto">
+  <div style="background:#1e3a5f;padding:20px;border-radius:8px 8px 0 0">
+    <h2 style="color:#f59e0b;margin:0">ACS — Nouvelle souscription</h2>
+  </div>
+  <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
+    <p>Un nouveau dossier <strong>Magist-Assur {escape(produit)}</strong> vient d'être soumis.</p>
+    <table style="border-collapse:collapse;width:100%;margin:16px 0">
+      <tr style="background:#f9fafb">
+        <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Client</td>
+        <td style="padding:10px;border:1px solid #e5e7eb">{escape(nom_client)}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Produit</td>
+        <td style="padding:10px;border:1px solid #e5e7eb">Magist-Assur {escape(produit)}</td>
+      </tr>
+      <tr style="background:#f9fafb">
+        <td style="padding:10px;border:1px solid #e5e7eb;font-weight:bold">Téléphone</td>
+        <td style="padding:10px;border:1px solid #e5e7eb">{escape(client.telephone or 'N/A')}</td>
+      </tr>
+    </table>
+    <p>Prenez le dossier en charge depuis votre <strong>espace agent</strong>
+       (onglet Magist-Assur).</p>
+    <br>
+    <p>Cordialement,<br><strong>Système ACS</strong></p>
+  </div>
+</body></html>"""
+    for agent in _agent_recipients():
+        _send(subject, body_txt, body_html, agent.email)
+
+
 # ── Vérification d'email (inscription / changement d'adresse) ────────────────
 
 def send_verification_email(user, verify_url: str):

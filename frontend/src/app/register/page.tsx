@@ -38,7 +38,7 @@ export default function RegisterPage() {
     prenoms: "",
     professionType: "" as Profession | "",
     professionDetail: "",
-    telephone: "",
+    telephone: "+225 ",
     email: "",
     password: "",
     confirmPassword: "",
@@ -52,7 +52,8 @@ export default function RegisterPage() {
     e.preventDefault();
     const { nom, prenoms, professionType, telephone, email, password, confirmPassword } = form;
 
-    if (!nom || !prenoms || !professionType || !telephone || !email || !password || !confirmPassword) {
+    // « +225 » seul compte comme un champ vide
+    if (!nom || !prenoms || !professionType || !telephone.replace(/^\+225\s*$/, "").trim() || !email || !password || !confirmPassword) {
       toast.error("Tous les champs obligatoires doivent être remplis");
       return;
     }

@@ -127,8 +127,8 @@ const STEP_HINTS: Record<string, string> = {
   "Récapitulatif": "Vérifiez avant d'envoyer votre demande",
 };
 
-function StepProgress({ current, steps, onJump, lastSaved }: {
-  current: number; steps: string[]; onJump?: (i: number) => void; lastSaved: Date | null;
+function StepProgress({ current, steps, onJump, max, lastSaved }: {
+  current: number; steps: string[]; onJump?: (i: number) => void; max: number; lastSaved: Date | null;
 }) {
   const pct = Math.round(((current + 1) / steps.length) * 100);
   return (
@@ -157,17 +157,17 @@ function StepProgress({ current, steps, onJump, lastSaved }: {
             <button
               key={`${s}-${i}`}
               type="button"
-              disabled={i >= current}
-              onClick={() => i < current && onJump?.(i)}
-              title={i < current ? `Revenir à « ${s} »` : undefined}
+              disabled={i === current || i > max}
+              onClick={() => i !== current && i <= max && onJump?.(i)}
+              title={i !== current && i <= max ? `Aller à « ${s} »` : undefined}
               className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                i < current
-                  ? "bg-white text-navy-700 ring-1 ring-navy-100 hover:ring-amber-300"
-                  : i === current
-                    ? "bg-navy-900 text-white"
+                i === current
+                  ? "bg-navy-900 text-white"
+                  : i <= max
+                    ? "bg-white text-navy-700 ring-1 ring-navy-100 hover:ring-amber-300"
                     : "text-navy-300"}`}
             >
-              {i < current ? <CheckCircle className="h-3 w-3 text-emerald-600" /> : <span className="tabular-nums">{i + 1}</span>}
+              {i !== current && i <= max ? <CheckCircle className="h-3 w-3 text-emerald-600" /> : <span className="tabular-nums">{i + 1}</span>}
               <span className={i === current ? "" : "hidden md:inline"}>{s}</span>
             </button>
           ))}
@@ -181,6 +181,7 @@ export default function SouscrirePage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [step, setStep] = useState(0);
+  const [maxStep, setMaxStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [invalidField, setInvalidField] = useState<string | null>(null);
   const [hasDraft, setHasDraft] = useState(false);
@@ -381,6 +382,16 @@ export default function SouscrirePage() {
     setInvalidField(field);
     return false;
   };
+
+  // Toute étape déjà atteinte reste accessible en un clic (avant ou après).
+  useEffect(() => {
+    setMaxStep(m => Math.max(m, step));
+  }, [step]);
+
+  // Si les étapes prévoyance disparaissent (garanties décochées), on borne l'étape courante.
+  useEffect(() => {
+    setStep(s => Math.min(s, steps.length - 1));
+  }, [steps.length]);
 
   // Chaque nouvel écran (intro → assistant, changement d'étape) s'ouvre en haut.
   useEffect(() => {
@@ -873,7 +884,7 @@ export default function SouscrirePage() {
         </div>
       )}
 
-      <StepProgress current={step} steps={steps} onJump={setStep} lastSaved={lastSaved} />
+      <StepProgress current={step} steps={steps} onJump={setStep} max={maxStep} lastSaved={lastSaved} />
 
       {hasDraft && step > 0 && (
         <div className="mt-4 flex items-center justify-between rounded-xl bg-navy-50 px-3 py-2 text-xs text-navy-600">
