@@ -1,5 +1,5 @@
 "use client";
-import { CheckCircle2, ShieldCheck, Heart, Flame } from "lucide-react";
+import { CheckCircle2, ShieldCheck, Flower2, ListChecks } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCFA } from "./types";
 import type { CotisationState } from "./types";
@@ -72,7 +72,7 @@ export function StepOptionsPrevoyance({ garantieDeces, setGarantieDeces, garanti
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${garantieFuneraires ? "bg-amber-500" : "bg-navy-100"}`}>
-              <Heart className={`h-5 w-5 ${garantieFuneraires ? "text-white" : "text-navy-400"}`} />
+              <Flower2 className={`h-5 w-5 ${garantieFuneraires ? "text-white" : "text-navy-400"}`} />
             </div>
             <div>
               <p className="font-semibold text-navy-900 text-sm">Frais Funéraires — Magistrat &amp; Famille</p>
@@ -99,7 +99,7 @@ export function StepOptionsPrevoyance({ garantieDeces, setGarantieDeces, garanti
         <Card className="border-0 bg-amber-50">
           <CardContent className="p-4 space-y-2 text-sm">
             <div className="flex items-center gap-2 mb-1">
-              <Flame className="h-4 w-4 text-amber-600" />
+              <ListChecks className="h-4 w-4 text-amber-600" />
               <span className="font-semibold text-amber-800 text-sm">Récapitulatif de votre sélection</span>
             </div>
             <div className="flex justify-between">

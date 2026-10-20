@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 
 const PAGE_TITLES: [string, string][] = [
   ["/client/dashboard", "Tableau de bord"],
-  ["/client/history", "Historique de mes demandes"],
+  ["/client/history", "Historique"],
   ["/client/profile", "Mon profil"],
   ["/client/subscribe/magist-assur", "Magist'Assur"],
   ["/client/portfolio", "Mon portefeuille"],
@@ -237,10 +237,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         <header className="sticky top-0 z-40 border-b border-navy-100/80 bg-white/80 backdrop-blur-md">
           <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-2">
-              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Ouvrir le menu">
+              <Button variant="ghost" size="icon" className="shrink-0 lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Ouvrir le menu">
                 <Menu className="h-5 w-5" />
               </Button>
-              <BrandMark size="sm" className="lg:hidden" />
+              <BrandMark size="sm" className="shrink-0 lg:hidden" />
               <h2 className="truncate font-display text-lg font-semibold text-navy-900">{pageTitle}</h2>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">

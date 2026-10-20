@@ -191,6 +191,29 @@
   background: white;
 }
 
+/* ── Mobile : champs ≥ 16 px (sinon iOS zoome au focus) et cibles tactiles ≥ 44 px ── */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  .ma-wizard input[data-slot="input"] {
+    height: 2.875rem;
+    border-radius: 0.75rem;
+  }
+  .ma-wizard [data-slot="label"]:has(+ input) {
+    margin-bottom: 0.375rem;
+  }
+  .ma-wizard [data-slot="card-content"] {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .ma-wizard [data-slot="card-content"] [data-field] > button[type="button"] {
+    min-height: 2.75rem;
+  }
+}
+
 /* Champ en erreur dans le wizard Magist-Assur (défilement + focus sur le champ manquant) */
 .field-invalid {
   outline: 2px solid rgb(220 38 38) !important;

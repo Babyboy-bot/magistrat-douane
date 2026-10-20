@@ -150,7 +150,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Ouvrir le menu">
                 <Menu className="h-5 w-5" />
               </Button>
-              <BrandMark size="sm" className="lg:hidden" />
+              <BrandMark size="sm" className="shrink-0 lg:hidden" />
               <h2 className="truncate font-display text-lg font-semibold text-navy-900">{pageTitle}</h2>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">

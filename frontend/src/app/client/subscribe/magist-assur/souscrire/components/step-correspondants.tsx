@@ -26,12 +26,12 @@ function CorrespondantCard({ label, data, set, fieldPrefix = "" }: { label: stri
         <div><Label>Domicile (Ville-Commune-Quartier-Rue-Lot-Ilot)</Label><Input value={data.domicile} onChange={e => s("domicile", e.target.value)} /></div>
         <div><Label>Adresse Postale</Label><Input value={data.adresse_postale} onChange={e => s("adresse_postale", e.target.value)} /></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div><Label>Tél. / Cél. {label.includes("1") ? <span className="text-red-500">*</span> : ""}</Label><Input data-field={fieldPrefix ? `${fieldPrefix}_telephone` : undefined} value={data.telephone} onChange={e => s("telephone", e.target.value)} /></div>
-          <div><Label>E-mail</Label><Input type="email" value={data.email} onChange={e => s("email", e.target.value)} /></div>
+          <div><Label>Tél. / Cél. {label.includes("1") ? <span className="text-red-500">*</span> : ""}</Label><Input type="tel" inputMode="tel" data-field={fieldPrefix ? `${fieldPrefix}_telephone` : undefined} value={data.telephone} onChange={e => s("telephone", e.target.value)} /></div>
+          <div><Label>E-mail</Label><Input inputMode="email" type="email" value={data.email} onChange={e => s("email", e.target.value)} /></div>
         </div>
         <p className="text-xs font-semibold text-navy-500 uppercase tracking-wide">Réf. Réseaux Sociaux</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div><Label>WhatsApp</Label><Input value={data.whatsapp} onChange={e => s("whatsapp", e.target.value)} /></div>
+          <div><Label>WhatsApp</Label><Input type="tel" inputMode="tel" value={data.whatsapp} onChange={e => s("whatsapp", e.target.value)} /></div>
           <div><Label>Facebook</Label><Input value={data.facebook} onChange={e => s("facebook", e.target.value)} /></div>
           <div><Label>LinkedIn</Label><Input value={data.linkedin} onChange={e => s("linkedin", e.target.value)} /></div>
           <div><Label>Autres à préciser</Label><Input value={data.autres_reseaux} onChange={e => s("autres_reseaux", e.target.value)} /></div>
@@ -123,8 +123,8 @@ export function StepCorrespondants({ corresp1, setCorresp1, corresp2, setCorresp
               </div>
               <div><Label>Domicile <span className="text-red-500">*</span></Label><Input data-field="pc_domicile" value={prevCorresp.domicile} onChange={e => sp("domicile", e.target.value)} /></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><Label>Téléphone</Label><Input value={prevCorresp.telephone} onChange={e => sp("telephone", e.target.value)} /></div>
-                <div><Label>E-mail</Label><Input type="email" value={prevCorresp.email} onChange={e => sp("email", e.target.value)} /></div>
+                <div><Label>Téléphone</Label><Input type="tel" inputMode="tel" value={prevCorresp.telephone} onChange={e => sp("telephone", e.target.value)} /></div>
+                <div><Label>E-mail</Label><Input inputMode="email" type="email" value={prevCorresp.email} onChange={e => sp("email", e.target.value)} /></div>
               </div>
             </div>
           )}

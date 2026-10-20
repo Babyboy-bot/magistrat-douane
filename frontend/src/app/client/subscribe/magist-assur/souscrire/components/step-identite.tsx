@@ -77,14 +77,14 @@ export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFil
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div><Label>Adresse postale personnelle</Label><Input value={id.adresse_postale} onChange={e => s("adresse_postale", e.target.value)} /></div>
-          <div><Label>Email personnel <span className="text-red-500">*</span></Label><Input data-field="email_personnel" type="email" value={id.email_personnel} onChange={e => s("email_personnel", e.target.value)} /></div>
+          <div><Label>Email personnel <span className="text-red-500">*</span></Label><Input autoComplete="email" inputMode="email" data-field="email_personnel" type="email" value={id.email_personnel} onChange={e => s("email_personnel", e.target.value)} /></div>
         </div>
 
-        <div><Label>Tél. / Cél. <span className="text-red-500">*</span></Label><Input data-field="telephone" value={id.telephone} onChange={e => s("telephone", e.target.value)} /></div>
+        <div><Label>Tél. / Cél. <span className="text-red-500">*</span></Label><Input type="tel" inputMode="tel" autoComplete="tel" data-field="telephone" value={id.telephone} onChange={e => s("telephone", e.target.value)} /></div>
 
         <p className="text-xs font-semibold text-navy-500 uppercase tracking-wide pt-1">Réf. Réseaux Sociaux</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div><Label>WhatsApp</Label><Input value={id.whatsapp} onChange={e => s("whatsapp", e.target.value)} /></div>
+          <div><Label>WhatsApp</Label><Input type="tel" inputMode="tel" autoComplete="tel" value={id.whatsapp} onChange={e => s("whatsapp", e.target.value)} /></div>
           <div><Label>Facebook</Label><Input value={id.facebook} onChange={e => s("facebook", e.target.value)} /></div>
           <div><Label>LinkedIn</Label><Input value={id.linkedin} onChange={e => s("linkedin", e.target.value)} /></div>
           <div><Label>Autres à préciser</Label><Input value={id.autres_reseaux} onChange={e => s("autres_reseaux", e.target.value)} /></div>
@@ -116,9 +116,9 @@ export function StepIdentite({ id, setId, pieceIdentiteFile, setPieceIdentiteFil
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div><Label>Secteur d&apos;activité</Label><Input value={id.secteur_activite} onChange={e => s("secteur_activite", e.target.value)} /></div>
-          <div><Label>Téléphone Bureau</Label><Input value={id.telephone_bureau} onChange={e => s("telephone_bureau", e.target.value)} /></div>
+          <div><Label>Téléphone Bureau</Label><Input type="tel" inputMode="tel" autoComplete="tel" value={id.telephone_bureau} onChange={e => s("telephone_bureau", e.target.value)} /></div>
         </div>
-        <div><Label>Email Professionnel</Label><Input type="email" value={id.email_professionnel} onChange={e => s("email_professionnel", e.target.value)} /></div>
+        <div><Label>Email Professionnel</Label><Input autoComplete="email" inputMode="email" type="email" value={id.email_professionnel} onChange={e => s("email_professionnel", e.target.value)} /></div>
         <div><Label>Résidence principale (Ville-Commune-Quartier-Rue-Lot-Ilot)</Label><Input value={id.residence_principale} onChange={e => s("residence_principale", e.target.value)} /></div>
         <div><Label>Autre(s) résidence(s)</Label><Input value={id.autre_residence} onChange={e => s("autre_residence", e.target.value)} /></div>
 

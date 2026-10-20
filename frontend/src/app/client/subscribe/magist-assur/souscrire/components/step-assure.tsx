@@ -54,23 +54,23 @@ export function StepAssure({ assureIdem, setAssureIdem, assure, setAssure }: Pro
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><Label>NNI</Label><Input value={assure.assure_nni} onChange={e => s("assure_nni", e.target.value)} /></div>
-              <div><Label>Tél. / Cél.</Label><Input value={assure.assure_telephone} onChange={e => s("assure_telephone", e.target.value)} /></div>
+              <div><Label>Tél. / Cél.</Label><Input type="tel" inputMode="tel" value={assure.assure_telephone} onChange={e => s("assure_telephone", e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><Label>Lien avec le souscripteur</Label><Input value={assure.assure_lien} onChange={e => s("assure_lien", e.target.value)} /></div>
               <div><Label>Adresse postale</Label><Input value={assure.assure_adresse_postale} onChange={e => s("assure_adresse_postale", e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><Label>Email personnel</Label><Input type="email" value={assure.assure_email} onChange={e => s("assure_email", e.target.value)} /></div>
+              <div><Label>Email personnel</Label><Input inputMode="email" type="email" value={assure.assure_email} onChange={e => s("assure_email", e.target.value)} /></div>
               <div><Label>Profession</Label><Input value={assure.assure_profession} onChange={e => s("assure_profession", e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><Label>Employeur</Label><Input value={assure.assure_employeur} onChange={e => s("assure_employeur", e.target.value)} /></div>
-              <div><Label>Email professionnel</Label><Input type="email" value={assure.assure_email_pro} onChange={e => s("assure_email_pro", e.target.value)} /></div>
+              <div><Label>Email professionnel</Label><Input inputMode="email" type="email" value={assure.assure_email_pro} onChange={e => s("assure_email_pro", e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><Label>Adresse employeur</Label><Input value={assure.assure_adresse_employeur} onChange={e => s("assure_adresse_employeur", e.target.value)} /></div>
-              <div><Label>Téléphone Bureau</Label><Input value={assure.assure_telephone_bureau} onChange={e => s("assure_telephone_bureau", e.target.value)} /></div>
+              <div><Label>Téléphone Bureau</Label><Input type="tel" inputMode="tel" value={assure.assure_telephone_bureau} onChange={e => s("assure_telephone_bureau", e.target.value)} /></div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-navy-50/60 rounded-xl ring-1 ring-navy-100">
               <Checkbox checked={assure.assure_nsia_anterieur} onCheckedChange={c => s("assure_nsia_anterieur", !!c)} id="nsia" />

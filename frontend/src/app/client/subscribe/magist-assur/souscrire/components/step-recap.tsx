@@ -1,6 +1,6 @@
 "use client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Vault, ShieldCheck, Heart, CheckCircle2, Users, CreditCard, User } from "lucide-react";
+import { Vault, ShieldCheck, Flower2, CheckCircle2, Users, CreditCard, User } from "lucide-react";
 import { INDEMNITES, LIEN_LABELS, PERIODICITE_LABELS, formatCFA } from "./types";
 import type {
   IdentiteState, CorrespondantState, CotisationState, AssureState,
@@ -134,7 +134,7 @@ export function StepRecap(props: Props) {
             {garantieFuneraires && (
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <Heart className="h-4 w-4 text-green-600" />
+                  <Flower2 className="h-4 w-4 text-green-600" />
                   <span>Frais Funéraires — Total indemnités <strong>{formatCFA(totalIndemnites)}</strong> · {formatCFA(58_000)}/an</span>
                 </div>
                 {assuresAssocies.length > 0 && (

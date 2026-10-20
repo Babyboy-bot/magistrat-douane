@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { ArrowLeft, ArrowRight, Loader2, CheckCircle, ChevronDown, ChevronUp, Vault, HeartHandshake, Heart, Clock, FileText, CreditCard, Users, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, CheckCircle, ChevronDown, ChevronUp, Vault, HeartHandshake, Flower2, Clock, FileText, CreditCard, Users, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/brand";
 import { useAuthStore } from "@/stores/auth-store";
@@ -385,6 +385,12 @@ export default function SouscrirePage() {
     return false;
   };
 
+  // Chaque nouvel écran (intro → assistant, changement d'étape) s'ouvre en haut.
+  useEffect(() => {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [step, showIntro]);
+
   useEffect(() => {
     if (!invalidField) return;
     const el = document.querySelector<HTMLElement>(`[data-field="${invalidField}"]`);
@@ -535,13 +541,10 @@ export default function SouscrirePage() {
   };
 
   const goNext = () => {
-    if (validateStep()) {
-      setStep(s => Math.min(s + 1, steps.length - 1));
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    if (validateStep()) setStep(s => Math.min(s + 1, steps.length - 1));
   };
   const goBack = () => {
-    if (step > 0) { setStep(s => s - 1); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    if (step > 0) setStep(s => s - 1);
     else router.push("/client/dashboard");
   };
   const isLast = step === steps.length - 1;
@@ -698,7 +701,7 @@ export default function SouscrirePage() {
         points: ["45 000 FCFA par an", "Capital de 10 000 000 FCFA", "Questionnaire médical simple"],
       },
       {
-        icon: Heart, titre: "Frais funéraires", tag: "Optionnel", accent: false,
+        icon: Flower2, titre: "Frais funéraires", tag: "Optionnel", accent: false,
         texte: "Une indemnité forfaitaire pour les obsèques du magistrat et de sa famille.",
         points: ["58 000 FCFA par an", "Magistrat et conjoint : 1 000 000 FCFA", "Enfants 500 000 · ascendants 750 000"],
       },

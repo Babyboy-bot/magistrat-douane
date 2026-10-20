@@ -70,6 +70,7 @@ services:
 
   frontend:
     image: node:20-alpine
+    restart: unless-stopped
     working_dir: /app
     volumes:
       - ./frontend:/app

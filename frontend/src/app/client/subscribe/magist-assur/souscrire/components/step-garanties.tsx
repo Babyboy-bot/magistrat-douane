@@ -93,7 +93,7 @@ export function StepGaranties({ garantieDeces, garantieFuneraires, assuresAssoci
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div><Label className="text-xs">Nom et Prénoms <span className="text-red-500">*</span></Label><Input className="h-8 text-sm" value={a.nom} onChange={e => updateAssure(i, "nom", e.target.value)} /></div>
                   <div><Label className="text-xs">Date de naissance</Label><Input className="h-8 text-sm" type="date" max={new Date().toISOString().slice(0, 10)} value={a.date_naissance} onChange={e => updateAssure(i, "date_naissance", e.target.value)} /></div>
-                  <div><Label className="text-xs">Contact <span className="text-red-500">*</span></Label><Input className="h-8 text-sm" value={a.contact} onChange={e => updateAssure(i, "contact", e.target.value)} /></div>
+                  <div><Label className="text-xs">Contact <span className="text-red-500">*</span></Label><Input type="tel" inputMode="tel" className="h-8 text-sm" value={a.contact} onChange={e => updateAssure(i, "contact", e.target.value)} /></div>
                 </div>
               </div>
             ))}
