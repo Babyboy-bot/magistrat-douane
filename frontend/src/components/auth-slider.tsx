@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
-import { BrandMark, BrandEmblem } from "@/components/brand";
+import { BrandEmblem } from "@/components/brand";
 import type { Profession } from "@/lib/types";
 
 type Mode = "login" | "register";
@@ -308,36 +308,50 @@ function RegisterForm() {
 
 /* ── Panneau overlay (CTA dans le volet coulissant) ── */
 function OverlayPanel({
-  visible, direction, emblem, title, lead, cta, ctaIcon: CtaIcon, onSwitch,
+  visible, direction, emblem, title, lead, cta, ctaIcon: CtaIcon, onSwitch, compact = false,
 }: {
   visible: boolean;
-  direction: "left" | "right";
+  direction: "left" | "right" | "up" | "down";
   title: React.ReactNode;
   lead: string;
   cta: string;
   ctaIcon: typeof ArrowRight;
   emblem?: boolean;
   onSwitch: () => void;
+  compact?: boolean;
 }) {
+  const hiddenSlide = {
+    left: "-translate-x-1/3",
+    right: "translate-x-1/3",
+    up: "-translate-y-1/3",
+    down: "translate-y-1/3",
+  }[direction];
+
   return (
     <div
       aria-hidden={!visible}
+      inert={!visible}
       className={cn(
-        "absolute inset-0 flex flex-col items-center justify-center gap-6 p-12 text-center text-white transition-all duration-700",
+        "absolute inset-0 flex flex-col items-center justify-center text-center text-white transition-all duration-700",
+        compact ? "gap-3 p-6" : "gap-6 p-12",
         EASE,
         visible
-          ? "translate-x-0 opacity-100 delay-200"
-          : cn("pointer-events-none opacity-0", direction === "left" ? "-translate-x-1/3" : "translate-x-1/3"),
+          ? "translate-x-0 translate-y-0 opacity-100 delay-200"
+          : cn("pointer-events-none opacity-0", hiddenSlide),
       )}
     >
-      {emblem && <BrandEmblem variant="dark" className="w-24 opacity-95" />}
+      {emblem && <BrandEmblem variant="dark" className={compact ? "w-14 opacity-95" : "w-24 opacity-95"} />}
       <div className="space-y-3">
-        <h3 className="font-display text-3xl font-semibold leading-tight">{title}</h3>
-        <p className="mx-auto max-w-xs text-sm leading-relaxed text-white/65">{lead}</p>
+        <h3 className={cn("font-display font-semibold leading-tight", compact ? "text-2xl" : "text-3xl")}>{title}</h3>
+        <p className={cn("mx-auto max-w-xs leading-relaxed text-white/65", compact ? "text-xs" : "text-sm")}>{lead}</p>
       </div>
       <button
-        type="button" onClick={onSwitch}
-        className="group mt-1 inline-flex items-center gap-2.5 rounded-full border-2 border-white/40 px-8 py-2.5 text-[13px] font-semibold uppercase tracking-[0.14em] text-white transition-all duration-300 hover:border-amber-300 hover:bg-amber-300 hover:text-navy-950"
+        type="button"
+        onClick={(e) => { e.currentTarget.blur(); onSwitch(); }}
+        className={cn(
+          "group mt-1 inline-flex items-center gap-2.5 rounded-full border-2 border-white/40 font-semibold uppercase tracking-[0.14em] text-white transition-all duration-300 hover:border-amber-300 hover:bg-amber-300 hover:text-navy-950",
+          compact ? "px-6 py-2 text-[11px]" : "px-8 py-2.5 text-[13px]",
+        )}
       >
         {cta}
         <CtaIcon className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
@@ -443,34 +457,54 @@ export function AuthSlider({ initialMode = "login" }: { initialMode?: Mode }) {
         </div>
       </div>
 
-      {/* ══════════ Mobile / tablette : onglets ══════════ */}
-      <div className="w-full max-w-md lg:hidden">
-        <div className="mb-7 flex items-center justify-center gap-3">
-          <BrandMark size="md" />
-          <div>
-            <p className="font-display text-xl font-semibold text-navy-900">ACS</p>
-            <p className="text-xs font-medium text-amber-700">Magistrat &amp; Douane</p>
+      {/* ══════════ Mobile / tablette : même carte, panneau marine en haut ══════════ */}
+      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_40px_90px_-30px_rgb(16_28_52/0.45)] ring-1 ring-navy-100 lg:hidden">
+
+        {/* Panneau marine — mêmes faces qu'en desktop, glissement vertical */}
+        <div className="relative min-h-[280px] shrink-0 overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(130%_130%_at_20%_0%,var(--color-navy-700)_0%,var(--color-navy-900)_50%,var(--color-navy-950)_100%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(135deg,transparent_0_26px,rgb(255_255_255/0.025)_26px_27px)]" />
+          <div className="pointer-events-none absolute -left-20 top-1/3 h-56 w-56 rounded-full bg-amber-400/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-16 bottom-0 h-44 w-44 rounded-full bg-amber-500/10 blur-3xl" />
+
+          {/* Face "→ inscription" */}
+          <OverlayPanel
+            visible={isLogin}
+            direction="up"
+            compact
+            emblem
+            title={<>Nouveau sur <span className="text-amber-300">ACS</span> ?</>}
+            lead="Rejoignez la plateforme réservée aux magistrats et douaniers."
+            cta="Créer un compte"
+            ctaIcon={ArrowRight}
+            onSwitch={() => setMode("register")}
+          />
+
+          {/* Face "→ connexion" */}
+          <OverlayPanel
+            visible={!isLogin}
+            direction="down"
+            compact
+            title={<>Bon retour <span className="text-amber-300">parmi nous</span></>}
+            lead="Connectez-vous pour retrouver vos contrats et vos demandes."
+            cta="Se connecter"
+            ctaIcon={ArrowLeft}
+            onSwitch={() => setMode("login")}
+          />
+
+          {/* Liseré de confiance */}
+          <div className="absolute inset-x-0 bottom-3 flex items-center justify-center gap-3.5 text-[9px] text-white/40">
+            <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3 text-amber-300/70" />Données chiffrées</span>
+            <span className="flex items-center gap-1"><Users className="h-3 w-3 text-amber-300/70" />Magistrats &amp; douaniers</span>
+            <span className="flex items-center gap-1"><Lock className="h-3 w-3 text-amber-300/70" />Accès sécurisé</span>
           </div>
         </div>
 
-        <div className="mb-4 grid grid-cols-2 gap-1 rounded-full bg-navy-100/70 p-1">
-          {(["login", "register"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMode(m)}
-              className={cn(
-                "rounded-full py-2.5 text-sm font-semibold transition-all duration-300",
-                mode === m ? "bg-white text-navy-900 shadow-sm" : "text-navy-500 hover:text-navy-800",
-              )}
-            >
-              {m === "login" ? "Connexion" : "Inscription"}
-            </button>
-          ))}
-        </div>
-
-        <div className="rounded-3xl border border-navy-100 bg-white p-6 shadow-[0_24px_60px_-32px_rgb(16_28_52/0.35)] sm:p-8">
-          {isLogin ? <LoginForm /> : <RegisterForm />}
+        {/* Formulaire — glissement doux au changement de mode */}
+        <div className="max-h-[58vh] overflow-y-auto px-6 py-7 sm:px-8">
+          <div key={mode} className="animate-in fade-in slide-in-from-bottom-3 duration-500">
+            {isLogin ? <LoginForm /> : <RegisterForm />}
+          </div>
         </div>
       </div>
     </div>
