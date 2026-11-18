@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, StatCard } from "@/components/brand";
+import { EmptyState } from "@/components/empty-state";
 import { useAgentDashboardStats, useUsers, useRequests } from "@/hooks/use-api-data";
 import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS } from "@/lib/types";
 
@@ -56,9 +57,9 @@ export default function AdminDashboard() {
 
       {/* Résumé financier */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <StatCard label="Total primes" value={formatCurrency(stats.totalPrimes)} icon={Wallet} tone="navy" />
-        <StatCard label="Primes encaissées" value={formatCurrency(stats.primesPayees)} icon={TrendingUp} tone="emerald" />
-        <StatCard label="Impayés" value={formatCurrency(stats.primesImpayees)} icon={ClipboardList} tone="rose" />
+        <StatCard label="Total primes" value={stats.totalPrimes} format={formatCurrency} icon={Wallet} tone="navy" />
+        <StatCard label="Primes encaissées" value={stats.primesPayees} format={formatCurrency} icon={TrendingUp} tone="emerald" />
+        <StatCard label="Impayés" value={stats.primesImpayees} format={formatCurrency} icon={ClipboardList} tone="rose" />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -91,7 +92,7 @@ export default function AdminDashboard() {
               );
             })}
             {agents.length === 0 && (
-              <p className="py-6 text-center text-sm text-navy-400">Aucun agent configuré</p>
+              <EmptyState compact icon={Users} title="Aucun agent configuré" />
             )}
           </div>
         </div>
@@ -114,7 +115,7 @@ export default function AdminDashboard() {
               </div>
             ))}
             {recentRequests.length === 0 && (
-              <p className="py-6 text-center text-sm text-navy-400">Aucune requête récente</p>
+              <EmptyState compact icon={ClipboardList} title="Aucune requête récente" />
             )}
           </div>
         </div>

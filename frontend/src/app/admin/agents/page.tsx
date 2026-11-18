@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/empty-state";
 import {
   Dialog,
   DialogContent,
@@ -547,16 +549,29 @@ export default function AdminAgentsPage() {
       </div>
 
       {agents.length === 0 && !loading && (
-        <div className="py-12 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-navy-50">
-            <Users className="h-5 w-5 text-navy-300" />
-          </div>
-          <p className="text-navy-400">Aucun agent trouvé</p>
-        </div>
+        <EmptyState icon={Users} title="Aucun agent trouvé" description="Créez un compte agent pour commencer." />
       )}
 
       {loading && (
-        <div className="py-4 text-center text-navy-400">Chargement...</div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="rounded-2xl border-navy-100">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-56" />
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <Skeleton className="h-3 w-44" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
 
       <div className="mt-4 flex flex-col gap-3 text-sm text-navy-500 sm:flex-row sm:items-center sm:justify-between">

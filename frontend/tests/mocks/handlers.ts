@@ -140,9 +140,7 @@ export const handlers = [
   }),
 
   // ── Emissions ──────────────────────────────────────────────────────────────
-  http.get(`${API_URL}/emissions/`, ({ request }) => {
-    const url = new URL(request.url);
-    const page = parseInt(url.searchParams.get("page") || "1");
+  http.get(`${API_URL}/emissions/`, () => {
     return HttpResponse.json({
       count: mockEmissions.length,
       next: null,

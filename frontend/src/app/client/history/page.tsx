@@ -12,6 +12,8 @@ import { useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientRequests } from "@/hooks/use-api-data";
 import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS, COTATION_TYPES } from "@/lib/types";
+import { RequestTimeline } from "@/components/request-timeline";
+import { EmptyState } from "@/components/empty-state";
 import { toast } from "sonner";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
@@ -250,6 +252,11 @@ export default function HistoryPage() {
                 </div>
               </div>
 
+              {/* Suivi de progression */}
+              <div className="mt-4 pt-4 border-t border-navy-50">
+                <RequestTimeline status={r.status} />
+              </div>
+
               {/* Actions cotation — devis reçu */}
               {COTATION_TYPES.includes(r.type) && r.status === "devis_envoye" && (
                 <div className="mt-3 pt-3 border-t">
@@ -338,13 +345,11 @@ export default function HistoryPage() {
         ))}
 
         {filtered.length === 0 && !loading && (
-          <div className="flex flex-col items-center rounded-2xl border border-dashed border-navy-200 bg-white px-6 py-12 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-navy-50 text-navy-400 ring-1 ring-navy-100">
-              <FileText className="h-6 w-6" />
-            </div>
-            <p className="mt-3 font-medium text-navy-900">Aucune requête trouvée</p>
-            <p className="mt-1 text-sm text-navy-400">Vos souscriptions et demandes apparaîtront ici.</p>
-          </div>
+          <EmptyState
+            icon={FileText}
+            title="Aucune requête trouvée"
+            description={search ? "Aucun résultat pour cette recherche." : "Vos souscriptions et demandes apparaîtront ici."}
+          />
         )}
       </div>
     </div>

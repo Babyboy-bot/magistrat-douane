@@ -20,12 +20,17 @@ import {
   ChevronDown,
   Sparkles,
   Clock,
+  Mail,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { authApi } from "@/lib/api";
+import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth-store";
 import { NotificationsDropdown } from "@/components/notifications-dropdown";
 import { BrandMark } from "@/components/brand";
+import { ClientOnboarding } from "@/components/onboarding/client-onboarding";
 import { cn } from "@/lib/utils";
 
 const PAGE_TITLES: [string, string][] = [
@@ -74,6 +79,20 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const { user, isAuthenticated, loading, logout, initialized } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
+  const [emailBannerDismissed, setEmailBannerDismissed] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
+
+  const handleResendEmail = async () => {
+    setResendingEmail(true);
+    try {
+      const res = await authApi.resendVerificationEmail();
+      toast.success(res.detail);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Envoi impossible, réessayez plus tard");
+    } finally {
+      setResendingEmail(false);
+    }
+  };
 
   // Auth guard — redirect via useEffect to avoid setState-during-render
   const shouldRedirect = !initialized || !isAuthenticated || !user || user.role === "agent" || user.role === "admin";
@@ -266,7 +285,35 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           </div>
         )}
 
+        {/* Email non confirmé */}
+        {!user.emailVerified && !emailBannerDismissed && (
+          <div className="border-b border-navy-100 bg-navy-50/70 px-4 py-2.5 sm:px-6 lg:px-8">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-navy-700">
+              <Mail className="h-4 w-4 shrink-0 text-navy-500" />
+              <span><strong>Confirmez votre adresse email</strong> — un lien vous a été envoyé à l&apos;inscription.</span>
+              <button
+                type="button"
+                onClick={handleResendEmail}
+                disabled={resendingEmail}
+                className="inline-flex items-center gap-1.5 font-medium text-navy-800 underline underline-offset-2 hover:text-amber-600 disabled:opacity-60"
+              >
+                {resendingEmail && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Renvoyer le lien
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmailBannerDismissed(true)}
+                className="ml-auto text-navy-400 hover:text-navy-700"
+                aria-label="Fermer le bandeau"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">{children}</main>
+        <ClientOnboarding />
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Users,
   Search,
@@ -19,6 +20,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/brand";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/empty-state";
+import { ClientHoverCard } from "@/components/client-hover-card";
 import { toast } from "sonner";
 
 import { usePaginatedUsers, useClientEmissions, useClientRequests, useUsers } from "@/hooks/use-api-data";
@@ -37,9 +41,10 @@ const formatDate = (iso: string) => {
 };
 
 export default function AgentClientsPage() {
+  const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
   const [segment, setSegment] = useState<Segment>("magistrats");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [showEmission, setShowEmission] = useState(false);
@@ -64,6 +69,12 @@ export default function AgentClientsPage() {
       setSelectedClientId(null);
     }
   }, [clients, selectedClientId]);
+
+  // Paramètre ?q= (palette ⌘K)
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q) { setPage(1); setSearch(q); }
+  }, [searchParams]);
 
   const { data: emissions } = useClientEmissions(selectedClientId ?? undefined);
   const { data: selectedRequests } = useClientRequests(selectedClientId ?? undefined);
@@ -127,32 +138,55 @@ export default function AgentClientsPage() {
                 <p className="max-w-xs text-center text-sm">La gestion des clients grand public arrive prochainement. Seuls les magistrats et douaniers sont actifs pour l&apos;instant.</p>
               </div>
             ) : loading ? (
-              <p className="py-12 text-center text-navy-400">Chargement...</p>
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="rounded-xl border border-navy-100 p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                    <div className="mt-3 flex gap-4">
+                      <Skeleton className="h-3 w-28" />
+                      <Skeleton className="h-3 w-44" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : error ? (
               <p className="py-12 text-center text-red-500">{error}</p>
             ) : clients.length === 0 ? (
-              <p className="py-12 text-center text-navy-400">Aucun résultat</p>
+              <EmptyState
+                compact
+                icon={Users}
+                title="Aucun résultat"
+                description={search ? `Aucun client ne correspond à « ${search} ».` : "Aucun client dans ce segment pour l'instant."}
+              />
             ) : (
               <div className="space-y-3">
                 {clients.map((client) => (
-                  <button key={client.id} onClick={() => setSelectedClientId(client.id)}
-                    className={`w-full rounded-xl border p-4 text-left transition ${selectedClientId === client.id ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300" : "border-navy-100 hover:border-amber-300 hover:bg-amber-50/30"}`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold text-navy-900">{client.nom} {client.prenoms}</p>
-                        <p className="text-sm text-navy-400">{client.profession || PROFESSION_LABELS[client.professionType]}</p>
+                  <ClientHoverCard key={client.id} client={client}>
+                    <button onClick={() => setSelectedClientId(client.id)}
+                      className={`w-full rounded-xl border p-4 text-left transition ${selectedClientId === client.id ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300" : "border-navy-100 hover:border-amber-300 hover:bg-amber-50/30"}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold text-navy-900">{client.nom} {client.prenoms}</p>
+                          <p className="text-sm text-navy-400">{client.profession || PROFESSION_LABELS[client.professionType]}</p>
+                        </div>
+                        <Badge
+                          className={client.verified ? "border-emerald-200 bg-emerald-100 text-emerald-800" : "border-amber-200 bg-amber-100 text-amber-800"}>
+                          {client.verified ? "Vérifié" : "En attente"}
+                        </Badge>
                       </div>
-                      <Badge
-                        className={client.verified ? "border-emerald-200 bg-emerald-100 text-emerald-800" : "border-amber-200 bg-amber-100 text-amber-800"}>
-                        {client.verified ? "Vérifié" : "En attente"}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-4 text-sm text-navy-500">
-                      <span className="flex items-center gap-1"><Phone className="h-3 w-3 text-navy-300" /> {client.telephone}</span>
-                      <span className="flex items-center gap-1"><Mail className="h-3 w-3 text-navy-300" /> {client.email}</span>
-                    </div>
-                  </button>
+                      <div className="mt-2 flex flex-wrap gap-4 text-sm text-navy-500">
+                        <span className="flex items-center gap-1"><Phone className="h-3 w-3 text-navy-300" /> {client.telephone}</span>
+                        <span className="flex items-center gap-1"><Mail className="h-3 w-3 text-navy-300" /> {client.email}</span>
+                      </div>
+                    </button>
+                  </ClientHoverCard>
                 ))}
               </div>
             )}
@@ -276,10 +310,7 @@ export default function AgentClientsPage() {
                 )}
               </div>
             ) : (
-              <div className="py-10 text-center text-navy-400">
-                <Users className="mx-auto mb-3 h-8 w-8 text-navy-200" />
-                Sélectionnez un client pour afficher les détails.
-              </div>
+              <EmptyState compact icon={Users} title="Sélectionnez un client" description="Cliquez sur un client pour afficher ses détails ici." />
             )}
           </CardContent>
         </Card>

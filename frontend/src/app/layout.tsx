@@ -30,8 +30,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
-      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
+    <html lang="fr" suppressHydrationWarning>
+      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`} suppressHydrationWarning>
         <QueryProvider>
           <AuthProvider>
             <TooltipProvider>

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuthStore } from "@/stores/auth-store";
 import { NotificationsDropdown } from "@/components/notifications-dropdown";
+import { CommandPalette } from "@/components/command-palette";
 import { BrandMark } from "@/components/brand";
 import { cn } from "@/lib/utils";
 
@@ -167,6 +168,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">{children}</main>
+        <CommandPalette role="admin" />
       </div>
     </div>
   );

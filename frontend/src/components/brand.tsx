@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { UploadCloud, FileText, X, RefreshCw, ShieldCheck, Users, Lock, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CountUp } from "@/components/count-up";
+import { Sparkline } from "@/components/sparkline";
 
 /* ── Logo : écusson marine + balance de la justice ── */
 export function BrandMark({ className, size = "md" }: { className?: string; size?: "sm" | "md" | "lg" }) {
@@ -137,17 +139,25 @@ const TONES = {
 } as const;
 
 export function StatCard({
-  label, value, icon: Icon, tone = "navy", hint,
+  label, value, icon: Icon, tone = "navy", hint, spark, format,
 }: {
   label: string; value: React.ReactNode; icon: LucideIcon; tone?: keyof typeof TONES; hint?: string;
+  spark?: number[]; format?: (n: number) => string;
 }) {
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-navy-100 bg-white p-5 shadow-[0_1px_2px_rgb(16_28_52/0.04)] transition hover:shadow-[0_12px_32px_-16px_rgb(16_28_52/0.25)]">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-xs font-medium uppercase tracking-wide text-navy-400">{label}</p>
-          <p className="font-display text-3xl font-semibold text-navy-900 mt-2 leading-none">{value}</p>
+          <p className="font-display text-3xl font-semibold text-navy-900 mt-2 leading-none">
+            {typeof value === "number" ? <CountUp value={value} format={format} /> : value}
+          </p>
           {hint && <p className="text-xs text-navy-400 mt-2">{hint}</p>}
+          {spark && spark.length > 1 && (
+            <div className={cn("mt-3 -mb-1 text-navy-300 transition group-hover:text-amber-500", tone === "gold" && "text-amber-400/60")}>
+              <Sparkline data={spark} />
+            </div>
+          )}
         </div>
         <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1", TONES[tone])}>
           <Icon className="h-5 w-5" />

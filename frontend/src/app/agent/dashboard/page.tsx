@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, StatCard } from "@/components/brand";
+import { EmptyState } from "@/components/empty-state";
 import { useEffect, useState } from "react";
 import { magistassurApi } from "@/lib/api";
 import Link from "next/link";
@@ -132,12 +133,7 @@ export default function AgentDashboard() {
             {epargne.slice(0, 3).map((c) => <DossierRow key={c.id as string} c={c} type="epargne" />)}
             {prevoyance.slice(0, 3).map((c) => <DossierRow key={c.id as string} c={c} type="prevoyance" />)}
             {totalContrats === 0 && (
-              <div className="py-10 text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-navy-50">
-                  <FileText className="h-5 w-5 text-navy-300" />
-                </div>
-                <p className="text-sm text-navy-400">Aucun dossier Magist&apos;Assur pour le moment</p>
-              </div>
+              <EmptyState compact icon={FileText} title="Aucun dossier Magist'Assur pour le moment" />
             )}
           </div>
         </div>

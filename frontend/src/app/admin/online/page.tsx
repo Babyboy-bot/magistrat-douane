@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/brand";
+import { EmptyState } from "@/components/empty-state";
+import { CountUp } from "@/components/count-up";
 import { apiFetch } from "@/lib/api/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
@@ -110,7 +112,7 @@ export default function OnlineUsersPage() {
         {(["client", "prospect", "agent", "admin"] as const).map((role) => (
           <Card key={role} className="rounded-2xl border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)]">
             <CardContent className="pb-4 pt-4 text-center">
-              <p className="font-display text-2xl font-semibold text-navy-900">{byRole[role]?.length ?? 0}</p>
+              <p className="font-display text-2xl font-semibold text-navy-900"><CountUp value={byRole[role]?.length ?? 0} /></p>
               <p className="mt-1 text-xs font-medium uppercase tracking-wide text-navy-400">{ROLE_LABELS[role]}s</p>
             </CardContent>
           </Card>
@@ -118,12 +120,7 @@ export default function OnlineUsersPage() {
       </div>
 
       {users.length === 0 && !loading ? (
-        <div className="py-16 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-navy-50">
-            <WifiOff className="h-6 w-6 text-navy-300" />
-          </div>
-          <p className="text-navy-400">Aucun utilisateur connecté</p>
-        </div>
+        <EmptyState icon={WifiOff} title="Aucun utilisateur connecté" description="Les utilisateurs actifs apparaîtront ici en temps réel." />
       ) : (
         <Card className="rounded-2xl border-navy-100 shadow-[0_1px_2px_rgb(16_28_52/0.04)]">
           <CardHeader>

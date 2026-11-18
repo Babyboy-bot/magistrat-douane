@@ -4,6 +4,7 @@ import { AlertCircle, FileText, Shield, Download, Eye, Clock, CheckCircle, Vault
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/brand";
+import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/stores/auth-store";
@@ -190,18 +191,16 @@ export default function ClientDashboard() {
           </div>
 
           {totalContrats === 0 ? (
-            <div className="flex flex-col items-center rounded-2xl border border-dashed border-navy-200 bg-navy-50/40 px-6 py-10 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-amber-600 ring-1 ring-navy-100">
-                <Shield className="h-6 w-6" />
-              </div>
-              <p className="mt-3 font-medium text-navy-900">Aucun contrat pour le moment</p>
-              <p className="mt-1 max-w-sm text-sm text-navy-400">Souscrivez à l&apos;Épargne retraite Magist&apos;Assur en 15 minutes, avec un conseiller dédié.</p>
-              {isMagistrat && (
-                <Link href="/client/subscribe/magist-assur" className="mt-5">
+            <EmptyState
+              icon={Shield}
+              title="Aucun contrat pour le moment"
+              description="Souscrivez à l'Épargne retraite Magist'Assur en 15 minutes, avec un conseiller dédié."
+              action={isMagistrat ? (
+                <Link href="/client/subscribe/magist-assur">
                   <Button className="rounded-xl bg-navy-900 px-5 hover:bg-navy-800">Souscrire maintenant</Button>
                 </Link>
-              )}
-            </div>
+              ) : undefined}
+            />
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {contrats.slice(0, 6).map(({ c, kind }) => {
@@ -241,10 +240,7 @@ export default function ClientDashboard() {
               <Link href="/client/history" className="text-sm font-medium text-amber-700 hover:text-amber-800">Tout voir →</Link>
             </div>
             {livrablesRecents.length === 0 ? (
-              <div className="flex items-center gap-3 rounded-2xl bg-navy-50/50 p-4 text-sm text-navy-400">
-                <FileText className="h-5 w-5 shrink-0" />
-                Vos attestations et contrats apparaîtront ici dès leur émission.
-              </div>
+              <EmptyState compact icon={FileText} title="Aucun document" description="Vos attestations et contrats apparaîtront ici dès leur émission." />
             ) : (
               <ul className="divide-y divide-navy-50">
                 {livrablesRecents.map((d) => (
@@ -274,10 +270,7 @@ export default function ClientDashboard() {
               <Link href="/client/history" className="text-sm font-medium text-amber-700 hover:text-amber-800">Tout voir →</Link>
             </div>
             {recentRequests.length === 0 ? (
-              <div className="flex items-center gap-3 rounded-2xl bg-navy-50/50 p-4 text-sm text-navy-400">
-                <Clock className="h-5 w-5 shrink-0" />
-                Aucune demande pour le moment.
-              </div>
+              <EmptyState compact icon={Clock} title="Aucune demande" description="Vos demandes de cotation et souscription apparaîtront ici." />
             ) : (
               <ul className="divide-y divide-navy-50">
                 {recentRequests.map((r: ClientRequest) => (
