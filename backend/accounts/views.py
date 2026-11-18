@@ -18,6 +18,7 @@ import json
 import re
 
 from core.permissions import IsAgentOrAdmin
+from core.services import _dispatch
 from notifications.emails import send_welcome_email
 from .serializers import (
     UserSerializer,
@@ -183,7 +184,12 @@ def _send_email_verification(user):
     verify_url = f"{conf.FRONTEND_URL}/verify-email?uid={uid}&token={token}"
     try:
         from notifications.emails import send_verification_email
-        send_verification_email(user, verify_url)
+        from notifications.tasks import send_verification_email_async
+        _dispatch(
+            send_verification_email_async,
+            lambda: send_verification_email(user, verify_url),
+            user.pk, verify_url,
+        )
     except Exception:
         import logging
         logging.getLogger("accounts").exception("Failed to send verification email to user %s", user.pk)
@@ -238,7 +244,8 @@ class RegisterView(generics.CreateAPIView):
         user = serializer.save()
         log_register(user, get_client_ip(request))
         log_user_action(user, user, "creation", {"role": user.role}, ip=get_client_ip(request))
-        send_welcome_email(user)
+        from notifications.tasks import send_welcome_email_async
+        _dispatch(send_welcome_email_async, lambda: send_welcome_email(user), user.pk)
         _send_email_verification(user)
         if not user.verified:
             _notify_agents_pending_verification(user)
@@ -460,7 +467,12 @@ class ResetPasswordView(APIView):
             reset_url = f"{conf.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
             try:
                 from notifications.emails import send_password_reset_email
-                send_password_reset_email(user, reset_url)
+                from notifications.tasks import send_password_reset_email_async
+                _dispatch(
+                    send_password_reset_email_async,
+                    lambda: send_password_reset_email(user, reset_url),
+                    user.pk, reset_url,
+                )
             except Exception:
                 import logging
                 logging.getLogger("accounts").exception("Failed to send password reset email to user %s", user.pk)

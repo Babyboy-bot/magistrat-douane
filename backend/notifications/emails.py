@@ -20,8 +20,9 @@ def _from_email():
     return getattr(settings, 'DEFAULT_FROM_EMAIL', 'ACS <noreply@acs.ci>')
 
 
-def _send(subject, body_txt, body_html, to_email):
-    """Envoi générique avec gestion d'erreur silencieuse (ne bloque pas la requête)."""
+def _send(subject, body_txt, body_html, to_email, strict=False):
+    """Envoi générique avec gestion d'erreur silencieuse (ne bloque pas la requête).
+    strict=True propage l'exception après log — utilisé par les tâches Celery pour les retries."""
     if not to_email or not to_email.strip():
         return
     try:
@@ -31,11 +32,13 @@ def _send(subject, body_txt, body_html, to_email):
         logger.info("Email envoyé → %s : %s", to_email, subject)
     except Exception as exc:
         logger.error("Échec envoi email → %s : %s", to_email, exc)
+        if strict:
+            raise
 
 
 # ── 1. Bienvenue (après inscription) ──────────────────────────────────────────
 
-def send_welcome_email(user):
+def send_welcome_email(user, strict=False):
     """Envoyé au prospect/client juste après la création de son compte."""
     if not user.email:
         return
@@ -64,12 +67,12 @@ def send_welcome_email(user):
     <p>Cordialement,<br><strong>L'équipe ACS</strong></p>
   </div>
 </body></html>"""
-    _send(subject, body_txt, body_html, user.email)
+    _send(subject, body_txt, body_html, user.email, strict=strict)
 
 
 # ── 2. Accusé de réception (après soumission d'une requête) ───────────────────
 
-def send_request_acknowledgment(client_request):
+def send_request_acknowledgment(client_request, strict=False):
     """Accusé de réception envoyé au client après soumission d'une requête."""
     client = client_request.client
     if not client.email:
@@ -104,12 +107,12 @@ def send_request_acknowledgment(client_request):
     <p>Cordialement,<br><strong>L'équipe ACS</strong></p>
   </div>
 </body></html>"""
-    _send(subject, body_txt, body_html, client.email)
+    _send(subject, body_txt, body_html, client.email, strict=strict)
 
 
 # ── 3. Requête traitée (quand l'agent marque comme terminé) ───────────────────
 
-def send_request_treated(client_request):
+def send_request_treated(client_request, strict=False):
     """Email de confirmation envoyé au client quand sa requête est traitée."""
     client = client_request.client
     if not client.email:
@@ -142,12 +145,12 @@ def send_request_treated(client_request):
     <p>Cordialement,<br><strong>L'équipe ACS</strong></p>
   </div>
 </body></html>"""
-    _send(subject, body_txt, body_html, client.email)
+    _send(subject, body_txt, body_html, client.email, strict=strict)
 
 
 # ── 4. Alerte agents (nouvelle requête soumise par un client) ─────────────────
 
-def send_new_request_alert_to_agents(client_request):
+def send_new_request_alert_to_agents(client_request, strict=False):
     """Alerte envoyée à tous les agents actifs lors d'une nouvelle requête."""
     client = client_request.client
     type_display = client_request.get_type_display()
@@ -203,12 +206,12 @@ def send_new_request_alert_to_agents(client_request):
         role="agent", is_active=True
     ).exclude(email="").exclude(email__isnull=True)
     for agent in agents:
-        _send(subject, body_txt, body_html, agent.email)
+        _send(subject, body_txt, body_html, agent.email, strict=strict)
 
 
 # ── 5. Livrable disponible (agent → client) ───────────────────────────────────
 
-def send_livrable_notification(request_obj, document_obj):
+def send_livrable_notification(request_obj, document_obj, strict=False):
     """Notifie le client qu'un document a été déposé sur sa requête."""
     client = request_obj.client
     if not client.email:
@@ -249,12 +252,12 @@ def send_livrable_notification(request_obj, document_obj):
   </div>
 </body></html>"""
 
-    _send(subject, body_txt, body_html, client.email)
+    _send(subject, body_txt, body_html, client.email, strict=strict)
 
 
 # ── Reset mot de passe ────────────────────────────────────────────────────────
 
-def send_password_reset_email(user, reset_url: str):
+def send_password_reset_email(user, reset_url: str, strict=False):
     """Envoyé à l'utilisateur avec le lien signé de réinitialisation (usage unique, durée limitée)."""
     if not user.email:
         return
@@ -293,12 +296,12 @@ def send_password_reset_email(user, reset_url: str):
   </div>
 </body></html>"""
 
-    _send(subject, body_txt, body_html, user.email)
+    _send(subject, body_txt, body_html, user.email, strict=strict)
 
 
 # ── Notifications critiques doublées par email ───────────────────────────────
 
-def send_critical_notification_email(user, title: str, message: str):
+def send_critical_notification_email(user, title: str, message: str, strict=False):
     """Double par email une notification in-app jugée critique (compte validé,
     contrat activé, suspension/résiliation…). Désactivable via EMAIL_NOTIFICATIONS."""
     if not getattr(settings, 'EMAIL_NOTIFICATIONS', True) or not user or not user.email:
@@ -330,12 +333,12 @@ def send_critical_notification_email(user, title: str, message: str):
     <p>Cordialement,<br><strong>L'équipe ACS</strong></p>
   </div>
 </body></html>"""
-    _send(f"ACS — {title}", body_txt, body_html, user.email)
+    _send(f"ACS — {title}", body_txt, body_html, user.email, strict=strict)
 
 
 # ── Tentative d'inscription avec des coordonnées déjà utilisées ──────────────
 
-def send_signup_attempt_email(user):
+def send_signup_attempt_email(user, strict=False):
     """Prévient le titulaire qu'une inscription a été tentée avec son email ou son
     téléphone (l'API ne révèle pas l'existence du compte au demandeur)."""
     if not user.email:
@@ -379,7 +382,7 @@ def send_signup_attempt_email(user):
     <p>Cordialement,<br><strong>L'équipe ACS</strong></p>
   </div>
 </body></html>"""
-    _send(subject, body_txt, body_html, user.email)
+    _send(subject, body_txt, body_html, user.email, strict=strict)
 
 
 def _agent_recipients():
@@ -391,7 +394,7 @@ def _agent_recipients():
 
 # ── Alerte agents : compte professionnel en attente de vérification ──────────
 
-def send_pending_verification_alert_to_agents(user):
+def send_pending_verification_alert_to_agents(user, strict=False):
     """Un magistrat/douanier vient de s'inscrire : son compte doit être vérifié
     par un agent avant activation."""
     nom_complet = f"{user.nom} {user.prenoms}"
@@ -442,12 +445,12 @@ def send_pending_verification_alert_to_agents(user):
   </div>
 </body></html>"""
     for agent in _agent_recipients():
-        _send(subject, body_txt, body_html, agent.email)
+        _send(subject, body_txt, body_html, agent.email, strict=strict)
 
 
 # ── Alerte agents : nouveau dossier Magist-Assur soumis ──────────────────────
 
-def send_new_dossier_alert_to_agents(contrat, contrat_type="epargne"):
+def send_new_dossier_alert_to_agents(contrat, contrat_type="epargne", strict=False):
     """Un client vient de soumettre un dossier Magist-Assur : alerte les agents
     pour une prise en charge rapide."""
     client = contrat.client
@@ -490,12 +493,12 @@ def send_new_dossier_alert_to_agents(contrat, contrat_type="epargne"):
   </div>
 </body></html>"""
     for agent in _agent_recipients():
-        _send(subject, body_txt, body_html, agent.email)
+        _send(subject, body_txt, body_html, agent.email, strict=strict)
 
 
 # ── Vérification d'email (inscription / changement d'adresse) ────────────────
 
-def send_verification_email(user, verify_url: str):
+def send_verification_email(user, verify_url: str, strict=False):
     """Lien signé prouvant que l'utilisateur contrôle l'adresse email déclarée."""
     if not user.email:
         return
@@ -532,4 +535,4 @@ def send_verification_email(user, verify_url: str):
   </div>
 </body></html>"""
 
-    _send(subject, body_txt, body_html, user.email)
+    _send(subject, body_txt, body_html, user.email, strict=strict)

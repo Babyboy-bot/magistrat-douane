@@ -34,8 +34,16 @@ def _notify_client_epargne(contrat, title, message, notif_type="info", contrat_t
                            email=False):
     if email and contrat.client_id:
         from notifications.emails import send_critical_notification_email
+        from notifications.tasks import send_critical_notification_email_async
+        from core.services import _dispatch
         client = contrat.client
-        transaction.on_commit(lambda: send_critical_notification_email(client, title, message))
+        transaction.on_commit(
+            lambda: _dispatch(
+                send_critical_notification_email_async,
+                lambda: send_critical_notification_email(client, title, message),
+                client.pk, title, message,
+            )
+        )
     try:
         if contrat.client_id:
             from notifications.models import Notification

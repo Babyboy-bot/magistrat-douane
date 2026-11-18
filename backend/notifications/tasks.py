@@ -17,7 +17,7 @@ def send_request_acknowledgment_async(self, request_id: int):
         from core.models import ClientRequest
         from notifications.emails import send_request_acknowledgment
         req = ClientRequest.objects.select_related("client").get(pk=request_id)
-        send_request_acknowledgment(req)
+        send_request_acknowledgment(req, strict=True)
     except Exception as exc:
         raise self.retry(exc=exc)
 
@@ -29,7 +29,7 @@ def send_new_request_alert_async(self, request_id: int):
         from core.models import ClientRequest
         from notifications.emails import send_new_request_alert_to_agents
         req = ClientRequest.objects.select_related("client").get(pk=request_id)
-        send_new_request_alert_to_agents(req)
+        send_new_request_alert_to_agents(req, strict=True)
     except Exception as exc:
         raise self.retry(exc=exc)
 
@@ -41,7 +41,7 @@ def send_request_treated_async(self, request_id: int):
         from core.models import ClientRequest
         from notifications.emails import send_request_treated
         req = ClientRequest.objects.select_related("client", "agent").get(pk=request_id)
-        send_request_treated(req)
+        send_request_treated(req, strict=True)
     except Exception as exc:
         raise self.retry(exc=exc)
 
@@ -53,7 +53,7 @@ def send_pending_verification_alert_async(self, user_id: int):
         from django.contrib.auth import get_user_model
         from notifications.emails import send_pending_verification_alert_to_agents
         user = get_user_model().objects.get(pk=user_id)
-        send_pending_verification_alert_to_agents(user)
+        send_pending_verification_alert_to_agents(user, strict=True)
     except Exception as exc:
         raise self.retry(exc=exc)
 
@@ -66,7 +66,7 @@ def send_new_dossier_alert_async(self, contrat_id: int, contrat_type: str = "epa
         from notifications.emails import send_new_dossier_alert_to_agents
         model = ContratEpargne if contrat_type == "epargne" else ContratPrevoyance
         contrat = model.objects.select_related("client").get(pk=contrat_id)
-        send_new_dossier_alert_to_agents(contrat, contrat_type)
+        send_new_dossier_alert_to_agents(contrat, contrat_type, strict=True)
     except Exception as exc:
         raise self.retry(exc=exc)
 
@@ -130,6 +130,56 @@ def send_livrable_notification_async(self, request_id: int, document_id: int = N
         req = ClientRequest.objects.select_related("client").get(pk=request_id)
         doc = Document.objects.get(pk=document_id) if document_id else None
         if doc:
-            send_livrable_notification(req, doc)
+            send_livrable_notification(req, doc, strict=True)
+    except Exception as exc:
+        raise self.retry(exc=exc)
+
+
+# ── Emails du cycle de vie du compte (auth) ──────────────────────────────────
+
+@app.task(bind=True, max_retries=3, default_retry_delay=30, name="notifications.send_welcome_email")
+def send_welcome_email_async(self, user_id: int):
+    """Email de bienvenue après inscription (async)."""
+    try:
+        from django.contrib.auth import get_user_model
+        from notifications.emails import send_welcome_email
+        user = get_user_model().objects.get(pk=user_id)
+        send_welcome_email(user, strict=True)
+    except Exception as exc:
+        raise self.retry(exc=exc)
+
+
+@app.task(bind=True, max_retries=3, default_retry_delay=30, name="notifications.send_verification_email")
+def send_verification_email_async(self, user_id: int, verify_url: str):
+    """Lien signé de vérification d'adresse email (async)."""
+    try:
+        from django.contrib.auth import get_user_model
+        from notifications.emails import send_verification_email
+        user = get_user_model().objects.get(pk=user_id)
+        send_verification_email(user, verify_url, strict=True)
+    except Exception as exc:
+        raise self.retry(exc=exc)
+
+
+@app.task(bind=True, max_retries=3, default_retry_delay=30, name="notifications.send_password_reset_email")
+def send_password_reset_email_async(self, user_id: int, reset_url: str):
+    """Lien signé de réinitialisation de mot de passe (async)."""
+    try:
+        from django.contrib.auth import get_user_model
+        from notifications.emails import send_password_reset_email
+        user = get_user_model().objects.get(pk=user_id)
+        send_password_reset_email(user, reset_url, strict=True)
+    except Exception as exc:
+        raise self.retry(exc=exc)
+
+
+@app.task(bind=True, max_retries=3, default_retry_delay=30, name="notifications.send_critical_notification_email")
+def send_critical_notification_email_async(self, user_id: int, title: str, message: str):
+    """Double par email une notification in-app critique (async)."""
+    try:
+        from django.contrib.auth import get_user_model
+        from notifications.emails import send_critical_notification_email
+        user = get_user_model().objects.get(pk=user_id)
+        send_critical_notification_email(user, title, message, strict=True)
     except Exception as exc:
         raise self.retry(exc=exc)

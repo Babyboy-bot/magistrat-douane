@@ -57,10 +57,17 @@ def verify_prospect(target: User, agent: User) -> None:
     except Exception:
         pass
     from notifications.emails import send_critical_notification_email
-    send_critical_notification_email(
-        target, "Votre compte est validé",
+    from notifications.tasks import send_critical_notification_email_async
+    from core.services import _dispatch
+    title = "Votre compte est validé"
+    message = (
         f"Votre identité a été validée par {agent.full_name}. Vous pouvez maintenant "
-        "vous connecter et souscrire à Magist-Assur depuis votre espace.",
+        "vous connecter et souscrire à Magist-Assur depuis votre espace."
+    )
+    _dispatch(
+        send_critical_notification_email_async,
+        lambda: send_critical_notification_email(target, title, message),
+        target.pk, title, message,
     )
 
 
